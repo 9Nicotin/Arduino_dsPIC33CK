@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino_dsPIC33CK - Arduino IDE Setup Guide</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.7; max-width: 900px; margin: 0 auto; padding: 30px; background: #f8f9fa; color: #333; }
+        h1 { color: #1a5276; border-bottom: 3px solid #2e86c1; padding-bottom: 10px; }
+        h2 { color: #2e86c1; margin-top: 40px; border-left: 4px solid #2e86c1; padding-left: 12px; }
+        h3 { color: #1a5276; margin-top: 25px; }
+        .info-box { background: #d4efdf; border-left: 5px solid #27ae60; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .warning-box { background: #fdebd0; border-left: 5px solid #f39c12; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .danger-box { background: #fadbd8; border-left: 5px solid #e74c3c; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        code { background: #ecf0f1; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 0.9em; }
+        pre { background: #2c3e50; color: #ecf0f1; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+        pre code { background: none; padding: 0; color: inherit; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #bdc3c7; padding: 10px 14px; text-align: left; }
+        th { background: #2e86c1; color: white; }
+        tr:nth-child(even) { background: #eaf2f8; }
+        .step { background: white; border: 1px solid #d5dbdb; border-radius: 8px; padding: 20px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .step-number { display: inline-block; background: #2e86c1; color: white; width: 32px; height: 32px; border-radius: 50%; text-align: center; line-height: 32px; font-weight: bold; margin-right: 10px; }
+        .screenshot { background: #ecf0f1; border: 2px solid #bdc3c7; padding: 15px; margin: 15px 0; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 0.85em; white-space: pre; }
+    </style>
+</head>
+<body>
+
+<h1>Arduino_dsPIC33CK</h1>
+<h2 style="border:none; padding:0; margin-top:5px; color:#666; font-size:1em;">Arduino IDE Setup &amp; Usage Guide</h2>
+
+<div class="warning-box">
+    <strong>Prerequisites before starting:</strong>
+    <ul style="margin-bottom:0">
+        <li>Arduino IDE 2.x installed (<a href="https://www.arduino.cc/en/software">download here</a>)</li>
+        <li>Microchip XC16 compiler v3.31+ installed (<a href="https://www.microchip.com/xc16">download here</a>)</li>
+        <li>MPLAB X IDE installed (for PICkit4/SNAP upload via ipecmd)</li>
+    </ul>
+</div>
+
+<h2>Step 1: Install the Platform</h2>
+
+<div class="step">
+    <h3><span class="step-number">1</span>Run the Installer Script</h3>
+    <ol>
+        <li>Open Windows Explorer</li>
+        <li>Navigate to: <code>C:\Users\A18434\MPLABProjects\SCCP1_dsPIC33CK\arduino-platform\</code></li>
+        <li>Double-click <strong>install_arduino_ide.bat</strong></li>
+        <li>Wait for "Installation Complete!" message</li>
+    </ol>
+
+    <div class="screenshot">C:\> install_arduino_ide.bat
+
+============================================
+ Arduino_dsPIC33CK Platform Installer
+============================================
+
+[1/4] Creating installation directory...
+[2/4] Copying platform files...
+[3/4] Verifying installation...
+      boards.txt .... OK
+      platform.txt .. OK
+      Arduino.h ..... OK
+[4/4] Creating package index entry...
+
+============================================
+ Installation Complete!
+============================================</div>
+
+    <p><strong>What this does:</strong> Copies all platform files to:<br>
+    <code>%LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\1.0.0\</code></p>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">2</span>Configure XC16 Compiler Path</h3>
+    <p>Open the file <code>platform.local.txt</code> in the installed location and verify the path matches your XC16 installation:</p>
+    <pre><code># Edit this file:
+%LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\1.0.0\platform.local.txt
+
+# Verify this line points to your XC16 bin folder:
+build.compiler.path=C:/Program Files/Microchip/xc16/v3.31/bin/</code></pre>
+
+    <div class="info-box">
+        <strong>How to verify XC16 is installed:</strong> Open Command Prompt and type:
+        <pre><code>dir "C:\Program Files\Microchip\xc16\v3.31\bin\xc16-gcc.exe"</code></pre>
+        If it exists, the path is correct.
+    </div>
+</div>
+
+<h2>Step 2: Select the Board in Arduino IDE</h2>
+
+<div class="step">
+    <h3><span class="step-number">3</span>Open Arduino IDE and Select Board</h3>
+    <ol>
+        <li>Open <strong>Arduino IDE 2.x</strong></li>
+        <li>Go to <strong>Tools → Board</strong></li>
+        <li>Look for <strong>"Arduino_dsPIC33CK (dsPIC33CK32MP102)"</strong></li>
+        <li>If you don't see it, restart Arduino IDE</li>
+    </ol>
+
+    <div class="screenshot">Tools Menu:
+┌─────────────────────────────────────────┐
+│ Board: "Arduino_dsPIC33CK (dsPIC33CK32MP102)"  │
+│ Clock: "8 MHz Internal FRC (Default)"   │
+│ Programmer: "PICkit 4 (ICSP)"           │
+│ Port: "COM3"                            │
+└─────────────────────────────────────────┘</div>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">4</span>Select Clock Speed</h3>
+    <p>Go to <strong>Tools → Clock</strong> and choose:</p>
+    <table>
+        <tr><th>Option</th><th>FOSC</th><th>FCY</th><th>Use Case</th></tr>
+        <tr><td><strong>8 MHz Internal FRC (Default)</strong></td><td>8 MHz</td><td>4 MHz</td><td>Low power, simple projects</td></tr>
+        <tr><td>100 MHz (PLL from FRC)</td><td>100 MHz</td><td>50 MHz</td><td>High performance, fast ADC/PWM</td></tr>
+    </table>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">5</span>Select Programmer</h3>
+    <p>Go to <strong>Tools → Programmer</strong> and choose:</p>
+    <table>
+        <tr><th>Programmer</th><th>When to Use</th></tr>
+        <tr><td><strong>PICkit 4 (ICSP)</strong></td><td>Most common — direct flash programming via ICSP header</td></tr>
+        <tr><td>MPLAB SNAP (ICSP)</td><td>Alternative programmer from Microchip</td></tr>
+        <tr><td>UART Bootloader (Serial)</td><td>Field updates via serial port (requires pre-programmed bootloader)</td></tr>
+    </table>
+</div>
+
+<h2>Step 3: Write Your First Sketch</h2>
+
+<div class="step">
+    <h3><span class="step-number">6</span>Create a New Sketch</h3>
+    <p>Go to <strong>File → New Sketch</strong>. Replace the contents with:</p>
+
+    <pre><code>/*
+ * Blink - Arduino_dsPIC33CK
+ * LED on pin D0 (RA0) blinks every 1 second.
+ *
+ * IMPORTANT: Since XC16 is C-only, use C-style syntax:
+ *   - Use Serial_begin() not Serial.begin()
+ *   - Use Serial_print() not Serial.print()
+ *   - No String class, no new/delete
+ */
+#include "Arduino.h"
+
+void setup()
+{
+    pinMode(LED_BUILTIN, OUTPUT);
+}
+
+void loop()
+{
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(1000);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(1000);
+}
+</code></pre>
+
+    <p>Save it as <strong>Blink_dsPIC33CK</strong> (File → Save As)</p>
+</div>
+
+<div class="danger-box">
+    <strong>Critical Rules When Writing Sketches:</strong>
+    <ol style="margin-bottom:0">
+        <li>Always include <code>#include "Arduino.h"</code> at the top</li>
+        <li>For Serial, add <code>#include "HardwareSerial.h"</code> and use <code>Serial_begin()</code> not <code>Serial.begin()</code></li>
+        <li>No C++ features: no classes, no String, no new/delete, no templates</li>
+        <li>Declare all variables at the TOP of a block (C89-style)</li>
+        <li>Do NOT write your own <code>main()</code> — only <code>setup()</code> and <code>loop()</code></li>
+    </ol>
+</div>
+
+<h2>Step 4: Build (Verify)</h2>
+
+<div class="step">
+    <h3><span class="step-number">7</span>Click Verify (Compile)</h3>
+    <ol>
+        <li>Click the <strong>checkmark button</strong> (✓) in the toolbar, or press <strong>Ctrl+R</strong></li>
+        <li>Watch the Output panel at the bottom</li>
+    </ol>
+
+    <div class="screenshot">Output:
+Compiling sketch...
+"C:/Program Files/Microchip/xc16/v3.31/bin/xc16-gcc" -mcpu=dsPIC33CK32MP102 ...
+Compiling core...
+Linking everything together...
+"C:/Program Files/Microchip/xc16/v3.31/bin/xc16-size" -A sketch.elf
+
+Sketch uses 2048 bytes (6%) of program storage space.
+Global variables use 128 bytes (3%) of dynamic memory.
+
+Done compiling.</div>
+
+    <div class="info-box">
+        <strong>If build succeeds:</strong> You'll see "Done compiling." and memory usage.
+    </div>
+</div>
+
+<h2>Step 5: Upload to Hardware</h2>
+
+<div class="step">
+    <h3><span class="step-number">8</span>Connect PICkit 4 and Upload</h3>
+    <ol>
+        <li>Connect PICkit 4 to the board's ICSP header</li>
+        <li>Connect PICkit 4 to PC via USB</li>
+        <li>Click the <strong>Upload button</strong> (→ arrow) or press <strong>Ctrl+U</strong></li>
+        <li>Arduino IDE calls <code>ipecmd</code> to program the device</li>
+    </ol>
+
+    <div class="screenshot">Uploading...
+"C:/Program Files/Microchip/MPLABX/v6.20/mplab_platform/bin/ipecmd.exe"
+  -TPPK4 -PdsPIC33CK32MP102 -M -F"sketch.hex"
+
+Connecting to PICkit 4...
+Device ID verified: dsPIC33CK32MP102
+Erasing...
+Programming...
+Verify...
+Done.
+
+Upload complete.</div>
+</div>
+
+<h2>Step 6: Using Serial Monitor</h2>
+
+<div class="step">
+    <h3><span class="step-number">9</span>Open Serial Monitor for UART Output</h3>
+    <p>If your sketch uses Serial, connect a USB-UART adapter and:</p>
+    <ol>
+        <li>Select the correct COM port: <strong>Tools → Port → COMx</strong></li>
+        <li>Open Serial Monitor: <strong>Tools → Serial Monitor</strong> or <strong>Ctrl+Shift+M</strong></li>
+        <li>Set baud rate to match your code (e.g., 115200)</li>
+    </ol>
+
+    <pre><code>/* Example sketch with Serial */
+#include "Arduino.h"
+#include "HardwareSerial.h"
+
+void setup()
+{
+    pinMode(LED_BUILTIN, OUTPUT);
+    Serial_begin(115200);
+    Serial_println("Hello from Arduino_dsPIC33CK!");
+}
+
+void loop()
+{
+    int adc = analogRead(A0);
+    Serial_print("ADC: ");
+    Serial_println_int(adc, DEC);
+    delay(500);
+}
+</code></pre>
+
+    <div class="warning-box">
+        <strong>Note:</strong> The Serial Monitor COM port is for your USB-UART adapter (connected to RB4/RB5), NOT the PICkit 4. You may need to select a different port for monitoring vs. programming.
+    </div>
+</div>
+
+<h2>Complete Arduino IDE Workflow Summary</h2>
+
+<pre><code>
+┌─────────────────────────────────────────────────────────┐
+│                 Arduino IDE Workflow                      │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  1. Select Board: Arduino_dsPIC33CK (dsPIC33CK32MP102)  │
+│  2. Select Clock: 8 MHz FRC or 100 MHz PLL              │
+│  3. Select Programmer: PICkit 4                          │
+│  4. Write sketch (C-style, with setup/loop)             │
+│  5. Click Verify (✓) → XC16 compiles → .hex            │
+│  6. Click Upload (→) → ipecmd programs device           │
+│  7. Open Serial Monitor → see UART output               │
+│                                                          │
+│  Sketch.ino → [Arduino IDE] → .cpp → [XC16 as C]       │
+│     → .elf → [xc16-bin2hex] → .hex → [PICkit4] → MCU  │
+│                                                          │
+└─────────────────────────────────────────────────────────┘
+</code></pre>
+
+<h2>Differences from Standard Arduino</h2>
+
+<table>
+    <tr><th>Feature</th><th>Standard Arduino</th><th>Arduino_dsPIC33CK</th></tr>
+    <tr><td>Serial</td><td><code>Serial.begin(9600)</code></td><td><code>Serial_begin(9600)</code></td></tr>
+    <tr><td>Print number</td><td><code>Serial.println(val)</code></td><td><code>Serial_println_int(val, DEC)</code></td></tr>
+    <tr><td>String type</td><td><code>String s = "hello";</code></td><td><code>const char *s = "hello";</code></td></tr>
+    <tr><td>Variables</td><td>Declare anywhere</td><td>Declare at top of block</td></tr>
+    <tr><td>Voltage</td><td>5V (Uno) / 3.3V (Due)</td><td><strong>3.3V ONLY</strong></td></tr>
+    <tr><td>Upload</td><td>USB bootloader</td><td>PICkit 4 ICSP (or UART bootloader)</td></tr>
+    <tr><td>Compiler</td><td>avr-gcc / arm-gcc</td><td>XC16 (xc16-gcc)</td></tr>
+</table>
+
+<h2>Troubleshooting Arduino IDE Issues</h2>
+
+<table>
+    <tr><th>Problem</th><th>Solution</th></tr>
+    <tr>
+        <td>Board not visible in Tools menu</td>
+        <td>Run install_arduino_ide.bat again. Restart Arduino IDE completely (close all windows).</td>
+    </tr>
+    <tr>
+        <td>"xc16-gcc: No such file or directory"</td>
+        <td>Edit <code>platform.local.txt</code> — set correct path to your XC16 bin folder.</td>
+    </tr>
+    <tr>
+        <td>"error: expected ';' before..." (C++ syntax error)</td>
+        <td>You're using C++ syntax. Remove: classes, templates, String, new/delete. Use C-style.</td>
+    </tr>
+    <tr>
+        <td>"undefined reference to _setup"</td>
+        <td>Your sketch must have <code>void setup()</code> and <code>void loop()</code> functions.</td>
+    </tr>
+    <tr>
+        <td>Upload fails: "ipecmd not found"</td>
+        <td>Edit <code>platform.local.txt</code> — set correct MPLAB X path for tools.pickit4.path</td>
+    </tr>
+    <tr>
+        <td>Upload fails: "Target not found"</td>
+        <td>Check PICkit4 connection. Ensure MCLR, VDD, GND, PGD, PGC wired correctly.</td>
+    </tr>
+    <tr>
+        <td>"variable declared in for loop" error</td>
+        <td>Declare loop variable before the for: <code>int i; for(i=0;...)</code> instead of <code>for(int i=0;...)</code></td>
+    </tr>
+</table>
+
+<div class="info-box">
+    <strong>Tip:</strong> If you get stuck, you can always fall back to MPLAB X IDE which has full native support for XC16 and dsPIC33CK. The Arduino IDE integration is a convenience layer — MPLAB X gives you the debugger, breakpoints, and register views.
+</div>
+
+</body>
+</html>

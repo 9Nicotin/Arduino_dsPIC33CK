@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino_dsPIC33CK - Part 4: Testing Sketches Step-by-Step</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.7; max-width: 900px; margin: 0 auto; padding: 30px; background: #f8f9fa; color: #333; }
+        h1 { color: #1a5276; border-bottom: 3px solid #2e86c1; padding-bottom: 10px; }
+        h2 { color: #2e86c1; margin-top: 40px; border-left: 4px solid #2e86c1; padding-left: 12px; }
+        h3 { color: #1a5276; margin-top: 25px; }
+        .info-box { background: #d4efdf; border-left: 5px solid #27ae60; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .warning-box { background: #fdebd0; border-left: 5px solid #f39c12; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .danger-box { background: #fadbd8; border-left: 5px solid #e74c3c; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        code { background: #ecf0f1; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 0.9em; }
+        pre { background: #2c3e50; color: #ecf0f1; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+        pre code { background: none; padding: 0; color: inherit; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #bdc3c7; padding: 10px 14px; text-align: left; }
+        th { background: #2e86c1; color: white; }
+        tr:nth-child(even) { background: #eaf2f8; }
+        .nav-links { background: #eaf2f8; padding: 15px; border-radius: 6px; margin: 20px 0; }
+        .nav-links a { color: #2e86c1; text-decoration: none; margin-right: 15px; }
+        .nav-links a:hover { text-decoration: underline; }
+        .step { background: white; border: 1px solid #d5dbdb; border-radius: 8px; padding: 20px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .step-number { display: inline-block; background: #2e86c1; color: white; width: 32px; height: 32px; border-radius: 50%; text-align: center; line-height: 32px; font-weight: bold; margin-right: 10px; }
+        .test-result { background: #d5f5e3; border: 2px solid #27ae60; border-radius: 6px; padding: 10px 15px; margin: 10px 0; }
+        .test-fail { background: #fadbd8; border: 2px solid #e74c3c; border-radius: 6px; padding: 10px 15px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+<h1>Arduino_dsPIC33CK User Guide</h1>
+<h2 style="border:none; padding:0; margin-top:5px; color:#666; font-size:1em;">Part 4: Testing Sketches Step-by-Step</h2>
+
+<div class="nav-links">
+    <strong>Navigation:</strong>
+    <a href="part1_introduction_setup.html">Part 1: Setup</a>
+    <a href="part2_pin_mapping_hardware.html">Part 2: Pin Mapping</a>
+    <a href="part3_api_reference.html">Part 3: API Reference</a>
+    <a href="part4_testing_sketches.html"><b>Part 4: Testing Sketches</b></a>
+    <a href="part5_upload_troubleshooting.html">Part 5: Upload & Troubleshooting</a>
+</div>
+
+<h2>4.1 Test #1: Blink (Digital Output)</h2>
+
+<p>This is the "Hello World" of embedded systems. If this works, your entire toolchain is correctly set up.</p>
+
+<h3>What You Need</h3>
+<ul>
+    <li>dsPIC33CK32MP102 board with power supply (3.3V)</li>
+    <li>LED (any color) + 330 ohm resistor</li>
+    <li>PICkit 4 or SNAP programmer</li>
+</ul>
+
+<h3>Wiring</h3>
+<pre><code>
+    dsPIC33CK Pin 2 (RA0) ---[330R]---[LED+]---[LED-]--- GND
+
+    Where:
+    - [330R] = 330 ohm resistor (limits current to ~10mA)
+    - [LED+] = LED anode (longer leg)
+    - [LED-] = LED cathode (shorter leg, flat side)
+</code></pre>
+
+<h3>Sketch Code</h3>
+
+<div class="step">
+<p>Create a file called <code>sketch.c</code> in your MPLAB X project:</p>
+<pre><code>/*
+ * Test 1: Blink
+ * Expected: LED on RA0 blinks ON for 1 sec, OFF for 1 sec
+ */
+#include "Arduino.h"
+
+void setup()
+{
+    pinMode(LED_BUILTIN, OUTPUT);  // D0 = RA0 = Pin 2
+}
+
+void loop()
+{
+    digitalWrite(LED_BUILTIN, HIGH);  // LED ON
+    delay(1000);                      // Wait 1 second
+    digitalWrite(LED_BUILTIN, LOW);   // LED OFF
+    delay(1000);                      // Wait 1 second
+}
+</code></pre>
+</div>
+
+<h3>Step-by-Step Testing Procedure</h3>
+
+<div class="step">
+    <h3><span class="step-number">1</span>Build the Project</h3>
+    <ol>
+        <li>In MPLAB X, click <strong>Production → Build Project</strong> (or press F11)</li>
+        <li>Watch the Output window at the bottom</li>
+        <li>Wait for: <code>BUILD SUCCESSFUL</code></li>
+    </ol>
+    <div class="test-result">
+        <strong>Expected:</strong> BUILD SUCCESSFUL (total time: x seconds)
+    </div>
+    <div class="test-fail">
+        <strong>If it fails:</strong> Check that all core files are added to the project and include paths are set correctly. See Part 5 for common errors.
+    </div>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">2</span>Connect the Programmer</h3>
+    <ol>
+        <li>Connect PICkit 4 to your PC via USB</li>
+        <li>Connect the 5-pin ICSP header:
+            <ul>
+                <li>Pin 1: MCLR</li>
+                <li>Pin 2: VDD (3.3V)</li>
+                <li>Pin 3: VSS (GND)</li>
+                <li>Pin 4: PGD1</li>
+                <li>Pin 5: PGC1</li>
+            </ul>
+        </li>
+        <li>Ensure the triangle arrow on PICkit aligns with Pin 1</li>
+    </ol>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">3</span>Program the Device</h3>
+    <ol>
+        <li>Click <strong>Production → Make and Program Device Main Project</strong></li>
+        <li>Or click the green "down arrow" icon in the toolbar</li>
+        <li>Wait for programming to complete</li>
+    </ol>
+    <div class="test-result">
+        <strong>Expected Output:</strong><br>
+        <code>Connecting to PICkit 4...</code><br>
+        <code>Device ID Verified</code><br>
+        <code>Programming...</code><br>
+        <code>Programming/Verify complete</code>
+    </div>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">4</span>Observe the Result</h3>
+    <div class="test-result">
+        <strong>PASS:</strong> LED blinks ON for 1 second, OFF for 1 second, continuously repeating.
+    </div>
+    <div class="test-fail">
+        <strong>FAIL - LED stays OFF:</strong>
+        <ul>
+            <li>Check LED polarity (flip it around)</li>
+            <li>Check resistor value (too high = dim LED)</li>
+            <li>Verify wiring to correct pin (RA0 = physical pin 2)</li>
+            <li>Measure voltage on RA0 with multimeter (should toggle 0V/3.3V)</li>
+        </ul>
+    </div>
+    <div class="test-fail">
+        <strong>FAIL - LED stays ON:</strong>
+        <ul>
+            <li>Code may be stuck in initialization — check config bits</li>
+            <li>Watchdog timer may be resetting — verify FWDTEN = OFF</li>
+        </ul>
+    </div>
+</div>
+
+<hr>
+
+<h2>4.2 Test #2: Serial Output (UART)</h2>
+
+<p>Tests the UART communication. You'll see text output on your PC's serial monitor.</p>
+
+<h3>What You Need</h3>
+<ul>
+    <li>USB-to-UART adapter (3.3V logic: FTDI, CP2102, or CH340)</li>
+    <li>3 jumper wires</li>
+    <li>Serial terminal software (PuTTY, Tera Term, or Arduino Serial Monitor)</li>
+</ul>
+
+<h3>Wiring</h3>
+<pre><code>
+    dsPIC33CK                    USB-Serial Adapter
+    +---------+                  +--------+
+    | RB5 (14)| ----TX------RX--| RX     |
+    | RB4 (11)| ----RX------TX--| TX     |
+    | GND (8) | ----GND----GND--| GND    |
+    +---------+                  +--------+
+                                     |
+                                  [USB to PC]
+
+    REMEMBER: Cross the wires! TX→RX, RX→TX
+</code></pre>
+
+<h3>Sketch Code</h3>
+
+<div class="step">
+<pre><code>/*
+ * Test 2: Serial Output
+ * Expected: "Hello from Arduino_dsPIC33CK!" printed every second
+ */
+#include "Arduino.h"
+#include "HardwareSerial.h"
+
+unsigned long count = 0;
+
+void setup()
+{
+    pinMode(LED_BUILTIN, OUTPUT);
+    Serial_begin(9600);  // 9600 baud, 8N1
+    delay(100);          // Wait for UART to stabilize
+    Serial_println("=== Arduino_dsPIC33CK Started ===");
+    Serial_println("Serial communication test");
+}
+
+void loop()
+{
+    count++;
+    Serial_print("Loop count: ");
+    Serial_println_int(count, DEC);
+
+    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));  // Toggle LED
+    delay(1000);
+}
+</code></pre>
+</div>
+
+<h3>Testing Procedure</h3>
+
+<div class="step">
+    <h3><span class="step-number">1</span>Open Serial Terminal on PC</h3>
+    <ol>
+        <li>Open <strong>PuTTY</strong> (or Tera Term / Arduino IDE Serial Monitor)</li>
+        <li>Select "Serial" connection type</li>
+        <li>Set COM port (check Device Manager for the USB-Serial adapter port)</li>
+        <li>Set baud rate: <strong>9600</strong></li>
+        <li>Data bits: 8, Stop bits: 1, Parity: None, Flow control: None</li>
+        <li>Click "Open"</li>
+    </ol>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">2</span>Program and Run</h3>
+    <ol>
+        <li>Build and program the device (same as Test #1)</li>
+        <li>After programming, the device resets and starts running</li>
+        <li>Watch the serial terminal window</li>
+    </ol>
+    <div class="test-result">
+        <strong>Expected output in terminal:</strong><br>
+        <code>=== Arduino_dsPIC33CK Started ===</code><br>
+        <code>Serial communication test</code><br>
+        <code>Loop count: 1</code><br>
+        <code>Loop count: 2</code><br>
+        <code>Loop count: 3</code><br>
+        <code>...</code>
+    </div>
+    <div class="test-fail">
+        <strong>FAIL - No output / garbled text:</strong>
+        <ul>
+            <li>Check baud rate matches (9600 in code AND terminal)</li>
+            <li>Check TX/RX are crossed correctly</li>
+            <li>Check adapter is 3.3V (not 5V!)</li>
+            <li>Check GND is connected between adapter and board</li>
+            <li>Try swapping TX and RX wires</li>
+        </ul>
+    </div>
+</div>
+
+<hr>
+
+<h2>4.3 Test #3: Serial Echo (UART Input + Output)</h2>
+
+<p>Tests that you can SEND data TO the dsPIC and receive responses back.</p>
+
+<h3>Sketch Code</h3>
+
+<div class="step">
+<pre><code>/*
+ * Test 3: Serial Echo
+ * Expected: Type a character in terminal, it echoes back with info
+ */
+#include "Arduino.h"
+#include "HardwareSerial.h"
+
+void setup()
+{
+    pinMode(LED_BUILTIN, OUTPUT);
+    Serial_begin(115200);
+    Serial_println("=== Echo Test ===");
+    Serial_println("Type characters - they will be echoed back.");
+}
+
+void loop()
+{
+    if (Serial_available() > 0) {
+        int c = Serial_read();
+
+        // Echo the character
+        Serial_print("Received: '");
+        Serial_write((uint8_t)c);
+        Serial_print("' (0x");
+        Serial_print_int(c, HEX);
+        Serial_println(")");
+
+        // Blink LED on each received character
+        digitalWrite(LED_BUILTIN, HIGH);
+        delay(50);
+        digitalWrite(LED_BUILTIN, LOW);
+    }
+}
+</code></pre>
+</div>
+
+<div class="step">
+    <h3>How to Test</h3>
+    <ol>
+        <li>Open serial terminal at <strong>115200</strong> baud</li>
+        <li>Program the device</li>
+        <li>Type any character (e.g., press 'A' key)</li>
+    </ol>
+    <div class="test-result">
+        <strong>Expected:</strong><br>
+        You type: <code>A</code><br>
+        Terminal shows: <code>Received: 'A' (0x41)</code><br>
+        LED blinks briefly.
+    </div>
+</div>
+
+<hr>
+
+<h2>4.4 Test #4: Analog Read (ADC)</h2>
+
+<p>Tests the analog-to-digital converter by reading a potentiometer.</p>
+
+<h3>What You Need</h3>
+<ul>
+    <li>10K potentiometer (any value 1K-100K works)</li>
+    <li>Serial connection (same as Test #2)</li>
+</ul>
+
+<h3>Wiring</h3>
+<pre><code>
+         3.3V
+          |
+     +----+----+
+     |  [POT]  |   (10K potentiometer)
+     +----+----+
+          |
+          +---------- RB0 (D5/A0, physical pin 4)
+          |
+     +----+----+
+     |  [POT]  |
+     +----+----+
+          |
+         GND
+</code></pre>
+
+<h3>Sketch Code</h3>
+
+<div class="step">
+<pre><code>/*
+ * Test 4: Analog Read
+ * Expected: ADC value changes 0-1023 as you turn the potentiometer
+ */
+#include "Arduino.h"
+#include "HardwareSerial.h"
+
+void setup()
+{
+    Serial_begin(115200);
+    Serial_println("=== Analog Read Test ===");
+    Serial_println("Turn the potentiometer connected to A0 (RB0)");
+    Serial_println("ADC range: 0 (0V) to 1023 (3.3V)");
+    Serial_println("");
+}
+
+void loop()
+{
+    int value = analogRead(A0);   // Read AN0 (RB0, pin 4)
+
+    // Calculate voltage
+    // voltage = value * 3.3 / 1023
+    long voltage_mv = (long)value * 3300L / 1023L;
+
+    Serial_print("ADC: ");
+    Serial_print_int(value, DEC);
+    Serial_print("  Voltage: ");
+    Serial_print_int(voltage_mv / 1000, DEC);
+    Serial_print(".");
+    if ((voltage_mv % 1000) < 100) Serial_print("0");
+    if ((voltage_mv % 1000) < 10) Serial_print("0");
+    Serial_print_int(voltage_mv % 1000, DEC);
+    Serial_println(" V");
+
+    delay(250);
+}
+</code></pre>
+</div>
+
+<div class="step">
+    <h3>How to Test</h3>
+    <ol>
+        <li>Wire the potentiometer as shown above</li>
+        <li>Open serial terminal at 115200 baud</li>
+        <li>Program and run</li>
+        <li>Slowly turn the potentiometer from one end to the other</li>
+    </ol>
+    <div class="test-result">
+        <strong>Expected:</strong><br>
+        <code>ADC: 0    Voltage: 0.000 V</code> (fully CCW)<br>
+        <code>ADC: 512  Voltage: 1.650 V</code> (middle)<br>
+        <code>ADC: 1023 Voltage: 3.300 V</code> (fully CW)
+    </div>
+    <div class="test-fail">
+        <strong>FAIL - Always reads 0:</strong>
+        <ul>
+            <li>Check ANSELB bit is set for RB0 (analogRead does this automatically)</li>
+            <li>Check wiring — is pin 4 connected to pot wiper?</li>
+            <li>Measure voltage on pin 4 with multimeter</li>
+        </ul>
+    </div>
+    <div class="test-fail">
+        <strong>FAIL - Always reads 1023:</strong>
+        <ul>
+            <li>Check that GND leg of potentiometer is actually connected to GND</li>
+            <li>Pin may be floating — verify connections</li>
+        </ul>
+    </div>
+</div>
+
+<hr>
+
+<h2>4.5 Test #5: PWM Output (analogWrite)</h2>
+
+<p>Tests pulse-width modulation for LED dimming.</p>
+
+<h3>What You Need</h3>
+<ul>
+    <li>LED + 330 ohm resistor connected to D5 (RB0, pin 4)</li>
+    <li>Serial connection (optional, for monitoring)</li>
+</ul>
+
+<h3>Sketch Code</h3>
+
+<div class="step">
+<pre><code>/*
+ * Test 5: PWM LED Fade
+ * Expected: LED on D5 gradually brightens then dims, repeating
+ */
+#include "Arduino.h"
+#include "HardwareSerial.h"
+
+void setup()
+{
+    Serial_begin(115200);
+    Serial_println("=== PWM Fade Test ===");
+    Serial_println("LED on D5 (RB0) should fade in and out");
+}
+
+void loop()
+{
+    int brightness;
+
+    // Fade in
+    for (brightness = 0; brightness <= 255; brightness += 5) {
+        analogWrite(5, brightness);  // D5 = RB0, SCCP1 PWM
+        delay(30);
+    }
+
+    Serial_println("Brightness: MAX");
+
+    // Fade out
+    for (brightness = 255; brightness >= 0; brightness -= 5) {
+        analogWrite(5, brightness);
+        delay(30);
+    }
+
+    Serial_println("Brightness: MIN");
+    delay(500);
+}
+</code></pre>
+</div>
+
+<div class="step">
+    <h3>How to Test</h3>
+    <ol>
+        <li>Connect LED to D5 (RB0, physical pin 4) through 330 ohm resistor</li>
+        <li>Program and run</li>
+        <li>Watch the LED</li>
+    </ol>
+    <div class="test-result">
+        <strong>Expected:</strong> LED smoothly fades from OFF to full brightness, then back to OFF, repeating every ~3 seconds.
+    </div>
+    <div class="test-fail">
+        <strong>FAIL - LED just turns on/off (no fading):</strong>
+        <ul>
+            <li>PWM frequency may be wrong — check SCCP configuration</li>
+            <li>PPS may not be mapping correctly — verify RP32 assignment</li>
+        </ul>
+    </div>
+</div>
+
+<hr>
+
+<h2>4.6 Test #6: Timing Functions (millis)</h2>
+
+<p>Tests that the timing system works correctly without using delay().</p>
+
+<h3>Sketch Code</h3>
+
+<div class="step">
+<pre><code>/*
+ * Test 6: Millis-based timing (non-blocking blink)
+ * Expected: LED toggles every 500ms, serial prints every 2 seconds
+ *           Both happen independently (not blocking each other)
+ */
+#include "Arduino.h"
+#include "HardwareSerial.h"
+
+unsigned long previousLedMillis = 0;
+unsigned long previousPrintMillis = 0;
+int ledState = LOW;
+unsigned long loopCount = 0;
+
+void setup()
+{
+    pinMode(LED_BUILTIN, OUTPUT);
+    Serial_begin(115200);
+    Serial_println("=== Millis Timing Test ===");
+    Serial_println("LED toggles every 500ms");
+    Serial_println("Serial prints every 2000ms");
+    Serial_println("Loop counter shows non-blocking operation");
+}
+
+void loop()
+{
+    unsigned long currentMillis = millis();
+    loopCount++;
+
+    // Task 1: Toggle LED every 500ms
+    if (currentMillis - previousLedMillis >= 500) {
+        previousLedMillis = currentMillis;
+        ledState = !ledState;
+        digitalWrite(LED_BUILTIN, ledState);
+    }
+
+    // Task 2: Print status every 2000ms
+    if (currentMillis - previousPrintMillis >= 2000) {
+        previousPrintMillis = currentMillis;
+
+        Serial_print("Time: ");
+        Serial_print_int(currentMillis / 1000, DEC);
+        Serial_print("s  Loops: ");
+        Serial_println_int(loopCount, DEC);
+        loopCount = 0;
+    }
+}
+</code></pre>
+</div>
+
+<div class="step">
+    <h3>How to Test</h3>
+    <ol>
+        <li>Program and run with serial terminal open (115200 baud)</li>
+        <li>Observe: LED should blink at 500ms rate (2 Hz)</li>
+        <li>Observe: Serial prints every 2 seconds</li>
+        <li>The loop count shows how many times loop() executed in 2 seconds</li>
+    </ol>
+    <div class="test-result">
+        <strong>Expected:</strong><br>
+        <code>Time: 2s  Loops: 158430</code><br>
+        <code>Time: 4s  Loops: 158425</code><br>
+        <code>Time: 6s  Loops: 158428</code><br>
+        (High loop count proves non-blocking operation)
+    </div>
+    <div class="test-fail">
+        <strong>FAIL - millis() always returns 0:</strong>
+        <ul>
+            <li>Timer1 interrupt may not be configured</li>
+            <li>Check that IEC0bits.T1IE = 1 in wiring.c</li>
+            <li>Check PR1 calculation matches your FCY</li>
+        </ul>
+    </div>
+</div>
+
+<hr>
+
+<h2>4.7 Test #7: Button Input (digitalRead + INPUT_PULLUP)</h2>
+
+<h3>What You Need</h3>
+<ul>
+    <li>Push button (momentary)</li>
+    <li>Wire from button to D2 (RA2, pin 9)</li>
+    <li>Wire from button other leg to GND</li>
+</ul>
+
+<h3>Wiring</h3>
+<pre><code>
+    dsPIC33CK Pin 9 (RA2/D2) ----+----[BUTTON]---- GND
+                                  |
+                            (internal pull-up
+                             enabled by code)
+
+    When button is NOT pressed: D2 reads HIGH (pull-up to 3.3V)
+    When button IS pressed: D2 reads LOW (connected to GND)
+</code></pre>
+
+<h3>Sketch Code</h3>
+
+<div class="step">
+<pre><code>/*
+ * Test 7: Button Input
+ * Expected: LED turns ON when button pressed, OFF when released
+ *           Serial shows state changes
+ */
+#include "Arduino.h"
+#include "HardwareSerial.h"
+
+#define BUTTON_PIN 2   // D2 = RA2
+int lastState = HIGH;
+
+void setup()
+{
+    pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(BUTTON_PIN, INPUT_PULLUP);  // Internal pull-up resistor
+    Serial_begin(115200);
+    Serial_println("=== Button Test ===");
+    Serial_println("Press button on D2 to toggle LED");
+}
+
+void loop()
+{
+    int buttonState = digitalRead(BUTTON_PIN);
+
+    if (buttonState != lastState) {
+        lastState = buttonState;
+
+        if (buttonState == LOW) {
+            Serial_println("Button PRESSED");
+            digitalWrite(LED_BUILTIN, HIGH);
+        } else {
+            Serial_println("Button RELEASED");
+            digitalWrite(LED_BUILTIN, LOW);
+        }
+        delay(50);  // Simple debounce
+    }
+}
+</code></pre>
+</div>
+
+<div class="step">
+    <div class="test-result">
+        <strong>Expected:</strong> Press button → LED ON + "Button PRESSED" on serial. Release → LED OFF + "Button RELEASED".
+    </div>
+</div>
+
+<hr>
+
+<h2>4.8 Test #8: Complete Integration Test</h2>
+
+<p>This sketch tests ALL functions together. If this works, your Arduino_dsPIC33CK platform is fully functional.</p>
+
+<h3>What You Need</h3>
+<ul>
+    <li>LED on D0 (RA0) — for blink indicator</li>
+    <li>LED on D5 (RB0) — for PWM fade</li>
+    <li>Potentiometer on A1 (D6/RB1)</li>
+    <li>Button on D2 (RA2) to GND</li>
+    <li>Serial connection (115200 baud)</li>
+</ul>
+
+<h3>Sketch Code</h3>
+
+<div class="step">
+<pre><code>/*
+ * Test 8: Full Integration Test
+ * Tests: GPIO, ADC, PWM, UART, Timing, Input
+ */
+#include "Arduino.h"
+#include "HardwareSerial.h"
+
+#define BUTTON_PIN    2    // D2 = RA2
+#define PWM_PIN       5    // D5 = RB0 (SCCP1)
+#define ANALOG_PIN    A1   // D6 = RB1
+
+unsigned long lastPrintTime = 0;
+int mode = 0;  // 0=auto fade, 1=pot controls brightness
+
+void setup()
+{
+    pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(BUTTON_PIN, INPUT_PULLUP);
+
+    Serial_begin(115200);
+    delay(100);
+    Serial_println("====================================");
+    Serial_println("  Arduino_dsPIC33CK Integration Test");
+    Serial_println("====================================");
+    Serial_println("");
+    Serial_println("Functions tested:");
+    Serial_println("  [OK] pinMode / digitalWrite / digitalRead");
+    Serial_println("  [OK] Serial_begin / print / println");
+    Serial_println("  [..] analogRead (potentiometer on A1)");
+    Serial_println("  [..] analogWrite/PWM (LED on D5)");
+    Serial_println("  [..] millis() timing");
+    Serial_println("  [..] Button input (D2)");
+    Serial_println("");
+    Serial_println("Press button to toggle mode:");
+    Serial_println("  Mode 0: Auto LED fade");
+    Serial_println("  Mode 1: Pot controls LED brightness");
+    Serial_println("");
+}
+
+void loop()
+{
+    static int lastButton = HIGH;
+    static int brightness = 0;
+    static int fadeDir = 5;
+
+    // Check button for mode toggle
+    int btn = digitalRead(BUTTON_PIN);
+    if (btn == LOW && lastButton == HIGH) {
+        mode = !mode;
+        Serial_print(">> Mode changed to: ");
+        Serial_println_int(mode, DEC);
+        delay(200);  // Debounce
+    }
+    lastButton = btn;
+
+    // Mode 0: Auto fade
+    if (mode == 0) {
+        brightness += fadeDir;
+        if (brightness >= 255) { brightness = 255; fadeDir = -5; }
+        if (brightness <= 0)   { brightness = 0;   fadeDir = 5;  }
+        analogWrite(PWM_PIN, brightness);
+    }
+    // Mode 1: Pot controls brightness
+    else {
+        int potValue = analogRead(ANALOG_PIN);
+        brightness = map(potValue, 0, 1023, 0, 255);
+        analogWrite(PWM_PIN, brightness);
+    }
+
+    // Toggle status LED every 500ms
+    static unsigned long lastLedToggle = 0;
+    if (millis() - lastLedToggle >= 500) {
+        lastLedToggle = millis();
+        digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+    }
+
+    // Print status every 1 second
+    if (millis() - lastPrintTime >= 1000) {
+        lastPrintTime = millis();
+
+        int pot = analogRead(ANALOG_PIN);
+        Serial_print("[");
+        Serial_print_int(millis() / 1000, DEC);
+        Serial_print("s] Mode:");
+        Serial_print_int(mode, DEC);
+        Serial_print(" ADC:");
+        Serial_print_int(pot, DEC);
+        Serial_print(" PWM:");
+        Serial_print_int(brightness, DEC);
+        Serial_print(" Btn:");
+        Serial_println(btn == LOW ? "PRESS" : "---");
+    }
+
+    delay(20);  // ~50 Hz update rate
+}
+</code></pre>
+</div>
+
+<div class="step">
+    <h3>Expected Results</h3>
+    <div class="test-result">
+        <strong>ALL PASS checklist:</strong>
+        <ul>
+            <li>Status LED (D0) blinks steadily at 1 Hz</li>
+            <li>PWM LED (D5) fades in and out smoothly (mode 0)</li>
+            <li>Press button → mode changes, serial confirms</li>
+            <li>Turn pot → PWM LED brightness follows (mode 1)</li>
+            <li>Serial prints status every 1 second with correct values</li>
+            <li>Timer (seconds counter) increments accurately</li>
+        </ul>
+    </div>
+</div>
+
+<h2>4.9 Testing Summary Checklist</h2>
+
+<table>
+    <tr>
+        <th>Test</th>
+        <th>Function Tested</th>
+        <th>Pass Criteria</th>
+        <th>Status</th>
+    </tr>
+    <tr>
+        <td>Test 1</td>
+        <td>pinMode, digitalWrite, delay</td>
+        <td>LED blinks at 1Hz</td>
+        <td>[ ]</td>
+    </tr>
+    <tr>
+        <td>Test 2</td>
+        <td>Serial_begin, Serial_print</td>
+        <td>Text appears in terminal</td>
+        <td>[ ]</td>
+    </tr>
+    <tr>
+        <td>Test 3</td>
+        <td>Serial_available, Serial_read</td>
+        <td>Characters echo correctly</td>
+        <td>[ ]</td>
+    </tr>
+    <tr>
+        <td>Test 4</td>
+        <td>analogRead (ADC)</td>
+        <td>Values 0-1023, respond to pot</td>
+        <td>[ ]</td>
+    </tr>
+    <tr>
+        <td>Test 5</td>
+        <td>analogWrite (PWM)</td>
+        <td>LED fades smoothly</td>
+        <td>[ ]</td>
+    </tr>
+    <tr>
+        <td>Test 6</td>
+        <td>millis() non-blocking</td>
+        <td>Time increments, high loop count</td>
+        <td>[ ]</td>
+    </tr>
+    <tr>
+        <td>Test 7</td>
+        <td>digitalRead, INPUT_PULLUP</td>
+        <td>Button press detected</td>
+        <td>[ ]</td>
+    </tr>
+    <tr>
+        <td>Test 8</td>
+        <td>All functions integrated</td>
+        <td>All features work simultaneously</td>
+        <td>[ ]</td>
+    </tr>
+</table>
+
+<div class="info-box">
+    <strong>Next:</strong> If any test fails, see <a href="part5_upload_troubleshooting.html">Part 5: Upload & Troubleshooting</a> for solutions to common problems.
+</div>
+
+</body>
+</html>

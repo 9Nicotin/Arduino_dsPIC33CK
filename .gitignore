@@ -1,0 +1,48 @@
+# Build artifacts
+_build/
+*.o
+*.elf
+*.hex
+*.map
+*.lst
+*.d
+
+# Arduino IDE cache/build
+sketches/
+
+# MPLAB X project files
+nbproject/
+*.X/
+MPLABXLog.xml
+**/MPLABXLog.xml
+
+# Archives (can be regenerated)
+*.zip
+*.tar.bz2
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+Thumbs.db
+desktop.ini
+
+# Test binaries
+test_led/*.elf
+test_led/*.hex
+
+# OS files
+.DS_Store
+
+# Temporary/scratch files
+*.tmp
+*.bak
+
+# Claude Code memory (local only)
+.claude/
+
+# Copyrighted PDFs (don't redistribute)
+*.pdf
+

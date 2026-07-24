@@ -1,0 +1,111 @@
+# ============================================================
+# Arduino_dsPIC33CK Board Definition
+# For use with Arduino IDE 2.x and arduino-cli
+# ============================================================
+
+# Menu declarations (MUST be before board definitions)
+menu.clock=Clock
+
+# Board identifier
+dspic33ck32mp102.name=Arduino_dsPIC33CK (dsPIC33CK32MP102)
+
+# Upload defaults (PICkit 4 as default - most reliable)
+dspic33ck32mp102.upload.tool=pickit4
+dspic33ck32mp102.upload.tool.default=pickit4
+dspic33ck32mp102.upload.protocol=icsp
+dspic33ck32mp102.upload.maximum_size=32768
+dspic33ck32mp102.upload.maximum_data_size=4096
+dspic33ck32mp102.upload.speed=115200
+
+# Build configuration
+dspic33ck32mp102.build.mcu=33CK32MP102
+dspic33ck32mp102.build.f_cpu=8000000UL
+dspic33ck32mp102.build.fcy=4000000UL
+dspic33ck32mp102.build.board=DSPIC33CK32MP102
+dspic33ck32mp102.build.core=arduino
+dspic33ck32mp102.build.variant=dspic33ck32mp102
+dspic33ck32mp102.build.ldscript=p33CK32MP102.gld
+
+# ============================================================
+# Menu: Clock Speed Selection
+# ============================================================
+
+dspic33ck32mp102.menu.clock.8mhz_internal=8 MHz Internal FRC (Default)
+dspic33ck32mp102.menu.clock.8mhz_internal.build.f_cpu=8000000UL
+dspic33ck32mp102.menu.clock.8mhz_internal.build.fcy=4000000UL
+
+dspic33ck32mp102.menu.clock.200mhz_pll=200 MHz PLL
+dspic33ck32mp102.menu.clock.200mhz_pll.build.f_cpu=200000000UL
+dspic33ck32mp102.menu.clock.200mhz_pll.build.fcy=100000000UL
+
+# ============================================================
+# Board: dsPIC33CK256MC002 (Motor Control, 28-pin)
+# 256KB Flash, 16KB RAM, dsPIC33CK-MC_DFP
+# ============================================================
+
+dspic33ck256mc002.name=Arduino_dsPIC33CK (dsPIC33CK256MC002)
+
+# Upload defaults
+dspic33ck256mc002.upload.tool=pickit4
+dspic33ck256mc002.upload.tool.default=pickit4
+dspic33ck256mc002.upload.protocol=icsp
+dspic33ck256mc002.upload.maximum_size=262144
+dspic33ck256mc002.upload.maximum_data_size=16384
+dspic33ck256mc002.upload.speed=115200
+
+# Build configuration (uses MC DFP, not MP DFP)
+dspic33ck256mc002.build.mcu=33CK256MC002
+dspic33ck256mc002.build.dfp.path={build.dfp.path.mc}
+dspic33ck256mc002.build.f_cpu=8000000UL
+dspic33ck256mc002.build.fcy=4000000UL
+dspic33ck256mc002.build.board=DSPIC33CK256MC002
+dspic33ck256mc002.build.core=arduino
+dspic33ck256mc002.build.variant=dspic33ck256mc002
+dspic33ck256mc002.build.ldscript=p33CK256MC002.gld
+
+# Clock Speed Selection
+dspic33ck256mc002.menu.clock.8mhz_internal=8 MHz Internal FRC (Default)
+dspic33ck256mc002.menu.clock.8mhz_internal.build.f_cpu=8000000UL
+dspic33ck256mc002.menu.clock.8mhz_internal.build.fcy=4000000UL
+
+dspic33ck256mc002.menu.clock.200mhz_pll=200 MHz PLL
+dspic33ck256mc002.menu.clock.200mhz_pll.build.f_cpu=200000000UL
+dspic33ck256mc002.menu.clock.200mhz_pll.build.fcy=100000000UL
+
+# ============================================================
+# Board: dsPIC33CK256MP508 (80-pin, Curiosity Board DM330030)
+# 256KB Flash, 24KB RAM, dsPIC33CK-MP_DFP
+# ============================================================
+
+dspic33ck256mp508.name=Arduino_dsPIC33CK (dsPIC33CK256MP508)
+
+# Upload defaults (PKOB4 = on-board debugger on DM330030 Curiosity)
+dspic33ck256mp508.upload.tool=pkob4
+dspic33ck256mp508.upload.tool.default=pkob4
+dspic33ck256mp508.upload.protocol=icsp
+dspic33ck256mp508.upload.maximum_size=262144
+dspic33ck256mp508.upload.maximum_data_size=24576
+dspic33ck256mp508.upload.speed=115200
+
+# Build configuration (uses MP DFP, same as MP102)
+dspic33ck256mp508.build.mcu=33CK256MP508
+dspic33ck256mp508.build.f_cpu=8000000UL
+dspic33ck256mp508.build.fcy=4000000UL
+dspic33ck256mp508.build.board=DSPIC33CK256MP508
+dspic33ck256mp508.build.core=arduino
+dspic33ck256mp508.build.variant=dspic33ck256mp508
+dspic33ck256mp508.build.ldscript=p33CK256MP508.gld
+
+# Clock Speed Selection
+dspic33ck256mp508.menu.clock.8mhz_internal=8 MHz Internal FRC (Default)
+dspic33ck256mp508.menu.clock.8mhz_internal.build.f_cpu=8000000UL
+dspic33ck256mp508.menu.clock.8mhz_internal.build.fcy=4000000UL
+
+dspic33ck256mp508.menu.clock.200mhz_pll=200 MHz PLL
+dspic33ck256mp508.menu.clock.200mhz_pll.build.f_cpu=200000000UL
+dspic33ck256mp508.menu.clock.200mhz_pll.build.fcy=100000000UL
+
+dspic33ck256mp508.menu.clock.100mhz_pll=200 MHz PLL (alias)
+dspic33ck256mp508.menu.clock.100mhz_pll.build.f_cpu=200000000UL
+dspic33ck256mp508.menu.clock.100mhz_pll.build.fcy=100000000UL
+

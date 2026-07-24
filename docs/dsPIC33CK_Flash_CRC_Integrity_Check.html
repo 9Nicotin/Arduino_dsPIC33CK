@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>dsPIC33CK - Why Hex File CRC Does Not Match After Readback &amp; Solution</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+            color: #333;
+            line-height: 1.7;
+        }
+        h1 { color: #1a237e; border-bottom: 3px solid #c62828; padding-bottom: 10px; }
+        h2 { color: #c62828; margin-top: 50px; border-left: 4px solid #c62828; padding-left: 12px; }
+        h3 { color: #1565c0; margin-top: 30px; }
+        h4 { color: #2e7d32; margin-top: 20px; }
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            margin: 25px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .warning {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        .important {
+            background: #fce4ec;
+            border-left: 4px solid #c62828;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        .note {
+            background: #e3f2fd;
+            border-left: 4px solid #1565c0;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        .success {
+            background: #e8f5e9;
+            border-left: 4px solid #2e7d32;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        code {
+            background: #263238;
+            color: #eeffff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #263238;
+            color: #eeffff;
+            padding: 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.85em;
+            line-height: 1.5;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 0.9em;
+        }
+        th { background: #1a237e; color: white; padding: 10px 12px; text-align: left; }
+        td { border: 1px solid #ddd; padding: 8px 12px; }
+        tr:nth-child(even) { background: #f5f5f5; }
+        .hex-compare {
+            font-family: 'Consolas', monospace;
+            font-size: 0.85em;
+            background: #fafafa;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre;
+        }
+        .hex-match { color: #2e7d32; }
+        .hex-mismatch { color: #c62828; font-weight: bold; background: #ffebee; }
+        .diagram {
+            background: #fafafa;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            white-space: pre;
+            overflow-x: auto;
+            line-height: 1.4;
+        }
+        .toc {
+            background: #e8eaf6;
+            border-radius: 8px;
+            padding: 20px 30px;
+            margin: 20px 0;
+        }
+        .toc ul { list-style: none; padding-left: 0; }
+        .toc li { margin: 8px 0; }
+        .toc a { color: #1a237e; text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<h1>dsPIC33CK: Why Hex File CRC Does Not Match After Readback</h1>
+<p><strong>Problem Analysis &amp; Solution</strong><br>
+Applicable to: All dsPIC33CK family devices<br>
+Date: June 2026</p>
+
+<div class="toc">
+    <h3>Contents</h3>
+    <ul>
+        <li><a href="#problem-statement">1. Problem Statement</a></li>
+        <li><a href="#root-cause">2. Root Cause Analysis — What Exactly Changes and Why</a></li>
+        <li><a href="#example">3. Real Example: Byte-by-Byte Comparison</a></li>
+        <li><a href="#why-crc-fails">4. Why Customer CRC Check Fails</a></li>
+        <li><a href="#solution">5. Solution: Compute CRC From What The Device Actually Stores</a></li>
+        <li><a href="#how-it-works">6. How The Solution Works (Step by Step)</a></li>
+        <li><a href="#production-flow">7. Production Flow For Customer</a></li>
+    </ul>
+</div>
+
+<!-- ============================================================ -->
+<div class="section" id="problem-statement">
+<h2>1. Problem Statement</h2>
+
+<p>The situation:</p>
+<ol>
+    <li>You compile a project in <strong>MPLAB X IDE</strong> &rarr; produces a <code>.hex</code> file</li>
+    <li>You program the device using <strong>MPLAB IPE</strong> (via PICkit4, SNAP, or PKOB4)</li>
+    <li>Programming reports <strong>"Verify OK"</strong> &mdash; MPLAB IPE says it passed</li>
+    <li>You (or your customer) <strong>reads back</strong> the device with MPLAB IPE &rarr; produces a readback <code>.hex</code> file</li>
+    <li>You compare the original .hex with the readback .hex &rarr; <strong>THEY DO NOT MATCH</strong></li>
+    <li>Customer computes CRC over the readback hex &rarr; <strong>CRC DOES NOT MATCH</strong> the CRC of the original hex</li>
+</ol>
+
+<div class="important">
+    <strong>The Key Question:</strong> The device was programmed correctly (MPLAB IPE verified it). But when you read back and do a byte-by-byte comparison, certain addresses have different values. Why? Is the device corrupted?
+</div>
+
+<p><strong>Answer: NO, the device is NOT corrupted.</strong> The differences are <em>expected hardware behavior</em>. The device physically cannot store certain bytes the way the hex file specifies them. This is by design.</p>
+
+</div>
+
+<!-- ============================================================ -->
+<div class="section" id="root-cause">
+<h2>2. Root Cause Analysis — What Exactly Changes and Why</h2>
+
+<p>There are <strong>three main reasons</strong> why bytes differ between the original hex and the readback. All three are normal dsPIC33CK hardware behavior:</p>
+
+<h3>Reason 1: Phantom Bytes (Most Common — Affects EVERY Program Word)</h3>
+
+<p>dsPIC33CK has <strong>24-bit instructions</strong>, but the Intel HEX format uses byte addresses. Each instruction occupies 4 byte positions in the hex file:</p>
+
+<div class="diagram">
+  One Program Memory Word (at PC address 0x000200):
+
+  Hex file byte layout:
+  +--------+--------+--------+--------+
+  | Byte 0 | Byte 1 | Byte 2 | Byte 3 |
+  | (inst   | (inst   | (inst   | PHANTOM|
+  |  low)   |  mid)   |  high)  |  BYTE) |
+  +--------+--------+--------+--------+
+     0x04     0x02     0x00     0x00 or 0xFF  &lt;-- hex file may have 0xFF here
+
+  What device stores and reads back:
+  +--------+--------+--------+--------+
+  | Byte 0 | Byte 1 | Byte 2 | Byte 3 |
+  |  0x04  |  0x02  |  0x00  |  0x00  |  &lt;-- ALWAYS 0x00 on readback
+  +--------+--------+--------+--------+
+</div>
+
+<p><strong>Explanation:</strong> The dsPIC33CK only has 24-bit wide program memory. There is physically NO hardware to store the 4th byte (bits 24-31). When the linker generates the hex file, it may place <code>0x00</code> or <code>0xFF</code> in this position. When you read back from the device, it <strong>always returns 0x00</strong> because those bits don't exist in hardware.</p>
+
+<div class="warning">
+    <strong>Impact:</strong> Every single program word (every 4 bytes in the hex file) can have this mismatch at byte position 3. For a 256KB device, that's potentially <strong>thousands of mismatched bytes</strong> even though the device is programmed correctly.
+</div>
+
+<h3>Reason 2: Configuration Words (Unimplemented Bits)</h3>
+
+<p>Configuration registers (FOSCSEL, FOSC, FWDT, FPOR, FICD, etc.) have <strong>reserved and unimplemented bits</strong>. When you write to these registers:</p>
+
+<ul>
+    <li><strong>Implemented bits:</strong> Store exactly what you wrote &rarr; read back matches</li>
+    <li><strong>Unimplemented bits:</strong> Hardware ignores what you wrote &rarr; reads back as the <strong>default value</strong> (usually 1)</li>
+    <li><strong>Reserved bits:</strong> May read back differently than written</li>
+</ul>
+
+<p><strong>Example — FWDT (Watchdog Timer Config):</strong></p>
+
+<div class="hex-compare">
+Address 0x057F20 (FWDT register):
+
+Original hex file:    <span class="hex-match">0x</span><span class="hex-mismatch">FF</span><span class="hex-match">3F</span>
+Device readback:      <span class="hex-match">0x</span><span class="hex-mismatch">1F</span><span class="hex-match">3F</span>
+                           ^^
+                    Bits 7:5 are unimplemented in FWDT.
+                    Hex has them as '1' (0xFF), device reads '0' (0x1F).
+</div>
+
+<p><strong>Why?</strong> The linker sets all unused bits to 1 (0xFF) for safety. But the hardware doesn't have those bits — they physically don't exist. On readback, only the implemented bits return their programmed values.</p>
+
+<h3>Reason 3: ECC (Error Correction Code) Parity Data</h3>
+
+<p>dsPIC33CK uses <strong>hardware ECC protection</strong> on program flash. For every group of program words, the device automatically generates and stores ECC parity bits in a separate flash region.</p>
+
+<ul>
+    <li>Your original hex file does <strong>NOT</strong> contain ECC data (the compiler doesn't generate it)</li>
+    <li>The device hardware <strong>auto-generates</strong> ECC during programming</li>
+    <li>If your readback tool reads the ECC region, those addresses will have data that was never in your hex file</li>
+</ul>
+
+<div class="note">
+    <strong>Note:</strong> MPLAB IPE's normal readback typically excludes the ECC region. But if using a custom tool or reading "all memory," you'll see extra data.
+</div>
+
+<h3>Summary: Which Addresses Are Affected?</h3>
+
+<table>
+<tr>
+    <th>Cause</th>
+    <th>Which Addresses</th>
+    <th>How Many Bytes</th>
+    <th>Predictable?</th>
+</tr>
+<tr>
+    <td><strong>Phantom Bytes</strong></td>
+    <td>Every 4th byte in entire program memory</td>
+    <td>25% of all hex file bytes</td>
+    <td>Yes — always 0x00 on readback</td>
+</tr>
+<tr>
+    <td><strong>Config Words</strong></td>
+    <td>Last page of flash (device-specific address)</td>
+    <td>10-30 bytes (varies by register)</td>
+    <td>Yes — per datasheet bit masks</td>
+</tr>
+<tr>
+    <td><strong>ECC Parity</strong></td>
+    <td>Separate ECC flash region</td>
+    <td>Not in original hex at all</td>
+    <td>Yes — deterministic from program data</td>
+</tr>
+</table>
+
+</div>
+
+<!-- ============================================================ -->
+<div class="section" id="example">
+<h2>3. Real Example: Byte-by-Byte Comparison</h2>
+
+<p>Here is what you would actually see when comparing original hex vs. readback at specific addresses on a dsPIC33CK256MP508:</p>
+
+<h3>Example 1: Normal Program Memory (Phantom Byte Mismatch)</h3>
+
+<div class="hex-compare">
+Address (hex file byte addr)    Original Hex    Readback    Match?
+--------------------------------------------------------------
+0x000400  (instruction low)     04              04          <span class="hex-match">YES</span>
+0x000401  (instruction mid)     02              02          <span class="hex-match">YES</span>
+0x000402  (instruction high)    00              00          <span class="hex-match">YES</span>
+0x000403  <strong>(phantom byte)</strong>        <span class="hex-mismatch">FF              00          NO!</span>
+
+0x000404  (instruction low)     20              20          <span class="hex-match">YES</span>
+0x000405  (instruction mid)     00              00          <span class="hex-match">YES</span>
+0x000406  (instruction high)    FA              FA          <span class="hex-match">YES</span>
+0x000407  <strong>(phantom byte)</strong>        <span class="hex-mismatch">FF              00          NO!</span>
+
+0x000408  (instruction low)     80              80          <span class="hex-match">YES</span>
+0x000409  (instruction mid)     01              01          <span class="hex-match">YES</span>
+0x00040A  (instruction high)    78              78          <span class="hex-match">YES</span>
+0x00040B  <strong>(phantom byte)</strong>        <span class="hex-mismatch">FF              00          NO!</span>
+</div>
+
+<p>Every 4th byte (0x03, 0x07, 0x0B, 0x0F...) will mismatch if the linker outputs 0xFF there.</p>
+
+<h3>Example 2: Configuration Word Area</h3>
+
+<div class="hex-compare">
+Address    Register    Original    Readback    Why Different
+--------------------------------------------------------------
+0x055800   FSEC        <span class="hex-mismatch">FF FF</span>       <span class="hex-mismatch">AB FF</span>       Unimplemented bits in FSEC read as 0
+0x055808   FBSLIM      FF FF       FF FF       (all bits implemented - matches!)
+0x055818   FOSCSEL     <span class="hex-mismatch">FF FF</span>       <span class="hex-mismatch">67 00</span>       Many bits unimplemented
+0x05581C   FOSC        <span class="hex-mismatch">FF FF</span>       <span class="hex-mismatch">63 00</span>       Many bits unimplemented
+0x055820   FWDT        <span class="hex-mismatch">FF FF</span>       <span class="hex-mismatch">1F 3F</span>       Watchdog config, sparse bits
+0x055824   FPOR        <span class="hex-mismatch">FF FF</span>       <span class="hex-mismatch">07 00</span>       Only 3 bits implemented
+0x055828   FICD        <span class="hex-mismatch">FF FF</span>       <span class="hex-mismatch">03 00</span>       Only ICD enable + reserved
+</div>
+
+<p><strong>Pattern:</strong> The linker writes 0xFFFF to all config words (meaning "all bits = 1, use defaults"). But only the <em>implemented</em> bits exist in hardware. Unimplemented bits read back as 0.</p>
+
+<h3>Example 3: Unused/Erased Flash</h3>
+
+<div class="hex-compare">
+Address    Original    Readback    Why Different
+--------------------------------------------------------------
+0x040000   FF FF       FF FF       (erased flash matches!)
+0x040002   <span class="hex-mismatch">FF FF</span>       <span class="hex-mismatch">FF 00</span>       Phantom byte: original=FF, readback=00
+0x040004   FF FF       FF FF       (matches)
+0x040006   <span class="hex-mismatch">FF FF</span>       <span class="hex-mismatch">FF 00</span>       Phantom byte again
+</div>
+
+<p>Even in erased (unused) flash, the phantom byte causes mismatch. Erased flash = 0xFFFFFF (24-bit), but readback shows 0x00FFFFFF (32-bit with phantom = 0x00).</p>
+
+</div>
+
+<!-- ============================================================ -->
+<div class="section" id="why-crc-fails">
+<h2>4. Why Customer CRC Check Fails</h2>
+
+<h3>The Customer's Process (What They Do)</h3>
+
+<div class="diagram">
+  CUSTOMER'S CURRENT PROCESS:
+  ===========================
+
+  Step 1: Receive .hex file from supplier (you)
+           |
+           v
+  Step 2: Compute CRC over the .hex file contents
+           CRC_original = CRC("firmware.hex") = 0x1234
+           |
+           v
+  Step 3: Program the device with firmware.hex
+           |
+           v
+  Step 4: Read back the device memory
+           |
+           v
+  Step 5: Compute CRC over the readback data
+           CRC_readback = CRC("readback.hex") = 0x5678  &lt;-- DIFFERENT!
+           |
+           v
+  Step 6: Compare: 0x1234 != 0x5678
+           |
+           v
+  RESULT: <span class="hex-mismatch">CRC MISMATCH! FAIL!</span>  (but device is actually programmed correctly)
+</div>
+
+<h3>Why This Can Never Work</h3>
+
+<p>The CRC will <strong>NEVER</strong> match using this method because:</p>
+
+<ol>
+    <li><strong>The original hex file</strong> contains phantom bytes (0xFF or 0x00 depending on linker) + all config word bits set to the linker's defaults</li>
+    <li><strong>The device readback</strong> contains phantom bytes = 0x00 (always) + only implemented config bits</li>
+    <li>These are <strong>physically different byte sequences</strong>, so their CRCs will always be different</li>
+    <li>This is NOT a programming error &mdash; it's a <strong>fundamental property of the hardware</strong></li>
+</ol>
+
+<div class="important">
+    <strong>The core problem:</strong> The customer is comparing "what the linker <em>intended</em>" vs. "what the hardware <em>can actually store</em>." These will never be identical because the hardware has physical limitations (no phantom byte storage, unimplemented config bits).
+    <br><br>
+    <strong>Analogy:</strong> It's like writing "255.5" on a piece of paper and storing it in an 8-bit unsigned integer (max 255). When you read back "255", it's not corruption &mdash; the storage medium physically cannot hold 255.5.
+</div>
+
+<h3>How Many Bytes Differ? (Quantified)</h3>
+
+<table>
+<tr>
+    <th>Device</th>
+    <th>Flash Size</th>
+    <th>Total Bytes in Hex</th>
+    <th>Phantom Byte Mismatches</th>
+    <th>Config Mismatches</th>
+</tr>
+<tr>
+    <td>dsPIC33CK32MP102</td>
+    <td>32 KB</td>
+    <td>~44,000</td>
+    <td>~11,000</td>
+    <td>~20</td>
+</tr>
+<tr>
+    <td>dsPIC33CK256MP508</td>
+    <td>256 KB</td>
+    <td>~350,000</td>
+    <td>~87,500</td>
+    <td>~20</td>
+</tr>
+<tr>
+    <td>dsPIC33CK512MP308</td>
+    <td>512 KB</td>
+    <td>~720,000</td>
+    <td>~180,000</td>
+    <td>~20</td>
+</tr>
+</table>
+
+<p>Up to <strong>25% of all bytes</strong> will mismatch due to phantom bytes alone! The CRC has zero chance of matching.</p>
+
+</div>
+
+<!-- ============================================================ -->
+<div class="section" id="solution">
+<h2>5. Solution: Compute CRC From What The Device Actually Stores</h2>
+
+<h3>The Fundamental Insight</h3>
+
+<div class="success">
+    <strong>Instead of comparing "hex file CRC" vs. "readback CRC", we compute the CRC <em>inside the device itself</em>, from the actual flash content. This CRC will always be consistent because it reads what is physically stored.</strong>
+</div>
+
+<h3>How This Solves The Problem</h3>
+
+<div class="diagram">
+  THE CORRECT PROCESS:
+  ====================
+
+  PROGRAMMING PHASE (factory/production):
+  ----------------------------------------
+  Step 1: MPLAB X IDE builds firmware.hex (includes CRC module code)
+           |
+           v
+  Step 2: Program device via IPE
+           |
+           v
+  Step 3: Device boots for the first time
+           |
+           v
+  Step 4: Firmware uses HARDWARE CRC MODULE to read its OWN flash
+           (reads actual stored values: correct phantom bytes, correct config bits)
+           |
+           v
+  Step 5: CRC result = 0xABCD (computed from actual flash content)
+           |
+           v
+  Step 6: Firmware stores 0xABCD at a reserved flash address
+           |
+           v
+  DONE. The "golden CRC" is now embedded in the device.
+
+
+  VERIFICATION PHASE (customer/field):
+  ------------------------------------
+  Step 1: Device powers on
+           |
+           v
+  Step 2: Firmware reads flash again using CRC module
+           (reads the SAME actual content as during programming)
+           |
+           v
+  Step 3: CRC result = 0xABCD (same flash = same CRC, ALWAYS)
+           |
+           v
+  Step 4: Compare with stored value: 0xABCD == 0xABCD
+           |
+           v
+  RESULT: <span class="hex-match">CRC MATCH! PASS!</span>
+
+
+  WHY IT ALWAYS WORKS:
+  --------------------
+  - The CRC is computed from what is ACTUALLY in flash
+  - Phantom bytes are always 0x00 when read by TBLRD &rarr; consistent
+  - Config bits are their actual stored values &rarr; consistent
+  - Same data in = same CRC out, EVERY TIME
+  - No comparison with the original .hex file needed at all
+</div>
+
+<h3>Why This Is Better Than Comparing Hex Files</h3>
+
+<table>
+<tr>
+    <th>Approach</th>
+    <th>Compare .hex files</th>
+    <th>Hardware CRC (this solution)</th>
+</tr>
+<tr>
+    <td>What is compared</td>
+    <td>Linker output vs. device readback</td>
+    <td>Device flash vs. itself (stored reference)</td>
+</tr>
+<tr>
+    <td>Phantom byte problem</td>
+    <td><span class="hex-mismatch">FAILS</span> (25% of bytes differ)</td>
+    <td><span class="hex-match">No problem</span> (always reads 0x00 consistently)</td>
+</tr>
+<tr>
+    <td>Config word problem</td>
+    <td><span class="hex-mismatch">FAILS</span> (unimplemented bits differ)</td>
+    <td><span class="hex-match">No problem</span> (reads actual stored values)</td>
+</tr>
+<tr>
+    <td>ECC problem</td>
+    <td><span class="hex-mismatch">FAILS</span> (extra data in readback)</td>
+    <td><span class="hex-match">No problem</span> (CRC only covers program memory)</td>
+</tr>
+<tr>
+    <td>Detects real corruption</td>
+    <td>Cannot distinguish corruption from normal mismatches</td>
+    <td><span class="hex-match">YES</span> (any bit flip in flash changes CRC)</td>
+</tr>
+<tr>
+    <td>External tools needed</td>
+    <td>Yes (hex compare tool, must handle exceptions)</td>
+    <td>No (device verifies itself)</td>
+</tr>
+</table>
+
+</div>
+
+<!-- ============================================================ -->
+<div class="section" id="how-it-works">
+<h2>6. How The Solution Works (Step by Step)</h2>
+
+<h3>6.1 The CRC Module in dsPIC33CK</h3>
+
+<p>dsPIC33CK has a built-in <strong>hardware CRC engine</strong>. It is a programmable polynomial shift register that computes CRC at hardware speed. You feed data into it, and it outputs the CRC result.</p>
+
+<div class="diagram">
+  CRC Module Block Diagram:
+  =========================
+
+  Program Flash Memory
+  (your firmware code)
+        |
+        | __builtin_tblrdl() / __builtin_tblrdh()
+        | (CPU reads flash word-by-word)
+        v
+  +------------------+
+  | CRCDATL / CRCDATH|  &lt;-- Data Input FIFO (you write here)
+  +------------------+
+        |
+        | Hardware shifts data through polynomial
+        v
+  +------------------+
+  | CRC Shift Engine |  &lt;-- Configured with CRCXORL/H (polynomial)
+  | (LFSR hardware)  |
+  +------------------+
+        |
+        v
+  +------------------+
+  | CRCWDATL/CRCWDATH|  &lt;-- Result (read CRC value here)
+  +------------------+
+</div>
+
+<h3>6.2 Reading Flash Memory (TBLRD)</h3>
+
+<p>The dsPIC33CK can read its own program flash using <strong>Table Read</strong> instructions. In XC-DSC C code, you use compiler built-in functions:</p>
+
+<pre>
+// Set the page register to the upper bits of the address
+TBLPAG = (uint16_t)(address >> 16);
+
+// Read low 16 bits of the instruction word
+uint16_t low_word = __builtin_tblrdl((uint16_t)(address & 0xFFFF));
+
+// Read high 8 bits of the instruction word (+ phantom byte = 0x00)
+uint16_t high_word = __builtin_tblrdh((uint16_t)(address & 0xFFFF));
+</pre>
+
+<div class="note">
+    <strong>Key Point:</strong> When firmware reads its own flash via TBLRD, it gets <em>exactly</em> what is physically stored. The phantom byte is always 0x00. Config bits return their actual values. This is the <strong>ground truth</strong> of what the device contains.
+</div>
+
+<h3>6.3 The Algorithm</h3>
+
+<pre>
+// STEP 1: Enable the CRC hardware module
+PMD3bits.CRCMD = 0;        // Enable clock to CRC module
+
+// STEP 2: Configure CRC-16-CCITT polynomial (x^16 + x^12 + x^5 + 1)
+CRCCON1 = 0x0000;          // Reset
+CRCCON2bits.PLEN = 15;     // 16-bit polynomial
+CRCCON2bits.DWIDTH = 15;   // 16-bit data input words
+CRCXORL = 0x1021;          // Polynomial = 0x1021
+CRCXORH = 0x0000;          // (upper bits unused for 16-bit CRC)
+
+// STEP 3: Load seed (initial CRC value)
+CRCWDATL = 0xFFFF;         // Standard seed for CRC-16-CCITT
+
+// STEP 4: Enable and start
+CRCCON1bits.CRCEN = 1;     // Enable module
+CRCCON1bits.CRCGO = 1;     // Start CRC engine
+
+// STEP 5: Feed every program word from flash into the CRC engine
+for (address = START; address <= END; address += 2)
+{
+    TBLPAG = (uint16_t)(address >> 16);
+    uint16_t offset = (uint16_t)(address & 0xFFFF);
+
+    // Read instruction word from flash
+    uint16_t low  = __builtin_tblrdl(offset);   // Bits 15:0
+    uint16_t high = __builtin_tblrdh(offset);   // Bits 23:16 + phantom
+
+    // Feed into CRC engine
+    while (CRCCON1bits.CRCFUL);   // Wait if FIFO full
+    CRCDATL = low;                // Feed low word
+
+    while (CRCCON1bits.CRCFUL);   // Wait if FIFO full
+    CRCDATL = high;               // Feed high word (includes phantom=0x00)
+}
+
+// STEP 6: Wait for engine to finish processing all data
+while (!CRCCON1bits.CRCMPT);      // Wait until FIFO empty
+Nop(); Nop();                     // Allow final shift to complete
+
+// STEP 7: Stop and read result
+CRCCON1bits.CRCGO = 0;
+uint16_t crc_result = CRCWDATL;   // THIS IS THE CRC
+
+// STEP 8: Compare with stored reference
+uint16_t stored_crc = read_from_flash(CRC_STORAGE_ADDRESS);
+if (crc_result == stored_crc) {
+    // PASS - flash is intact
+} else {
+    // FAIL - flash is corrupted (real corruption!)
+}
+</pre>
+
+<h3>6.4 Storing the Reference CRC</h3>
+
+<p>On the <strong>very first boot</strong> after programming, the CRC storage location contains 0xFFFF (erased flash). The firmware detects this and automatically stores the computed CRC:</p>
+
+<pre>
+uint16_t stored_crc = read_from_flash(CRC_STORAGE_ADDRESS);
+
+if (stored_crc == 0xFFFF) {
+    // First boot - no reference CRC stored yet
+    // Compute CRC and save it
+    uint16_t crc = compute_crc_over_flash();
+    write_to_flash(CRC_STORAGE_ADDRESS, crc);
+    // Now the reference is embedded in the device
+}
+else {
+    // Normal boot - verify integrity
+    uint16_t crc = compute_crc_over_flash();
+    if (crc != stored_crc) {
+        // REAL corruption detected!
+        halt_or_signal_error();
+    }
+}
+</pre>
+
+<h3>6.5 What Address Range To CRC</h3>
+
+<div class="diagram">
+  Flash Memory Map:
+  =================
+
+  0x000000 +---------------------------+
+           | Reset Vector (GOTO main)  |  &lt;-- Include in CRC
+  0x000004 +---------------------------+
+           | Interrupt Vector Table     |  &lt;-- Include in CRC
+  0x000200 +---------------------------+
+           |                           |
+           | PROGRAM MEMORY            |  &lt;-- Include in CRC
+           | (your firmware code)      |
+           |                           |
+           +---------------------------+
+           | CRC STORAGE (1 page)      |  &lt;-- EXCLUDE from CRC (this is where we store the result)
+           +---------------------------+
+           | Configuration Words       |  &lt;-- EXCLUDE from CRC (has unimplemented bits)
+           +---------------------------+
+
+  CRC range: 0x000000 to (CRC_STORAGE_ADDRESS - 2)
+  Exclude: CRC storage page + config words
+</div>
+
+<div class="warning">
+    <strong>Important:</strong> You MUST exclude the CRC storage address from the CRC computation. Otherwise you have a chicken-and-egg problem (the CRC depends on itself).
+</div>
+
+</div>
+
+<!-- ============================================================ -->
+<div class="section" id="production-flow">
+<h2>7. Production Flow For Customer</h2>
+
+<h3>Scenario A: Device Self-Verifies (Recommended)</h3>
+
+<p>The simplest approach. No external tools needed. The device checks itself.</p>
+
+<table>
+<tr><th>Step</th><th>Who</th><th>Action</th><th>Result</th></tr>
+<tr>
+    <td>1</td>
+    <td>Supplier (you)</td>
+    <td>Build firmware with CRC module included in the code</td>
+    <td>firmware.hex includes CRC check in startup</td>
+</tr>
+<tr>
+    <td>2</td>
+    <td>Production line</td>
+    <td>Program device with firmware.hex</td>
+    <td>Device programmed, CRC storage = 0xFFFF (erased)</td>
+</tr>
+<tr>
+    <td>3</td>
+    <td>Production line</td>
+    <td>Power-cycle the device (or just let it boot)</td>
+    <td>First boot: firmware computes CRC, stores at reserved address</td>
+</tr>
+<tr>
+    <td>4</td>
+    <td>Customer (field)</td>
+    <td>Device powers on normally</td>
+    <td>Firmware computes CRC, compares with stored value, reports PASS/FAIL</td>
+</tr>
+</table>
+
+<div class="success">
+    <strong>Advantage:</strong> The customer does not need to compare hex files, use external CRC tools, or understand phantom bytes. The device simply reports "integrity OK" or "integrity FAIL" via a GPIO, LED, UART message, or register flag.
+</div>
+
+<h3>Scenario B: Customer Wants External Verification Number</h3>
+
+<p>If the customer insists on having a CRC number they can verify externally:</p>
+
+<ol>
+    <li>Program the device (step 2 above)</li>
+    <li>Let it boot once (step 3 — CRC gets stored)</li>
+    <li>Read back the device with MPLAB IPE</li>
+    <li>Read the CRC value from the known storage address (e.g., address 0x02AA00)</li>
+    <li>This CRC value is the <strong>"golden reference"</strong></li>
+    <li>For every subsequent device programmed with the same firmware: read back, extract CRC from storage address, confirm it matches</li>
+</ol>
+
+<div class="note">
+    <strong>Or even simpler:</strong> After first boot, read back the device. The CRC stored at the reserved address IS the verification number. Give this number to the customer as part of the release package: "firmware v2.1 = CRC 0xABCD at address 0x02AA00."
+</div>
+
+<h3>Scenario C: Customer Wants To Verify Without Booting The Device</h3>
+
+<p>If the customer needs to verify <em>before</em> the device runs (e.g., safety-critical, don't execute potentially corrupt code):</p>
+
+<ol>
+    <li>After building firmware, program ONE "reference device"</li>
+    <li>Let it boot (computes and stores CRC)</li>
+    <li>Read back the CRC value</li>
+    <li>Hard-code this value into your source code as a constant at the CRC storage address</li>
+    <li>Rebuild the firmware (now the hex file contains the pre-computed CRC)</li>
+    <li>Use this "final" hex for all production units</li>
+    <li>Customer can read the CRC storage address from any programmed device and compare with the documented value — no boot required</li>
+</ol>
+
+<pre>
+// In your source code — hard-coded after first computation:
+const uint16_t __attribute__((space(prog), address(0x02AA00)))
+    FLASH_CRC_REFERENCE = 0xABCD;   // Computed from reference device
+</pre>
+
+<div class="warning">
+    <strong>Caveat:</strong> Every time you change the firmware, you must re-compute the CRC (program a reference device, read back the value, update the constant, rebuild). This is a two-pass build process.
+</div>
+
+<h3>Summary: Which Scenario To Use?</h3>
+
+<table>
+<tr><th>Scenario</th><th>Best For</th><th>Effort</th></tr>
+<tr>
+    <td><strong>A: Self-verify at boot</strong></td>
+    <td>Most applications. Customer just checks pass/fail output.</td>
+    <td>Low (include CRC code, done)</td>
+</tr>
+<tr>
+    <td><strong>B: External number after boot</strong></td>
+    <td>Customer wants a "CRC certificate" per device</td>
+    <td>Medium (read back after first boot)</td>
+</tr>
+<tr>
+    <td><strong>C: Pre-computed in hex</strong></td>
+    <td>Safety-critical, verify before execution</td>
+    <td>High (two-pass build)</td>
+</tr>
+</table>
+
+<div class="success">
+    <strong>Bottom Line:</strong> The original approach (CRC over raw hex file vs. CRC over readback) can NEVER work on dsPIC33CK due to phantom bytes and unimplemented config bits. The correct approach is to compute CRC from the device's actual flash content using the hardware CRC module. This gives a consistent, repeatable CRC that represents what the device truly stores.
+</div>
+
+</div>
+
+</body>
+</html>

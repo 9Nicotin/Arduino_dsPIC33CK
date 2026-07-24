@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino_dsPIC33CK - Part 2: Pin Mapping & Hardware</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.7;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 30px;
+            background: #f8f9fa;
+            color: #333;
+        }
+        h1 { color: #1a5276; border-bottom: 3px solid #2e86c1; padding-bottom: 10px; }
+        h2 { color: #2e86c1; margin-top: 40px; border-left: 4px solid #2e86c1; padding-left: 12px; }
+        h3 { color: #1a5276; margin-top: 25px; }
+        .info-box { background: #d4efdf; border-left: 5px solid #27ae60; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .warning-box { background: #fdebd0; border-left: 5px solid #f39c12; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .danger-box { background: #fadbd8; border-left: 5px solid #e74c3c; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        code { background: #ecf0f1; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 0.9em; }
+        pre { background: #2c3e50; color: #ecf0f1; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+        pre code { background: none; padding: 0; color: inherit; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #bdc3c7; padding: 10px 14px; text-align: left; }
+        th { background: #2e86c1; color: white; }
+        tr:nth-child(even) { background: #eaf2f8; }
+        .nav-links { background: #eaf2f8; padding: 15px; border-radius: 6px; margin: 20px 0; }
+        .nav-links a { color: #2e86c1; text-decoration: none; margin-right: 15px; }
+        .nav-links a:hover { text-decoration: underline; }
+        .pin-highlight { background: #aed6f1; font-weight: bold; }
+        .analog-highlight { background: #a9dfbf; }
+        .pwm-highlight { background: #f9e79f; }
+    </style>
+</head>
+<body>
+
+<h1>Arduino_dsPIC33CK User Guide</h1>
+<h2 style="border:none; padding:0; margin-top:5px; color:#666; font-size:1em;">Part 2: Pin Mapping & Hardware Connections</h2>
+
+<div class="nav-links">
+    <strong>Navigation:</strong>
+    <a href="part1_introduction_setup.html">Part 1: Setup</a>
+    <a href="part2_pin_mapping_hardware.html"><b>Part 2: Pin Mapping</b></a>
+    <a href="part3_api_reference.html">Part 3: API Reference</a>
+    <a href="part4_testing_sketches.html">Part 4: Testing Sketches</a>
+    <a href="part5_upload_troubleshooting.html">Part 5: Upload & Troubleshooting</a>
+</div>
+
+<h2>2.1 dsPIC33CK32MP102 Pinout Diagram</h2>
+
+<p>The dsPIC33CK32MP102 is a <strong>28-pin</strong> device. Here's how the physical pins map to Arduino pin numbers:</p>
+
+<pre><code>
+         dsPIC33CK32MP102 (28-pin SPDIP/SOIC)
+        +----------------------------+
+        |                            |
+  MCLR -| 1                      28 |- AVDD
+   RA0 -| 2   (D0, LED_BUILTIN)  27 |- AVSS
+   RA1 -| 3   (D1)               26 |- RB15 (D20)
+   RB0 -| 4   (D5, A0, PWM)      25 |- RB14 (D19)
+   RB1 -| 5   (D6, A1, PWM)      24 |- RB13 (D18)
+   RB2 -| 6   (D7, A2, PWM)      23 |- RB12 (D17)
+   RB3 -| 7   (D8, A3, PWM)      22 |- RB11 (D16, SS)
+   VSS -| 8                       21 |- RB10 (D15, SCL)
+   RA2 -| 9   (D2)               20 |- VDD
+   RA3 -| 10  (D3)               19 |- RB9  (D14, SDA)
+   RB4 -| 11  (D9, A4, RX)       18 |- RB8  (D13, SCK)
+   RA4 -| 12  (D4)               17 |- RB7  (D12, MISO)
+   VDD -| 13                      16 |- RB6  (D11, MOSI)
+   RB5 -| 14  (D10, A5, TX)      15 |- RB5  (VCAP)
+        |                            |
+        +----------------------------+
+</code></pre>
+
+<h2>2.2 Complete Pin Mapping Table</h2>
+
+<table>
+    <tr>
+        <th>Arduino Pin</th>
+        <th>dsPIC Port.Bit</th>
+        <th>Physical Pin#</th>
+        <th>Functions</th>
+        <th>Color Code</th>
+    </tr>
+    <tr>
+        <td><strong>D0</strong></td>
+        <td>RA0</td>
+        <td>2</td>
+        <td>Digital I/O, LED_BUILTIN</td>
+        <td class="pin-highlight">Digital</td>
+    </tr>
+    <tr>
+        <td><strong>D1</strong></td>
+        <td>RA1</td>
+        <td>3</td>
+        <td>Digital I/O</td>
+        <td class="pin-highlight">Digital</td>
+    </tr>
+    <tr>
+        <td><strong>D2</strong></td>
+        <td>RA2</td>
+        <td>9</td>
+        <td>Digital I/O</td>
+        <td class="pin-highlight">Digital</td>
+    </tr>
+    <tr>
+        <td><strong>D3</strong></td>
+        <td>RA3</td>
+        <td>10</td>
+        <td>Digital I/O</td>
+        <td class="pin-highlight">Digital</td>
+    </tr>
+    <tr>
+        <td><strong>D4</strong></td>
+        <td>RA4</td>
+        <td>12</td>
+        <td>Digital I/O</td>
+        <td class="pin-highlight">Digital</td>
+    </tr>
+    <tr>
+        <td><strong>D5 / A0</strong></td>
+        <td>RB0</td>
+        <td>4</td>
+        <td>Digital, Analog AN0, PWM (SCCP1)</td>
+        <td class="pwm-highlight">Analog + PWM</td>
+    </tr>
+    <tr>
+        <td><strong>D6 / A1</strong></td>
+        <td>RB1</td>
+        <td>5</td>
+        <td>Digital, Analog AN1, PWM (SCCP2)</td>
+        <td class="pwm-highlight">Analog + PWM</td>
+    </tr>
+    <tr>
+        <td><strong>D7 / A2</strong></td>
+        <td>RB2</td>
+        <td>6</td>
+        <td>Digital, Analog AN2, PWM (SCCP3)</td>
+        <td class="pwm-highlight">Analog + PWM</td>
+    </tr>
+    <tr>
+        <td><strong>D8 / A3</strong></td>
+        <td>RB3</td>
+        <td>7</td>
+        <td>Digital, Analog AN3, PWM (SCCP4)</td>
+        <td class="pwm-highlight">Analog + PWM</td>
+    </tr>
+    <tr>
+        <td><strong>D9 / A4</strong></td>
+        <td>RB4</td>
+        <td>11</td>
+        <td>Digital, Analog AN4, <strong>UART1 RX</strong></td>
+        <td class="analog-highlight">Serial RX</td>
+    </tr>
+    <tr>
+        <td><strong>D10 / A5</strong></td>
+        <td>RB5</td>
+        <td>14</td>
+        <td>Digital, Analog AN5, <strong>UART1 TX</strong></td>
+        <td class="analog-highlight">Serial TX</td>
+    </tr>
+    <tr>
+        <td><strong>D11</strong></td>
+        <td>RB6</td>
+        <td>16</td>
+        <td>Digital, SPI MOSI</td>
+        <td class="pin-highlight">SPI</td>
+    </tr>
+    <tr>
+        <td><strong>D12</strong></td>
+        <td>RB7</td>
+        <td>17</td>
+        <td>Digital, SPI MISO</td>
+        <td class="pin-highlight">SPI</td>
+    </tr>
+    <tr>
+        <td><strong>D13</strong></td>
+        <td>RB8</td>
+        <td>18</td>
+        <td>Digital, SPI SCK</td>
+        <td class="pin-highlight">SPI</td>
+    </tr>
+    <tr>
+        <td><strong>D14</strong></td>
+        <td>RB9</td>
+        <td>19</td>
+        <td>Digital, I2C SDA</td>
+        <td class="pin-highlight">I2C</td>
+    </tr>
+    <tr>
+        <td><strong>D15</strong></td>
+        <td>RB10</td>
+        <td>21</td>
+        <td>Digital, I2C SCL</td>
+        <td class="pin-highlight">I2C</td>
+    </tr>
+    <tr>
+        <td><strong>D16</strong></td>
+        <td>RB11</td>
+        <td>22</td>
+        <td>Digital, SPI SS</td>
+        <td class="pin-highlight">SPI</td>
+    </tr>
+    <tr>
+        <td><strong>D17-D20</strong></td>
+        <td>RB12-RB15</td>
+        <td>23-26</td>
+        <td>Digital I/O</td>
+        <td class="pin-highlight">Digital</td>
+    </tr>
+</table>
+
+<h2>2.3 Hardware Wiring for Testing</h2>
+
+<h3>Blink Test Wiring (Simplest)</h3>
+
+<pre><code>
+    dsPIC33CK32MP102
+    +--------+
+    |        |
+    |  RA0 --+--[330 ohm]--[LED]--GND
+    | (pin 2)|
+    |        |
+    |  VDD --+-- 3.3V
+    | (pin13)|
+    |        |
+    |  VSS --+-- GND
+    | (pin 8)|
+    |        |
+    | MCLR --+-- 3.3V (via 10K resistor)
+    | (pin 1)|
+    +--------+
+
+    PICkit 4 Connection:
+    Pin 1: MCLR
+    Pin 2: VDD (3.3V)
+    Pin 3: GND
+    Pin 4: PGD1
+    Pin 5: PGC1
+</code></pre>
+
+<h3>Serial (UART) Test Wiring</h3>
+
+<pre><code>
+    dsPIC33CK32MP102              USB-Serial Adapter
+    +--------+                    +----------+
+    |        |                    |          |
+    |  RB5 --+--------------------+-- RX     |
+    | (D10)  |  (UART TX)        |          |
+    |        |                    |          |
+    |  RB4 --+--------------------+-- TX     |
+    | (D9)   |  (UART RX)        |          |
+    |        |                    |          |
+    |  GND --+--------------------+-- GND    |
+    |        |                    |          |
+    +--------+                    +----------+
+                                       |
+                                    [USB to PC]
+                                       |
+                                  Serial Monitor
+                                  (9600 baud)
+
+    IMPORTANT: Cross TX/RX!
+    - dsPIC TX (RB5) goes to adapter RX
+    - dsPIC RX (RB4) goes to adapter TX
+    - Connect GND together
+    - Adapter must be 3.3V logic!
+</code></pre>
+
+<h3>Analog Read Test Wiring</h3>
+
+<pre><code>
+         3.3V
+          |
+         [R] &lt;-- Potentiometer (10K)
+          |
+          +---------- RB0 (D5 / A0, pin 4)
+          |
+         [R]
+          |
+         GND
+
+    Turn the potentiometer to vary voltage from 0V to 3.3V.
+    analogRead(A0) returns 0-1023.
+</code></pre>
+
+<h3>PWM (LED Brightness) Test Wiring</h3>
+
+<pre><code>
+    dsPIC33CK32MP102
+    +--------+
+    |        |
+    |  RB0 --+--[330 ohm]--[LED]--GND
+    | (D5)   |
+    |        |    (PWM output - LED brightness varies)
+    +--------+
+
+    analogWrite(5, 128);  // 50% brightness
+</code></pre>
+
+<h2>2.4 Power Supply Requirements</h2>
+
+<table>
+    <tr>
+        <th>Parameter</th>
+        <th>Min</th>
+        <th>Typical</th>
+        <th>Max</th>
+    </tr>
+    <tr>
+        <td>VDD (supply voltage)</td>
+        <td>2.7V</td>
+        <td>3.3V</td>
+        <td>3.6V</td>
+    </tr>
+    <tr>
+        <td>I/O pin output current</td>
+        <td>-</td>
+        <td>-</td>
+        <td>25 mA per pin</td>
+    </tr>
+    <tr>
+        <td>Total device current</td>
+        <td>-</td>
+        <td>~30 mA</td>
+        <td>200 mA</td>
+    </tr>
+    <tr>
+        <td>Analog input voltage</td>
+        <td>0V (VSS)</td>
+        <td>-</td>
+        <td>3.3V (VDD)</td>
+    </tr>
+</table>
+
+<div class="warning-box">
+    <strong>Decoupling Capacitors:</strong> Place 100nF ceramic capacitors as close as possible to each VDD/VSS pair. Place a 10uF capacitor on VCAP (pin 15).
+</div>
+
+<h2>2.5 Minimum Hardware Schematic</h2>
+
+<pre><code>
+                    3.3V
+                     |
+                    [10K]
+                     |
+    +----------------+----------------------------------------+
+    |  MCLR (pin 1)  |                                        |
+    |                 |    +-------+                           |
+    |  VDD (pin 13) -+----| 100nF |----+-- GND (pin 8)       |
+    |                      +-------+    |                     |
+    |  VDD (pin 20) -+----| 100nF |----+-- (common GND)      |
+    |                      +-------+                          |
+    |  AVDD (pin 28) -+---| 100nF |----+-- AVSS (pin 27)     |
+    |                      +-------+                          |
+    |  VCAP (pin 15) -+---| 10uF  |----+-- GND               |
+    |                      +-------+                          |
+    |                                                         |
+    |  RA0 (pin 2) ----[330R]----[LED]---- GND                |
+    |                                                         |
+    |  RB5 (pin 14) ---- TX to Serial Adapter RX              |
+    |  RB4 (pin 11) ---- RX from Serial Adapter TX            |
+    |                                                         |
+    |  PGD1 ------------ PICkit Pin 4                         |
+    |  PGC1 ------------ PICkit Pin 5                         |
+    +--------------------------------------------------------+
+</code></pre>
+
+<div class="info-box">
+    <strong>Next:</strong> Continue to <a href="part3_api_reference.html">Part 3: Arduino API Reference</a>
+    to see all available functions and how to use them.
+</div>
+
+</body>
+</html>

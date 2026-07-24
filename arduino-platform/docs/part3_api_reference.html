@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino_dsPIC33CK - Part 3: API Reference</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.7; max-width: 900px; margin: 0 auto; padding: 30px; background: #f8f9fa; color: #333; }
+        h1 { color: #1a5276; border-bottom: 3px solid #2e86c1; padding-bottom: 10px; }
+        h2 { color: #2e86c1; margin-top: 40px; border-left: 4px solid #2e86c1; padding-left: 12px; }
+        h3 { color: #1a5276; margin-top: 25px; }
+        .info-box { background: #d4efdf; border-left: 5px solid #27ae60; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .warning-box { background: #fdebd0; border-left: 5px solid #f39c12; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        code { background: #ecf0f1; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 0.9em; }
+        pre { background: #2c3e50; color: #ecf0f1; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+        pre code { background: none; padding: 0; color: inherit; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #bdc3c7; padding: 10px 14px; text-align: left; }
+        th { background: #2e86c1; color: white; }
+        tr:nth-child(even) { background: #eaf2f8; }
+        .nav-links { background: #eaf2f8; padding: 15px; border-radius: 6px; margin: 20px 0; }
+        .nav-links a { color: #2e86c1; text-decoration: none; margin-right: 15px; }
+        .nav-links a:hover { text-decoration: underline; }
+        .api-func { background: white; border: 1px solid #d5dbdb; border-radius: 8px; padding: 20px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .api-func h4 { margin: 0 0 10px 0; color: #2c3e50; font-size: 1.1em; }
+        .api-sig { background: #1a5276; color: #a9dfbf; padding: 8px 15px; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 0.9em; display: inline-block; }
+    </style>
+</head>
+<body>
+
+<h1>Arduino_dsPIC33CK User Guide</h1>
+<h2 style="border:none; padding:0; margin-top:5px; color:#666; font-size:1em;">Part 3: Arduino API Reference</h2>
+
+<div class="nav-links">
+    <strong>Navigation:</strong>
+    <a href="part1_introduction_setup.html">Part 1: Setup</a>
+    <a href="part2_pin_mapping_hardware.html">Part 2: Pin Mapping</a>
+    <a href="part3_api_reference.html"><b>Part 3: API Reference</b></a>
+    <a href="part4_testing_sketches.html">Part 4: Testing Sketches</a>
+    <a href="part5_upload_troubleshooting.html">Part 5: Upload & Troubleshooting</a>
+</div>
+
+<h2>3.1 Digital I/O Functions</h2>
+
+<div class="api-func">
+    <h4>pinMode()</h4>
+    <p class="api-sig">void pinMode(uint8_t pin, uint8_t mode)</p>
+    <p>Configures a pin as input or output.</p>
+    <table>
+        <tr><th>Parameter</th><th>Values</th><th>Description</th></tr>
+        <tr><td>pin</td><td>0-20, or D0-D20</td><td>Arduino pin number</td></tr>
+        <tr><td>mode</td><td>INPUT</td><td>High-impedance input (TRIS=1)</td></tr>
+        <tr><td></td><td>OUTPUT</td><td>Push-pull output (TRIS=0)</td></tr>
+        <tr><td></td><td>INPUT_PULLUP</td><td>Input with internal pull-up enabled (CNPU)</td></tr>
+    </table>
+    <pre><code>// Example: Configure pin D0 as output, D2 as input with pull-up
+pinMode(0, OUTPUT);        // RA0 = output
+pinMode(2, INPUT_PULLUP);  // RA2 = input + pull-up resistor (~40K to VDD)
+</code></pre>
+    <div class="info-box">
+        <strong>How it works internally:</strong> Sets TRISx register (direction), CNPUx register (pull-up), and clears ANSELx bit (forces digital mode on analog-capable pins).
+    </div>
+</div>
+
+<div class="api-func">
+    <h4>digitalWrite()</h4>
+    <p class="api-sig">void digitalWrite(uint8_t pin, uint8_t val)</p>
+    <p>Sets a digital pin HIGH (3.3V) or LOW (0V).</p>
+    <table>
+        <tr><th>Parameter</th><th>Values</th><th>Description</th></tr>
+        <tr><td>pin</td><td>0-20</td><td>Arduino pin number</td></tr>
+        <tr><td>val</td><td>HIGH (1)</td><td>Pin outputs 3.3V</td></tr>
+        <tr><td></td><td>LOW (0)</td><td>Pin outputs 0V (GND)</td></tr>
+    </table>
+    <pre><code>// Example: Turn LED on and off
+digitalWrite(LED_BUILTIN, HIGH);  // LED on (3.3V on RA0)
+delay(500);
+digitalWrite(LED_BUILTIN, LOW);   // LED off (0V on RA0)
+</code></pre>
+    <div class="info-box">
+        <strong>How it works:</strong> Writes to LATx register (not PORTx) to avoid read-modify-write issues.
+    </div>
+</div>
+
+<div class="api-func">
+    <h4>digitalRead()</h4>
+    <p class="api-sig">int digitalRead(uint8_t pin)</p>
+    <p>Reads the state of a digital pin.</p>
+    <table>
+        <tr><th>Parameter</th><th>Description</th></tr>
+        <tr><td>pin</td><td>Arduino pin number (0-20)</td></tr>
+        <tr><td><strong>Returns</strong></td><td>HIGH (1) if pin voltage > ~1.5V, LOW (0) otherwise</td></tr>
+    </table>
+    <pre><code>// Example: Read a button (active-low with pull-up)
+pinMode(2, INPUT_PULLUP);  // Button on D2, connects to GND when pressed
+
+void loop() {
+    if (digitalRead(2) == LOW) {
+        // Button is pressed!
+        digitalWrite(LED_BUILTIN, HIGH);
+    } else {
+        digitalWrite(LED_BUILTIN, LOW);
+    }
+}
+</code></pre>
+</div>
+
+<h2>3.2 Analog Functions</h2>
+
+<div class="api-func">
+    <h4>analogRead()</h4>
+    <p class="api-sig">int analogRead(uint8_t pin)</p>
+    <p>Reads analog voltage on an analog-capable pin. Uses the 12-bit SAR ADC, scaled to 10-bit for Arduino compatibility.</p>
+    <table>
+        <tr><th>Parameter</th><th>Values</th><th>Description</th></tr>
+        <tr><td>pin</td><td>A0-A5 (or D5-D10)</td><td>Analog input pin</td></tr>
+        <tr><td><strong>Returns</strong></td><td>0 to 1023</td><td>0 = 0V, 1023 = 3.3V</td></tr>
+    </table>
+    <pre><code>// Example: Read temperature sensor on A0
+int raw = analogRead(A0);             // 0-1023
+float voltage = raw * (3.3 / 1023.0); // Convert to voltage
+float tempC = voltage * 100.0;        // LM35: 10mV per degree C
+
+// Note: A0 is the same physical pin as D5 (RB0)
+</code></pre>
+    <table>
+        <tr><th>Analog Pin</th><th>Arduino Alias</th><th>ADC Channel</th><th>Physical Pin</th></tr>
+        <tr><td>A0</td><td>D5</td><td>AN0</td><td>RB0 (pin 4)</td></tr>
+        <tr><td>A1</td><td>D6</td><td>AN1</td><td>RB1 (pin 5)</td></tr>
+        <tr><td>A2</td><td>D7</td><td>AN2</td><td>RB2 (pin 6)</td></tr>
+        <tr><td>A3</td><td>D8</td><td>AN3</td><td>RB3 (pin 7)</td></tr>
+        <tr><td>A4</td><td>D9</td><td>AN4</td><td>RB4 (pin 11)</td></tr>
+        <tr><td>A5</td><td>D10</td><td>AN5</td><td>RB5 (pin 14)</td></tr>
+    </table>
+</div>
+
+<div class="api-func">
+    <h4>analogWrite() — PWM Output</h4>
+    <p class="api-sig">void analogWrite(uint8_t pin, int val)</p>
+    <p>Outputs a PWM signal (for LED dimming, motor speed control). Uses SCCP peripheral modules.</p>
+    <table>
+        <tr><th>Parameter</th><th>Values</th><th>Description</th></tr>
+        <tr><td>pin</td><td>5, 6, 7, or 8</td><td>PWM-capable pins only (D5-D8)</td></tr>
+        <tr><td>val</td><td>0 to 255</td><td>0 = always off, 255 = always on, 128 = 50% duty</td></tr>
+    </table>
+    <pre><code>// Example: Fade an LED on D5 (RB0)
+void loop() {
+    // Fade up
+    int i;
+    for (i = 0; i <= 255; i += 5) {
+        analogWrite(5, i);
+        delay(30);
+    }
+    // Fade down
+    for (i = 255; i >= 0; i -= 5) {
+        analogWrite(5, i);
+        delay(30);
+    }
+}
+</code></pre>
+    <table>
+        <tr><th>Pin</th><th>SCCP Module</th><th>PPS Output</th></tr>
+        <tr><td>D5 (RB0)</td><td>SCCP1 / OC1</td><td>RP32</td></tr>
+        <tr><td>D6 (RB1)</td><td>SCCP2 / OC2</td><td>RP33</td></tr>
+        <tr><td>D7 (RB2)</td><td>SCCP3 / OC3</td><td>RP34</td></tr>
+        <tr><td>D8 (RB3)</td><td>SCCP4 / OC4</td><td>RP35</td></tr>
+    </table>
+</div>
+
+<h2>3.3 Timing Functions</h2>
+
+<div class="api-func">
+    <h4>millis()</h4>
+    <p class="api-sig">unsigned long millis(void)</p>
+    <p>Returns the number of milliseconds since the program started. Overflows after ~49.7 days.</p>
+    <pre><code>// Example: Non-blocking blink (no delay!)
+unsigned long previousMillis = 0;
+int ledState = LOW;
+
+void loop() {
+    unsigned long currentMillis = millis();
+    if (currentMillis - previousMillis >= 1000) {
+        previousMillis = currentMillis;
+        ledState = !ledState;
+        digitalWrite(LED_BUILTIN, ledState);
+    }
+    // Other code runs here without blocking!
+}
+</code></pre>
+    <div class="info-box">
+        <strong>Implementation:</strong> Uses Timer1 interrupt (fires every 1ms). The counter is read atomically using <code>__builtin_disi()</code> to disable interrupts briefly.
+    </div>
+</div>
+
+<div class="api-func">
+    <h4>micros()</h4>
+    <p class="api-sig">unsigned long micros(void)</p>
+    <p>Returns microseconds since program start. Resolution depends on clock speed (250ns at 4MHz FCY).</p>
+    <pre><code>// Example: Measure execution time
+unsigned long start = micros();
+// ... code to measure ...
+unsigned long elapsed = micros() - start;
+Serial_print("Took ");
+Serial_print_int(elapsed, DEC);
+Serial_println(" microseconds");
+</code></pre>
+</div>
+
+<div class="api-func">
+    <h4>delay()</h4>
+    <p class="api-sig">void delay(unsigned long ms)</p>
+    <p>Pauses the program for the specified number of milliseconds. <strong>Blocking</strong> — no other code runs during the delay.</p>
+    <pre><code>delay(1000);  // Wait 1 second
+delay(500);   // Wait 0.5 seconds
+delay(50);    // Wait 50 milliseconds
+</code></pre>
+</div>
+
+<div class="api-func">
+    <h4>delayMicroseconds()</h4>
+    <p class="api-sig">void delayMicroseconds(unsigned int us)</p>
+    <p>Pauses for the specified number of microseconds. Uses NOP cycle-counting (no interrupt dependency).</p>
+    <pre><code>delayMicroseconds(10);   // 10 microsecond pause
+delayMicroseconds(100);  // 100 microsecond pause
+</code></pre>
+    <div class="warning-box">
+        <strong>Warning:</strong> For delays > 16,000 microseconds, use <code>delay()</code> instead. Interrupts are NOT disabled during this function, so timing may vary slightly.
+    </div>
+</div>
+
+<h2>3.4 Serial (UART) Functions</h2>
+
+<div class="warning-box">
+    <strong>C-Style API:</strong> Because XC16 is a C-only compiler (no C++), Serial uses function calls like <code>Serial_begin()</code> instead of <code>Serial.begin()</code>.
+</div>
+
+<div class="api-func">
+    <h4>Serial_begin()</h4>
+    <p class="api-sig">void Serial_begin(unsigned long baud)</p>
+    <p>Initializes UART1 with the specified baud rate. Configures PPS pins automatically (TX=RB5, RX=RB4).</p>
+    <table>
+        <tr><th>Baud Rate</th><th>Common Use</th></tr>
+        <tr><td>9600</td><td>Standard (reliable, slow)</td></tr>
+        <tr><td>19200</td><td>Medium speed</td></tr>
+        <tr><td>38400</td><td>Medium-fast</td></tr>
+        <tr><td>57600</td><td>Fast</td></tr>
+        <tr><td>115200</td><td>Fast (recommended for most use)</td></tr>
+    </table>
+    <pre><code>void setup() {
+    Serial_begin(115200);  // Start serial at 115200 baud
+    Serial_println("System ready!");
+}
+</code></pre>
+</div>
+
+<div class="api-func">
+    <h4>Serial_print() / Serial_println()</h4>
+    <p class="api-sig">size_t Serial_print(const char *str)</p>
+    <p class="api-sig">size_t Serial_println(const char *str)</p>
+    <p>Sends a string over UART. <code>println</code> adds a newline (CR+LF) at the end.</p>
+    <pre><code>Serial_print("Value: ");       // No newline
+Serial_println("Hello!");      // With newline
+Serial_print_int(42, DEC);     // Print number in decimal
+Serial_print_int(255, HEX);    // Print "FF" (hex)
+Serial_print_int(0b1010, BIN); // Print "1010" (binary)
+Serial_println_int(analogRead(A0), DEC);  // Print ADC value
+</code></pre>
+</div>
+
+<div class="api-func">
+    <h4>Serial_available() / Serial_read()</h4>
+    <p class="api-sig">int Serial_available(void)</p>
+    <p class="api-sig">int Serial_read(void)</p>
+    <p>Check if data has been received and read one byte from the RX buffer.</p>
+    <pre><code>// Example: Echo received characters
+void loop() {
+    if (Serial_available() > 0) {
+        int c = Serial_read();    // Read one byte
+        Serial_write((uint8_t)c); // Echo it back
+    }
+}
+</code></pre>
+</div>
+
+<div class="api-func">
+    <h4>Serial_write()</h4>
+    <p class="api-sig">size_t Serial_write(uint8_t c)</p>
+    <p>Sends a single raw byte over UART (no formatting).</p>
+    <pre><code>Serial_write(0x41);  // Sends 'A'
+Serial_write('\n');  // Sends newline character
+</code></pre>
+</div>
+
+<h2>3.5 Utility Functions</h2>
+
+<div class="api-func">
+    <h4>map()</h4>
+    <p class="api-sig">long map(long value, long fromLow, long fromHigh, long toLow, long toHigh)</p>
+    <p>Re-maps a number from one range to another.</p>
+    <pre><code>// Map ADC (0-1023) to PWM (0-255)
+int adc = analogRead(A0);
+int pwm = map(adc, 0, 1023, 0, 255);
+analogWrite(5, pwm);
+
+// Map sensor to angle (0-180 degrees)
+int angle = map(adc, 0, 1023, 0, 180);
+</code></pre>
+</div>
+
+<div class="api-func">
+    <h4>shiftOut() / shiftIn()</h4>
+    <p class="api-sig">void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val)</p>
+    <p class="api-sig">uint8_t shiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder)</p>
+    <p>Bit-bang serial communication (for shift registers like 74HC595).</p>
+    <pre><code>// Example: Drive 74HC595 shift register
+#define DATA_PIN  11  // RB6
+#define CLOCK_PIN 13  // RB8
+#define LATCH_PIN 16  // RB11
+
+void setup() {
+    pinMode(DATA_PIN, OUTPUT);
+    pinMode(CLOCK_PIN, OUTPUT);
+    pinMode(LATCH_PIN, OUTPUT);
+}
+
+void loop() {
+    digitalWrite(LATCH_PIN, LOW);
+    shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, 0b10101010);
+    digitalWrite(LATCH_PIN, HIGH);
+    delay(500);
+}
+</code></pre>
+</div>
+
+<h2>3.6 Constants & Macros</h2>
+
+<table>
+    <tr><th>Constant</th><th>Value</th><th>Usage</th></tr>
+    <tr><td>HIGH</td><td>1</td><td>Pin logic high (3.3V)</td></tr>
+    <tr><td>LOW</td><td>0</td><td>Pin logic low (0V)</td></tr>
+    <tr><td>INPUT</td><td>0</td><td>Pin direction: input</td></tr>
+    <tr><td>OUTPUT</td><td>1</td><td>Pin direction: output</td></tr>
+    <tr><td>INPUT_PULLUP</td><td>2</td><td>Input with ~40K pull-up to VDD</td></tr>
+    <tr><td>LED_BUILTIN</td><td>0</td><td>Pin D0 (RA0)</td></tr>
+    <tr><td>A0-A5</td><td>5-10</td><td>Analog input aliases</td></tr>
+    <tr><td>DEC</td><td>10</td><td>Decimal number base</td></tr>
+    <tr><td>HEX</td><td>16</td><td>Hexadecimal number base</td></tr>
+    <tr><td>BIN</td><td>2</td><td>Binary number base</td></tr>
+    <tr><td>LSBFIRST</td><td>0</td><td>Least significant bit first</td></tr>
+    <tr><td>MSBFIRST</td><td>1</td><td>Most significant bit first</td></tr>
+</table>
+
+<h2>3.7 Bit Manipulation Macros</h2>
+
+<pre><code>bitRead(value, bit)      // Read bit N of value
+bitSet(value, bit)       // Set bit N of value to 1
+bitClear(value, bit)     // Clear bit N of value to 0
+bitWrite(value, bit, b)  // Write bit b (0 or 1) to bit N
+bit(n)                   // Returns 2^n (1 shifted left by n)
+lowByte(w)               // Extract low byte of 16-bit value
+highByte(w)              // Extract high byte of 16-bit value
+
+// Example:
+uint16_t flags = 0;
+bitSet(flags, 3);        // flags = 0b00001000
+bitClear(flags, 3);      // flags = 0b00000000
+</code></pre>
+
+<div class="info-box">
+    <strong>Next:</strong> Continue to <a href="part4_testing_sketches.html">Part 4: Testing Sketches Step-by-Step</a>
+    to learn how to test each function with real hardware.
+</div>
+
+</body>
+</html>

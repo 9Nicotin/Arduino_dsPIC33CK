@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Issue Solution: Arduino dsPIC33CK LED Blink Not Working</title>
+    <style>
+        body { font-family: Segoe UI, Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #333; }
+        h1 { color: #1a5276; border-bottom: 3px solid #2980b9; padding-bottom: 10px; }
+        h2 { color: #2c3e50; margin-top: 30px; }
+        h3 { color: #34495e; }
+        .root-cause { background: #fdedec; border-left: 5px solid #e74c3c; padding: 15px; margin: 20px 0; }
+        .solution { background: #eafaf1; border-left: 5px solid #27ae60; padding: 15px; margin: 20px 0; }
+        .info { background: #eaf2f8; border-left: 5px solid #2980b9; padding: 15px; margin: 20px 0; }
+        code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: Consolas, monospace; }
+        pre { background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        pre code { background: none; color: inherit; }
+        table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+        th, td { border: 1px solid #bdc3c7; padding: 10px; text-align: left; }
+        th { background: #2c3e50; color: white; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        .symptom { color: #e74c3c; font-weight: bold; }
+        .fix { color: #27ae60; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<h1>Issue Solution: Arduino IDE Build Not Working on dsPIC33CK256MP508</h1>
+<p><strong>Date:</strong> 2024-06-11 | <strong>Board:</strong> DM330030 Curiosity Development Board | <strong>Device:</strong> dsPIC33CK256MP508</p>
+
+<h2>Summary</h2>
+<p>LED blink sketch compiled and uploaded successfully from Arduino IDE, but the device would not run.
+The same source code compiled from command line worked perfectly. The issue was in the hex file generation step.</p>
+
+<h2>Root Cause</h2>
+<div class="root-cause">
+    <h3>Missing <code>-mdfp</code> flag in <code>xc-dsc-bin2hex</code></h3>
+    <p>The <code>recipe.objcopy.hex.pattern</code> in <code>platform.txt</code> did NOT pass the <code>-mdfp</code>
+    (Device Family Pack) path to <code>xc-dsc-bin2hex.exe</code>. Without this flag, the tool generates
+    configuration word records at <strong>incorrect hex addresses</strong> (Extended Address segment <code>0x0002</code>),
+    which <code>ipecmd</code> misinterprets as program memory instead of configuration registers.</p>
+</div>
+
+<h2>What Happened Internally</h2>
+<table>
+    <tr>
+        <th>Step</th>
+        <th class="symptom">Without -mdfp (BROKEN)</th>
+        <th class="fix">With -mdfp (WORKING)</th>
+    </tr>
+    <tr>
+        <td>bin2hex config output</td>
+        <td>Segment <code>0x0002</code>, address <code>0xBFxx</code></td>
+        <td>Segment <code>0x0005</code>, address <code>0x7Exx</code></td>
+    </tr>
+    <tr>
+        <td>ipecmd interpretation</td>
+        <td>Treats as <strong>program memory</strong> at 0x15800-0x15FFF</td>
+        <td>Treats as <strong>configuration memory</strong> (correct registers)</td>
+    </tr>
+    <tr>
+        <td>Device config after programming</td>
+        <td>Erased defaults (wrong clock, watchdog ON, DMT active)</td>
+        <td>Correct values (FRC clock, WDT software, DMTDIS=ON, ICS=PGD3)</td>
+    </tr>
+    <tr>
+        <td>Result</td>
+        <td class="symptom">Device does not run</td>
+        <td class="fix">LEDs blink correctly</td>
+    </tr>
+</table>
+
+<h2>ipecmd Output Comparison</h2>
+<h3>BROKEN (config written to wrong location):</h3>
+<pre><code>program memory: start address = 0x0, end address = 0x7ff
+program memory: start address = 0x15800, end address = 0x15fff   &lt;-- BAD! This is config data misplaced
+configuration memory</code></pre>
+
+<h3>FIXED (config written to correct registers):</h3>
+<pre><code>program memory: start address = 0x0, end address = 0x7ff
+configuration memory   &lt;-- Config correctly identified</code></pre>
+
+<h2>The Fix</h2>
+<div class="solution">
+    <h3>platform.txt line 95 &mdash; Add <code>-mdfp={build.dfp.path}</code> to bin2hex recipe</h3>
+</div>
+
+<h3>Before (broken):</h3>
+<pre><code>recipe.objcopy.hex.pattern="{runtime.platform.path}/tools/suppress-stderr.bat" "{compiler.path}xc-dsc-bin2hex.exe" "{build.path}/{build.project_name}.elf"</code></pre>
+
+<h3>After (fixed):</h3>
+<pre><code>recipe.objcopy.hex.pattern="{runtime.platform.path}/tools/suppress-stderr.bat" "{compiler.path}xc-dsc-bin2hex.exe" -mdfp={build.dfp.path} "{build.path}/{build.project_name}.elf"</code></pre>
+
+<h2>Other Fixes Applied During Investigation</h2>
+<table>
+    <tr><th>Issue</th><th>Fix</th><th>File</th></tr>
+    <tr>
+        <td>ipecmd holds device in reset after programming</td>
+        <td>Added <code>-OL</code> flag (Release from Reset) to all programmer tools</td>
+        <td>platform.txt (tools.pkob4/pickit4/pickit5/snap patterns)</td>
+    </tr>
+    <tr>
+        <td>Boot config pragmas cause "address 0x400C00 doesn't exist" error</td>
+        <td>Removed BTMODE/BSEN/BSS/GWRP/GSS/CWRP/CSS pragmas (leave at erased defaults)</td>
+        <td>cores/arduino/system_config.c</td>
+    </tr>
+    <tr>
+        <td>FWDTEN = OFF invalid for dsPIC33CK256MP508</td>
+        <td>Changed to <code>FWDTEN = ON_SW</code></td>
+        <td>system_config.c</td>
+    </tr>
+    <tr>
+        <td>Dead Man Timer resetting device</td>
+        <td>Set <code>DMTDIS = ON</code> (disable DMT)</td>
+        <td>system_config.c</td>
+    </tr>
+</table>
+
+<h2>Key Lessons</h2>
+<div class="info">
+    <ul>
+        <li><strong>Always pass <code>-mdfp</code> to ALL XC-DSC tools</strong> &mdash; not just the compiler and linker, but also <code>bin2hex</code>. Without it, the tool lacks device-specific knowledge of configuration word address mapping.</li>
+        <li><strong>The <code>suppress-stderr.bat</code> wrapper hides warnings</strong> &mdash; bin2hex printed "Could not open resource file" to stderr (which was suppressed), silently falling back to incorrect address mapping.</li>
+        <li><strong>ipecmd "program memory: 0x15800" is a red flag</strong> &mdash; for single-partition dsPIC33CK256MP508, configuration memory should never appear as program memory. This indicates config words are at wrong hex addresses.</li>
+    </ul>
+</div>
+
+<h2>Files Modified</h2>
+<ul>
+    <li><code>arduino-platform/microchip/dspic33ck/platform.txt</code> (source)</li>
+    <li><code>%LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\1.0.0\platform.txt</code> (installed)</li>
+</ul>
+
+<h2>Verification Steps</h2>
+<ol>
+    <li>Close Arduino IDE completely</li>
+    <li>Delete core cache: <code>%LOCALAPPDATA%\arduino\cores\</code></li>
+    <li>Reopen Arduino IDE</li>
+    <li>Select Board: dsPIC33CK256MP508, Clock: 8MHz Internal, Programmer: PKOB4</li>
+    <li>Upload blink sketch &rarr; LEDs should blink immediately after upload</li>
+</ol>
+
+</body>
+</html>

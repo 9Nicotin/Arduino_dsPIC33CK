@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino_dsPIC33CK - Part 5: Upload & Troubleshooting</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.7; max-width: 900px; margin: 0 auto; padding: 30px; background: #f8f9fa; color: #333; }
+        h1 { color: #1a5276; border-bottom: 3px solid #2e86c1; padding-bottom: 10px; }
+        h2 { color: #2e86c1; margin-top: 40px; border-left: 4px solid #2e86c1; padding-left: 12px; }
+        h3 { color: #1a5276; margin-top: 25px; }
+        .info-box { background: #d4efdf; border-left: 5px solid #27ae60; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .warning-box { background: #fdebd0; border-left: 5px solid #f39c12; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .danger-box { background: #fadbd8; border-left: 5px solid #e74c3c; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        code { background: #ecf0f1; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 0.9em; }
+        pre { background: #2c3e50; color: #ecf0f1; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+        pre code { background: none; padding: 0; color: inherit; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #bdc3c7; padding: 10px 14px; text-align: left; }
+        th { background: #2e86c1; color: white; }
+        tr:nth-child(even) { background: #eaf2f8; }
+        .nav-links { background: #eaf2f8; padding: 15px; border-radius: 6px; margin: 20px 0; }
+        .nav-links a { color: #2e86c1; text-decoration: none; margin-right: 15px; }
+        .nav-links a:hover { text-decoration: underline; }
+        .step { background: white; border: 1px solid #d5dbdb; border-radius: 8px; padding: 20px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .error-entry { background: white; border-left: 4px solid #e74c3c; padding: 15px 20px; margin: 15px 0; border-radius: 0 6px 6px 0; }
+        .error-entry h4 { color: #c0392b; margin: 0 0 8px 0; }
+        .solution { color: #27ae60; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<h1>Arduino_dsPIC33CK User Guide</h1>
+<h2 style="border:none; padding:0; margin-top:5px; color:#666; font-size:1em;">Part 5: Upload Methods & Troubleshooting</h2>
+
+<div class="nav-links">
+    <strong>Navigation:</strong>
+    <a href="part1_introduction_setup.html">Part 1: Setup</a>
+    <a href="part2_pin_mapping_hardware.html">Part 2: Pin Mapping</a>
+    <a href="part3_api_reference.html">Part 3: API Reference</a>
+    <a href="part4_testing_sketches.html">Part 4: Testing Sketches</a>
+    <a href="part5_upload_troubleshooting.html"><b>Part 5: Upload & Troubleshooting</b></a>
+</div>
+
+<h2>5.1 Upload Method: PICkit 4 / SNAP (Recommended)</h2>
+
+<p>The most reliable upload method. Directly programs flash memory via the ICSP (In-Circuit Serial Programming) interface.</p>
+
+<div class="step">
+    <h3>Hardware Setup</h3>
+    <pre><code>
+    PICkit 4 Header        dsPIC33CK32MP102
+    +----------+           +--------+
+    | Pin 1 ●--+-----------+- MCLR  | (pin 1)
+    | Pin 2 ---+-----------+- VDD   | (pin 13 or 20)
+    | Pin 3 ---+-----------+- GND   | (pin 8)
+    | Pin 4 ---+-----------+- PGD1  | (program data)
+    | Pin 5 ---+-----------+- PGC1  | (program clock)
+    +----------+           +--------+
+
+    ● = Arrow/triangle marking on PICkit (Pin 1 indicator)
+    </code></pre>
+
+    <div class="warning-box">
+        <strong>PGD1/PGC1 pin locations:</strong> Check your specific board schematic. On dsPIC33CK32MP102, the default debug pair depends on the ICS configuration bit setting (ICS = PGD1 in our config).
+    </div>
+</div>
+
+<div class="step">
+    <h3>Upload via MPLAB X IDE</h3>
+    <ol>
+        <li>Build the project: <strong>Production → Build Main Project</strong> (F11)</li>
+        <li>Ensure build succeeds with no errors</li>
+        <li>Click <strong>Production → Make and Program Device Main Project</strong></li>
+        <li>Or use the toolbar button: green down-arrow icon</li>
+        <li>Wait for output:
+            <pre><code>Connecting to MPLAB PICkit 4...
+Firmware Suite Version...
+Target voltage detected
+Device ID Verified
+Erasing...
+Programming...
+Verify...
+Programming/Verify complete</code></pre>
+        </li>
+        <li>Device automatically resets and starts running</li>
+    </ol>
+</div>
+
+<div class="step">
+    <h3>Upload via Command Line (ipecmd)</h3>
+    <p>For automated builds or scripting:</p>
+    <pre><code>:: Windows Command Prompt
+"C:\Program Files\Microchip\MPLABX\v6.20\mplab_platform\bin\ipecmd.exe" ^
+    -TPPK4 ^
+    -PdsPIC33CK32MP102 ^
+    -M ^
+    -F"path\to\your\project.hex"</code></pre>
+
+    <p>Parameters explained:</p>
+    <table>
+        <tr><th>Flag</th><th>Meaning</th></tr>
+        <tr><td><code>-TPPK4</code></td><td>Tool = PICkit 4</td></tr>
+        <tr><td><code>-P...</code></td><td>Part number (device)</td></tr>
+        <tr><td><code>-M</code></td><td>Program device</td></tr>
+        <tr><td><code>-F"..."</code></td><td>Path to .hex file</td></tr>
+        <tr><td><code>-E</code></td><td>(optional) Erase before programming</td></tr>
+        <tr><td><code>-V</code></td><td>(optional) Verify after programming</td></tr>
+    </table>
+</div>
+
+<h2>5.2 Upload Method: UART Bootloader</h2>
+
+<p>For field updates without a programmer. Requires a bootloader to be pre-programmed into the device first.</p>
+
+<div class="warning-box">
+    <strong>Prerequisite:</strong> A UART bootloader must already be programmed into flash addresses 0x000-0xFFF using a PICkit. The bootloader is a one-time setup; after that, you can update the application via UART only.
+</div>
+
+<div class="step">
+    <h3>Using the UART Upload Script</h3>
+    <pre><code>:: Install Python dependencies (one-time)
+pip install pyserial intelhex
+
+:: Upload your firmware
+python upload_uart.py --port COM3 --baud 115200 --hex project.hex</code></pre>
+
+    <p>The upload process:</p>
+    <ol>
+        <li>Reset the dsPIC while holding BOOT pin (enters bootloader mode)</li>
+        <li>Script syncs with bootloader (sends 0x55 bytes)</li>
+        <li>Flash is erased (application area only)</li>
+        <li>New firmware is written row-by-row</li>
+        <li>Optional verification</li>
+        <li>Device resets into new application</li>
+    </ol>
+</div>
+
+<h2>5.3 Troubleshooting: Build Errors</h2>
+
+<div class="error-entry">
+    <h4>Error: "xc16-gcc: not found" or "xc-dsc-gcc: not found"</h4>
+    <p><strong>Cause:</strong> XC16 compiler not in system PATH.</p>
+    <p class="solution">Solution:</p>
+    <ol>
+        <li>Open System Properties → Environment Variables</li>
+        <li>Edit PATH, add: <code>C:\Program Files\Microchip\xc16\v3.31\bin</code></li>
+        <li>Restart MPLAB X IDE</li>
+        <li>Verify: open cmd, type <code>xc16-gcc --version</code></li>
+    </ol>
+</div>
+
+<div class="error-entry">
+    <h4>Error: "Cannot find include file &lt;xc.h&gt;"</h4>
+    <p><strong>Cause:</strong> Device Family Pack (DFP) not installed.</p>
+    <p class="solution">Solution:</p>
+    <ol>
+        <li>Open MPLAB X → Tools → Packs</li>
+        <li>Search: <code>dsPIC33CK-MP_DFP</code></li>
+        <li>Click Install (version 1.15+)</li>
+        <li>Restart IDE and rebuild</li>
+    </ol>
+</div>
+
+<div class="error-entry">
+    <h4>Error: "Undefined symbol _PORTA" or "_TRISA"</h4>
+    <p><strong>Cause:</strong> Device not correctly set in project properties.</p>
+    <p class="solution">Solution:</p>
+    <ol>
+        <li>Right-click project → Properties</li>
+        <li>Under "Conf: [default]" verify Device = <code>dsPIC33CK32MP102</code></li>
+        <li>If changed, Clean and Rebuild</li>
+    </ol>
+</div>
+
+<div class="error-entry">
+    <h4>Error: "Multiple definition of '_main'" or "main already defined"</h4>
+    <p><strong>Cause:</strong> You have two main() functions (your own + the Arduino core's main.c).</p>
+    <p class="solution">Solution:</p>
+    <p>Remove any <code>int main(void)</code> from your sketch. Only write <code>setup()</code> and <code>loop()</code>. The Arduino core's main.c handles calling them.</p>
+</div>
+
+<div class="error-entry">
+    <h4>Error: "Undefined symbol _setup" or "_loop"</h4>
+    <p><strong>Cause:</strong> Your sketch file doesn't define setup() and loop() functions.</p>
+    <p class="solution">Solution:</p>
+    <p>Ensure your sketch.c file contains both functions:</p>
+    <pre><code>void setup() { /* ... */ }
+void loop()  { /* ... */ }
+</code></pre>
+</div>
+
+<div class="error-entry">
+    <h4>Error: "Section .text will not fit in region 'program'"</h4>
+    <p><strong>Cause:</strong> Code exceeds 32KB flash memory.</p>
+    <p class="solution">Solution:</p>
+    <ul>
+        <li>Enable compiler optimization: Properties → XC-DSC → Optimization → Level 1 or 2</li>
+        <li>Remove unused libraries/functions</li>
+        <li>Use smaller data types where possible</li>
+    </ul>
+</div>
+
+<div class="error-entry">
+    <h4>Warning: "Implicit declaration of function 'Serial_begin'"</h4>
+    <p><strong>Cause:</strong> Missing include for HardwareSerial.h.</p>
+    <p class="solution">Solution:</p>
+    <p>Add at the top of your sketch:</p>
+    <pre><code>#include "Arduino.h"
+#include "HardwareSerial.h"
+</code></pre>
+</div>
+
+<h2>5.4 Troubleshooting: Programming Errors</h2>
+
+<div class="error-entry">
+    <h4>"Target device was not found" / "Failed to connect"</h4>
+    <p class="solution">Solutions:</p>
+    <ul>
+        <li>Check all 5 ICSP wires are securely connected</li>
+        <li>Verify PICkit Pin 1 (MCLR) alignment</li>
+        <li>Ensure VDD is 3.3V (not 5V)</li>
+        <li>Check that MCLR has a 10K pull-up resistor to VDD</li>
+        <li>Try: Project Properties → PICkit 4 → "Power target from PICkit 4" = checked</li>
+    </ul>
+</div>
+
+<div class="error-entry">
+    <h4>"Device ID does not match expected"</h4>
+    <p class="solution">Solution:</p>
+    <p>The project device setting doesn't match the physical chip. Verify:</p>
+    <ul>
+        <li>Project is set to <code>dsPIC33CK32MP102</code> (not 105, 202, etc.)</li>
+        <li>Read the chip markings to confirm part number</li>
+    </ul>
+</div>
+
+<div class="error-entry">
+    <h4>"Programming failed - Device is code protected"</h4>
+    <p class="solution">Solution:</p>
+    <ol>
+        <li>In MPLAB X IPE (standalone programmer tool)</li>
+        <li>Select device and connect</li>
+        <li>Click "Erase" → "Bulk Erase"</li>
+        <li>This clears code protection</li>
+        <li>Re-program your application</li>
+    </ol>
+</div>
+
+<h2>5.5 Troubleshooting: Runtime Issues</h2>
+
+<div class="error-entry">
+    <h4>LED doesn't blink / Device seems dead after programming</h4>
+    <p class="solution">Check these in order:</p>
+    <ol>
+        <li><strong>Watchdog Timer:</strong> Ensure <code>FWDTEN = OFF</code> in system_config.h</li>
+        <li><strong>MCLR pin:</strong> Must be pulled HIGH (10K to VDD) for device to run</li>
+        <li><strong>Power supply:</strong> Measure VDD — must be 2.7-3.6V</li>
+        <li><strong>Oscillator:</strong> Check that config bits select correct clock source (FRC)</li>
+        <li><strong>Debug vs Release:</strong> Try "Release" build mode instead of "Debug"</li>
+    </ol>
+</div>
+
+<div class="error-entry">
+    <h4>millis() returns 0 / delay() doesn't work</h4>
+    <p><strong>Cause:</strong> Timer1 interrupt not firing.</p>
+    <p class="solution">Solution:</p>
+    <ul>
+        <li>Verify <code>init()</code> is being called (it's in main.c — don't remove it)</li>
+        <li>Check Timer1 config: <code>T1CONbits.TON = 1</code></li>
+        <li>Check interrupt enable: <code>IEC0bits.T1IE = 1</code></li>
+        <li>Check interrupt flag clearing in ISR: <code>IFS0bits.T1IF = 0</code></li>
+        <li>Verify PR1 calculation matches your FCY</li>
+    </ul>
+</div>
+
+<div class="error-entry">
+    <h4>analogRead() always returns 0 or 1023</h4>
+    <p class="solution">Solutions:</p>
+    <ul>
+        <li><strong>Always 0:</strong> ADC may not be initialized. Check ADCON1Lbits.ADON = 1</li>
+        <li><strong>Always 1023:</strong> Pin is floating (not connected). Verify wiring to pot/sensor</li>
+        <li>Ensure ANSEL bit is SET for the pin (analog mode). analogRead() does this automatically but verify</li>
+        <li>Check that TRIS bit is SET (input mode) for the analog pin</li>
+    </ul>
+</div>
+
+<div class="error-entry">
+    <h4>Serial output is garbled / random characters</h4>
+    <p class="solution">Solutions:</p>
+    <ul>
+        <li><strong>Baud rate mismatch:</strong> Ensure terminal AND code use same baud (e.g., both 115200)</li>
+        <li><strong>Clock mismatch:</strong> If F_CPU/FCY doesn't match reality, BRG calculation is wrong.
+            Verify your actual clock: <code>F_CPU=8000000</code> and <code>FCY=4000000</code></li>
+        <li><strong>Wrong PPS mapping:</strong> TX should be on RB5 (RP37), RX on RB4 (RP36)</li>
+        <li><strong>5V adapter:</strong> Use a 3.3V logic adapter. 5V TX into dsPIC can damage it</li>
+    </ul>
+</div>
+
+<div class="error-entry">
+    <h4>PWM (analogWrite) doesn't produce output</h4>
+    <p class="solution">Solutions:</p>
+    <ul>
+        <li>Only pins D5-D8 support PWM. Other pins fall back to digital HIGH/LOW</li>
+        <li>Check PPS output mapping — SCCP output must be routed to physical pin</li>
+        <li>Verify SCCP module is enabled: <code>CCP1CON1Lbits.CCPON = 1</code></li>
+        <li>Measure with oscilloscope on the pin to verify PWM waveform</li>
+    </ul>
+</div>
+
+<h2>5.6 Debugging Tips</h2>
+
+<h3>Using MPLAB X Debugger</h3>
+<ol>
+    <li>Set a breakpoint (click left margin of code line)</li>
+    <li>Click <strong>Debug → Debug Main Project</strong> (Ctrl+F5)</li>
+    <li>Program halts at breakpoint</li>
+    <li>Use "Variables" window to inspect register values</li>
+    <li>Step through code with F7 (step into) or F8 (step over)</li>
+</ol>
+
+<h3>Using Serial as Debug Output</h3>
+<pre><code>// Add debug prints to narrow down issues
+void setup()
+{
+    Serial_begin(115200);
+    Serial_println("[DEBUG] setup() started");
+
+    pinMode(LED_BUILTIN, OUTPUT);
+    Serial_println("[DEBUG] pinMode done");
+
+    // ... more init code ...
+    Serial_println("[DEBUG] setup() complete");
+}
+
+void loop()
+{
+    Serial_println("[DEBUG] loop() top");
+    // ... your code ...
+}
+</code></pre>
+
+<h3>Using LED as Debug Indicator</h3>
+<pre><code>// Quick blink patterns to indicate state
+void debugBlink(int count) {
+    int i;
+    for (i = 0; i < count; i++) {
+        digitalWrite(LED_BUILTIN, HIGH);
+        delay(100);
+        digitalWrite(LED_BUILTIN, LOW);
+        delay(100);
+    }
+    delay(500);
+}
+
+// In your code:
+debugBlink(1);  // 1 blink = reached point A
+// ... code ...
+debugBlink(2);  // 2 blinks = reached point B
+// ... code ...
+debugBlink(3);  // 3 blinks = reached point C
+</code></pre>
+
+<h2>5.7 Frequently Asked Questions</h2>
+
+<table>
+    <tr>
+        <th>Question</th>
+        <th>Answer</th>
+    </tr>
+    <tr>
+        <td>Can I use Arduino libraries?</td>
+        <td>Only C-compatible ones. C++ libraries (most of them) need porting because XC16 is C-only.</td>
+    </tr>
+    <tr>
+        <td>Can I use 5V sensors?</td>
+        <td><strong>NO!</strong> dsPIC33CK is 3.3V only. Use a voltage divider or level shifter for 5V signals.</td>
+    </tr>
+    <tr>
+        <td>What's the max PWM frequency?</td>
+        <td>Depends on FCY and prescaler. At FCY=4MHz with 8-bit: ~15.6 kHz. At FCY=50MHz: ~196 kHz.</td>
+    </tr>
+    <tr>
+        <td>Can I use multiple UARTs?</td>
+        <td>dsPIC33CK32MP102 has UART1 only. Larger variants (256MP508) have up to 6 UARTs.</td>
+    </tr>
+    <tr>
+        <td>How do I access dsPIC registers directly?</td>
+        <td>Include <code>&lt;xc.h&gt;</code> and use register names directly: <code>PORTA</code>, <code>LATB</code>, <code>T1CONbits.TON</code>, etc.</td>
+    </tr>
+    <tr>
+        <td>Can I mix Arduino API and raw register access?</td>
+        <td>Yes! You can use both in the same sketch. Just be careful not to conflict (e.g., don't reconfigure Timer1 — it's used by millis).</td>
+    </tr>
+    <tr>
+        <td>What if I need more flash/RAM?</td>
+        <td>Use a larger variant: dsPIC33CK64MP102 (64KB), dsPIC33CK128MP... (128KB), etc. Same pin mapping works.</td>
+    </tr>
+</table>
+
+<h2>5.8 Quick Reference Card</h2>
+
+<pre><code>
++=========================================================+
+|             Arduino_dsPIC33CK Quick Reference            |
++=========================================================+
+| DEVICE:      dsPIC33CK32MP102 (28-pin, 3.3V)            |
+| COMPILER:    XC16 / XC-DSC v3.31                         |
+| CLOCK:       8 MHz FRC (default) or 100 MHz PLL          |
+| FLASH:       32 KB        RAM: 4 KB                      |
++---------------------------------------------------------+
+| DIGITAL I/O: 21 pins (D0-D20)                           |
+| ANALOG IN:   6 channels (A0-A5 = D5-D10)                |
+| PWM OUT:     4 channels (D5-D8 via SCCP)                |
+| SERIAL:      1x UART (TX=D10/RB5, RX=D9/RB4)           |
+| SPI:         MOSI=D11, MISO=D12, SCK=D13, SS=D16       |
+| I2C:         SDA=D14, SCL=D15                           |
+| LED_BUILTIN: D0 (RA0)                                   |
++---------------------------------------------------------+
+| SERIAL API (C-style):                                   |
+|   Serial_begin(baud)     Serial_available()              |
+|   Serial_print(str)      Serial_read()                   |
+|   Serial_println(str)    Serial_write(byte)              |
+|   Serial_print_int(val, base)                            |
+|   Serial_println_int(val, base)                          |
++---------------------------------------------------------+
+| BUILD:  F11 (MPLAB X)                                   |
+| UPLOAD: Make and Program (down-arrow icon)               |
+| DEBUG:  Ctrl+F5 (with PICkit attached)                  |
++=========================================================+
+</code></pre>
+
+<div class="info-box">
+    <strong>Congratulations!</strong> You've completed the Arduino_dsPIC33CK User Guide.
+    Start with Test #1 (Blink) and work your way through each test to verify your platform is working correctly. Good luck!
+</div>
+
+</body>
+</html>

@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino_dsPIC33CK - Installation Guide</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.8; max-width: 920px; margin: 0 auto; padding: 30px; background: #f8f9fa; color: #333; }
+        h1 { color: #1a5276; border-bottom: 3px solid #2e86c1; padding-bottom: 10px; font-size: 1.8em; }
+        h2 { color: #2e86c1; margin-top: 40px; border-left: 4px solid #2e86c1; padding-left: 12px; }
+        h3 { color: #1a5276; margin-top: 25px; }
+        .info-box { background: #d4efdf; border-left: 5px solid #27ae60; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .warning-box { background: #fdebd0; border-left: 5px solid #f39c12; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .danger-box { background: #fadbd8; border-left: 5px solid #e74c3c; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        code { background: #ecf0f1; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 0.9em; }
+        pre { background: #2c3e50; color: #ecf0f1; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+        pre code { background: none; padding: 0; color: inherit; }
+        .step { background: white; border: 1px solid #d5dbdb; border-radius: 8px; padding: 20px 25px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.06); }
+        .step-number { display: inline-block; background: #2e86c1; color: white; width: 34px; height: 34px; border-radius: 50%; text-align: center; line-height: 34px; font-weight: bold; margin-right: 10px; font-size: 1em; }
+        .terminal { background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 6px; font-family: 'Consolas', monospace; font-size: 0.85em; line-height: 1.6; border: 1px solid #333; }
+        .terminal .prompt { color: #6a9955; }
+        .terminal .output { color: #9cdcfe; }
+        .terminal .success { color: #4ec9b0; }
+        .terminal .error { color: #f44747; }
+        .checklist { list-style: none; padding: 0; }
+        .checklist li { padding: 8px 0; padding-left: 30px; position: relative; }
+        .checklist li:before { content: "\2610"; position: absolute; left: 0; color: #2e86c1; font-size: 1.2em; }
+        .quick-start { background: #eaf7fd; border: 2px solid #2e86c1; border-radius: 8px; padding: 25px; margin: 30px 0; }
+        .quick-start h2 { border: none; padding: 0; margin-top: 0; color: #1a5276; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th { background: #2e86c1; color: white; padding: 12px; border: 1px solid #1a5276; text-align: left; }
+        td { padding: 10px 12px; border: 1px solid #ddd; }
+        tr:nth-child(even) { background: #eaf2f8; }
+        .folder-tree { background: #f4f6f7; border: 1px solid #d5dbdb; border-radius: 6px; padding: 15px 20px; font-family: Consolas, monospace; font-size: 0.85em; line-height: 1.8; }
+        .folder-tree .folder { color: #2e86c1; font-weight: bold; }
+        .folder-tree .file { color: #27ae60; }
+        .folder-tree .important { color: #e74c3c; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<h1>Arduino_dsPIC33CK - Installation Guide</h1>
+<p style="color:#666; font-size:1.1em;">Complete setup guide: from a fresh Windows PC to blinking LEDs on your dsPIC33CK board</p>
+
+<!-- ===== QUICK START ===== -->
+<div class="quick-start">
+    <h2>Quick Start (for experienced users)</h2>
+    <p>If you already have Arduino IDE, XC-DSC compiler, and MPLAB X installed:</p>
+    <ol>
+        <li>Copy the <code>arduino-platform</code> folder to any location on your PC</li>
+        <li>Double-click <strong>install_arduino_ide.bat</strong></li>
+        <li>Open Arduino IDE &rarr; Tools &rarr; Board &rarr; select your dsPIC33CK board</li>
+        <li>Done! Write your sketch and click Upload</li>
+    </ol>
+    <p>The installer auto-detects all tool paths. No manual configuration needed.</p>
+</div>
+
+<!-- ===== PREREQUISITES ===== -->
+<h2>1. Prerequisites</h2>
+
+<p>Three software components must be installed <strong>before</strong> running the installer:</p>
+
+<table>
+    <tr><th>#</th><th>Software</th><th>Version</th><th>Purpose</th><th>Download</th></tr>
+    <tr>
+        <td>1</td>
+        <td><strong>Arduino IDE</strong></td>
+        <td>2.x</td>
+        <td>Development environment (editor + build system)</td>
+        <td><a href="https://www.arduino.cc/en/software">arduino.cc/en/software</a></td>
+    </tr>
+    <tr>
+        <td>2</td>
+        <td><strong>XC-DSC Compiler</strong></td>
+        <td>v3.31+</td>
+        <td>Compiles C code into dsPIC33CK machine code</td>
+        <td><a href="https://www.microchip.com/xc-dsc">microchip.com/xc-dsc</a></td>
+    </tr>
+    <tr>
+        <td>3</td>
+        <td><strong>MPLAB X IDE</strong></td>
+        <td>v6.20+</td>
+        <td>Provides ipecmd.exe (programmer) + Device Family Pack (DFP)</td>
+        <td><a href="https://www.microchip.com/mplab">microchip.com/mplab</a></td>
+    </tr>
+</table>
+
+<div class="info-box">
+    <strong>Why MPLAB X?</strong> You don't need to use MPLAB X IDE itself. Arduino IDE uses only two things from it:
+    <ul style="margin:5px 0;">
+        <li><code>ipecmd.exe</code> &mdash; command-line programmer for PICkit4 / SNAP / PKOB4</li>
+        <li>DFP (Device Family Pack) &mdash; device definitions, linker scripts, and register headers</li>
+    </ul>
+</div>
+
+<!-- ===== INSTALL PREREQUISITES ===== -->
+<h2>2. Install Prerequisites</h2>
+
+<div class="step">
+    <h3><span class="step-number">1</span>Install Arduino IDE 2.x</h3>
+    <ol>
+        <li>Download from <a href="https://www.arduino.cc/en/software">arduino.cc/en/software</a></li>
+        <li>Run installer with default settings</li>
+        <li><strong>Launch Arduino IDE once</strong> to create the data folders, then close it</li>
+    </ol>
+    <p>This creates: <code>%LOCALAPPDATA%\Arduino15\</code> (where our platform will be installed)</p>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">2</span>Install XC-DSC Compiler</h3>
+    <ol>
+        <li>Download from <a href="https://www.microchip.com/xc-dsc">microchip.com/xc-dsc</a></li>
+        <li>Run installer &rarr; Accept license &rarr; Install to default path</li>
+        <li>When prompted "Add to PATH", select <strong>Yes</strong></li>
+    </ol>
+    <p>Default install location: <code>C:\Program Files\Microchip\xc-dsc\v3.31\</code></p>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">3</span>Install MPLAB X IDE + Device Family Pack</h3>
+    <ol>
+        <li>Download from <a href="https://www.microchip.com/mplab">microchip.com/mplab</a></li>
+        <li>Run installer with default settings</li>
+        <li>Open MPLAB X IDE &rarr; <strong>Tools &rarr; Packs</strong></li>
+        <li>Install the DFP for your board:</li>
+    </ol>
+    <table>
+        <tr><th>Board / Device</th><th>DFP to Install</th></tr>
+        <tr><td>dsPIC33CK32MP102 (Curiosity Nano)</td><td><strong>dsPIC33CK-MP_DFP</strong></td></tr>
+        <tr><td>dsPIC33CK256MP508 (DM330030 Curiosity Dev Board)</td><td><strong>dsPIC33CK-MP_DFP</strong></td></tr>
+        <tr><td>dsPIC33CK256MC002</td><td><strong>dsPIC33CK-MC_DFP</strong></td></tr>
+    </table>
+    <p>DFPs install to: <code>%USERPROFILE%\.mchp_packs\Microchip\</code></p>
+    <p>Close MPLAB X IDE after installing the DFP.</p>
+</div>
+
+<!-- ===== INSTALL PLATFORM ===== -->
+<h2>3. Install Arduino_dsPIC33CK Platform</h2>
+
+<div class="step">
+    <h3><span class="step-number">4</span>Copy and Run the Installer</h3>
+    <ol>
+        <li>Copy the <code>arduino-platform</code> folder to any location on your PC<br>
+            <small>(USB drive, Desktop, Documents &mdash; anywhere is fine)</small></li>
+        <li>Open the folder in Windows Explorer</li>
+        <li>Double-click <strong><code>install_arduino_ide.bat</code></strong></li>
+    </ol>
+
+    <div class="terminal">
+        <span class="prompt">C:\Users\You\Desktop\arduino-platform&gt;</span> install_arduino_ide.bat<br><br>
+        ============================================<br>
+        &nbsp;Arduino_dsPIC33CK Platform Installer<br>
+        ============================================<br><br>
+        [1/5] Creating installation directory...<br>
+        [2/5] Copying platform files...<br>
+        [3/5] Verifying installation...<br>
+        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;boards.txt .... OK</span><br>
+        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;platform.txt .. OK</span><br>
+        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Arduino.h ..... OK</span><br>
+        [4/5] Auto-detecting tool paths...<br><br>
+        <span class="success">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XC-DSC found: C:\Program Files\Microchip\xc-dsc\v3.31\bin\</span><br>
+        <span class="success">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DFP [MP] found: C:\Users\You\.mchp_packs\...\dsPIC33CK-MP_DFP\1.15.423\xc16</span><br>
+        <span class="success">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DFP [MC] found: C:\Users\You\.mchp_packs\...\dsPIC33CK-MC_DFP\1.10.386\xc16</span><br>
+        <span class="success">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;MPLAB X found: C:\Program Files\Microchip\MPLABX\v6.30\mplab_platform\mplab_ipe</span><br><br>
+        [5/5] Generating platform.local.txt...<br><br>
+        ============================================<br>
+        <span class="success">&nbsp;Installation Complete!</span><br>
+        ============================================<br>
+    </div>
+</div>
+
+<div class="info-box">
+    <strong>What the installer does:</strong>
+    <ol style="margin:5px 0;">
+        <li>Copies platform files to <code>%LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\1.0.0\</code></li>
+        <li>Auto-detects XC-DSC compiler path (newest version found)</li>
+        <li>Auto-detects DFP paths for MP and MC device families</li>
+        <li>Auto-detects MPLAB X IPE path (for device programming)</li>
+        <li>Generates <code>platform.local.txt</code> with all detected paths</li>
+    </ol>
+    <strong>No manual path editing is needed</strong> if you installed everything to default locations.
+</div>
+
+<!-- ===== VERIFY ===== -->
+<h2>4. Verify Installation</h2>
+
+<div class="step">
+    <h3><span class="step-number">5</span>Select Board in Arduino IDE</h3>
+    <ol>
+        <li>Open <strong>Arduino IDE</strong> (restart if it was already open)</li>
+        <li>Go to <strong>Tools &rarr; Board</strong></li>
+        <li>You should see the dsPIC33CK boards:</li>
+    </ol>
+    <div class="terminal">
+        Tools &rarr; Board:<br>
+        &boxdr;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxdr;<br>
+        &boxv; Arduino_dsPIC33CK                                              &boxv;<br>
+        &boxv; &nbsp;&nbsp;<span class="success">Arduino_dsPIC33CK (dsPIC33CK32MP102)    &larr; 32KB, 28-pin</span>   &boxv;<br>
+        &boxv; &nbsp;&nbsp;<span class="success">Arduino_dsPIC33CK (dsPIC33CK256MP508)   &larr; 256KB, 80-pin</span>  &boxv;<br>
+        &boxv; &nbsp;&nbsp;<span class="success">Arduino_dsPIC33CK (dsPIC33CK256MC002)   &larr; 256KB motor</span>   &boxv;<br>
+        &boxdl;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxdl;<br>
+    </div>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">6</span>Configure Board Settings</h3>
+    <p>After selecting a board, configure under <strong>Tools</strong> menu:</p>
+    <table>
+        <tr><th>Setting</th><th>Options</th><th>Recommended</th></tr>
+        <tr><td>Board</td><td>dsPIC33CK32MP102 / dsPIC33CK256MP508 / dsPIC33CK256MC002</td><td>Match your hardware</td></tr>
+        <tr><td>Clock Source</td><td>8MHz Internal / External Crystal</td><td>8MHz Internal (no crystal needed)</td></tr>
+        <tr><td>Programmer</td><td>PKOB4 / PICkit 4 / PICkit 5 / SNAP</td><td>Match your debugger</td></tr>
+    </table>
+
+    <div class="info-box">
+        <strong>Which programmer to select?</strong>
+        <ul style="margin:5px 0;">
+            <li><strong>PKOB4</strong> &mdash; DM330030 Curiosity Development Board (built-in programmer)</li>
+            <li><strong>PICkit 4 / PICkit 5</strong> &mdash; Standalone programmer connected via header</li>
+            <li><strong>SNAP</strong> &mdash; MPLAB SNAP programmer</li>
+        </ul>
+    </div>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">7</span>Test Compile</h3>
+    <p>Paste this minimal blink sketch and click <strong>Verify</strong> (checkmark button):</p>
+    <pre><code>#include &lt;Arduino.h&gt;
+
+void setup() {
+    pinMode(LED_BUILTIN, OUTPUT);
+}
+
+void loop() {
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(500);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(500);
+}</code></pre>
+    <p>If compilation succeeds with no errors &mdash; your installation is complete!</p>
+</div>
+
+<!-- ===== SUPPORTED BOARDS ===== -->
+<h2>5. Supported Boards</h2>
+
+<table>
+    <tr><th>Board</th><th>Device</th><th>Flash</th><th>RAM</th><th>Pins</th><th>Programmer</th></tr>
+    <tr>
+        <td>Curiosity Nano (custom)</td>
+        <td>dsPIC33CK32MP102</td>
+        <td>32 KB</td>
+        <td>4 KB</td>
+        <td>28</td>
+        <td>PICkit 4 / SNAP</td>
+    </tr>
+    <tr>
+        <td>DM330030 Curiosity Dev Board</td>
+        <td>dsPIC33CK256MP508</td>
+        <td>256 KB</td>
+        <td>24 KB</td>
+        <td>80</td>
+        <td>PKOB4 (on-board)</td>
+    </tr>
+    <tr>
+        <td>Custom board</td>
+        <td>dsPIC33CK256MC002</td>
+        <td>256 KB</td>
+        <td>24 KB</td>
+        <td>28</td>
+        <td>PICkit 4 / SNAP</td>
+    </tr>
+</table>
+
+<!-- ===== TROUBLESHOOTING ===== -->
+<h2>6. Troubleshooting</h2>
+
+<table>
+    <tr><th>Problem</th><th>Cause</th><th>Solution</th></tr>
+    <tr>
+        <td>Board not visible in Arduino IDE</td>
+        <td>IDE was open during install</td>
+        <td>Close ALL Arduino IDE windows, reopen</td>
+    </tr>
+    <tr>
+        <td>Installer shows [WARNING] for XC-DSC</td>
+        <td>Compiler not installed or non-default path</td>
+        <td>Install XC-DSC from microchip.com/xc-dsc</td>
+    </tr>
+    <tr>
+        <td>Installer shows [WARNING] for DFP</td>
+        <td>Device Family Pack not installed</td>
+        <td>Open MPLAB X &rarr; Tools &rarr; Packs &rarr; Install dsPIC33CK-MP_DFP</td>
+    </tr>
+    <tr>
+        <td>Compile error: "unknown device"</td>
+        <td>Wrong DFP or DFP path mismatch</td>
+        <td>Re-run installer or check platform.local.txt</td>
+    </tr>
+    <tr>
+        <td>Upload fails: "Could not connect"</td>
+        <td>Programmer not detected</td>
+        <td>Check USB cable, driver, and programmer selection in Tools menu</td>
+    </tr>
+    <tr>
+        <td>Device doesn't run after upload</td>
+        <td>Missing <code>-OL</code> flag or config issue</td>
+        <td>Re-run installer (latest version has the fix)</td>
+    </tr>
+</table>
+
+<div class="step">
+    <h3>Manual Path Override</h3>
+    <p>Only needed if auto-detection fails. Edit this file:</p>
+    <pre><code>%LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\1.0.0\platform.local.txt</code></pre>
+    <p>Contents:</p>
+    <pre><code># XC-DSC compiler bin/ directory (use forward slashes)
+build.compiler.path=C:/Program Files/Microchip/xc-dsc/v3.31/bin/
+
+# Device Family Pack path (MP family)
+build.dfp.path=C:/Users/YOU/.mchp_packs/Microchip/dsPIC33CK-MP_DFP/1.15.423/xc16
+
+# Device Family Pack path (MC family)
+build.dfp.path.mc=C:/Users/YOU/.mchp_packs/Microchip/dsPIC33CK-MC_DFP/1.10.386/xc16
+
+# MPLAB X IPE directory (for programming)
+build.tools.mplab.path=C:/Program Files/Microchip/MPLABX/v6.30/mplab_platform/mplab_ipe</code></pre>
+    <p>Restart Arduino IDE after saving changes.</p>
+</div>
+
+<!-- ===== FOLDER STRUCTURE ===== -->
+<h2>7. What's in the arduino-platform Folder</h2>
+
+<div class="folder-tree">
+    <span class="folder">arduino-platform/</span><br>
+    &boxvr;&boxh;&boxh; <span class="important">install_arduino_ide.bat</span> &larr; Run this to install<br>
+    &boxvr;&boxh;&boxh; <span class="folder">microchip/dspic33ck/</span><br>
+    &boxv;&nbsp;&nbsp;&nbsp;&boxvr;&boxh;&boxh; <span class="file">platform.txt</span> &larr; Build recipes (compiler, linker, bin2hex, upload)<br>
+    &boxv;&nbsp;&nbsp;&nbsp;&boxvr;&boxh;&boxh; <span class="file">boards.txt</span> &larr; Board definitions (MCU, clock, pins)<br>
+    &boxv;&nbsp;&nbsp;&nbsp;&boxvr;&boxh;&boxh; <span class="folder">cores/arduino/</span> &larr; Arduino API implementation (digitalWrite, delay, etc.)<br>
+    &boxv;&nbsp;&nbsp;&nbsp;&boxvr;&boxh;&boxh; <span class="folder">variants/</span> &larr; Pin mappings for each board<br>
+    &boxv;&nbsp;&nbsp;&nbsp;&boxvr;&boxh;&boxh; <span class="folder">tools/</span> &larr; Helper scripts (suppress-stderr, size wrapper)<br>
+    &boxv;&nbsp;&nbsp;&nbsp;&boxur;&boxh;&boxh; <span class="file">programmers.txt</span> &larr; Programmer definitions<br>
+    &boxur;&boxh;&boxh; <span class="folder">docs/</span> &larr; Documentation (you are here)<br>
+</div>
+
+<!-- ===== SUMMARY ===== -->
+<h2>Summary</h2>
+
+<div class="info-box">
+    <strong>To set up on a new computer:</strong>
+    <ol>
+        <li>Install Arduino IDE 2.x, XC-DSC compiler, and MPLAB X IDE</li>
+        <li>Install DFP via MPLAB X (Tools &rarr; Packs &rarr; dsPIC33CK-MP_DFP)</li>
+        <li>Copy <code>arduino-platform</code> folder to any drive</li>
+        <li>Run <code>install_arduino_ide.bat</code></li>
+        <li>Open Arduino IDE &rarr; select board &rarr; compile &rarr; upload</li>
+    </ol>
+    <p>That's it! The installer handles all path configuration automatically.</p>
+</div>
+
+</body>
+</html>

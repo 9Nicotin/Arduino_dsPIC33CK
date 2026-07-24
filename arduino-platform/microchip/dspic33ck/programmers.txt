@@ -1,0 +1,31 @@
+# Programmers for Arduino_dsPIC33CK Platform
+
+pickit5.name=PICkit 5
+pickit5.communication=usb
+pickit5.protocol=icsp
+pickit5.program.tool=pickit5
+pickit5.program.extra_params=
+
+pickit4.name=PICkit 4
+pickit4.communication=usb
+pickit4.protocol=icsp
+pickit4.program.tool=pickit4
+pickit4.program.extra_params=
+
+snap.name=MPLAB SNAP
+snap.communication=usb
+snap.protocol=icsp
+snap.program.tool=snap
+snap.program.extra_params=
+
+pkob4.name=PKOB4 (Curiosity On-Board)
+pkob4.communication=usb
+pkob4.protocol=icsp
+pkob4.program.tool=pkob4
+pkob4.program.extra_params=
+
+uart_bootloader.name=UART Bootloader
+uart_bootloader.communication=serial
+uart_bootloader.protocol=uart
+uart_bootloader.program.tool=dspic33ck_upload
+uart_bootloader.program.extra_params=

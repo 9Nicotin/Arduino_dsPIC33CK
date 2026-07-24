@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino_dsPIC33CK - Part 1: Introduction & Setup</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.7;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 30px;
+            background: #f8f9fa;
+            color: #333;
+        }
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #2e86c1;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2e86c1;
+            margin-top: 40px;
+            border-left: 4px solid #2e86c1;
+            padding-left: 12px;
+        }
+        h3 {
+            color: #1a5276;
+            margin-top: 25px;
+        }
+        .info-box {
+            background: #d4efdf;
+            border-left: 5px solid #27ae60;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .warning-box {
+            background: #fdebd0;
+            border-left: 5px solid #f39c12;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .danger-box {
+            background: #fadbd8;
+            border-left: 5px solid #e74c3c;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        code {
+            background: #ecf0f1;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 0.85em;
+            line-height: 1.5;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #bdc3c7;
+            padding: 10px 14px;
+            text-align: left;
+        }
+        th {
+            background: #2e86c1;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background: #eaf2f8;
+        }
+        .step {
+            background: white;
+            border: 1px solid #d5dbdb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .step-number {
+            display: inline-block;
+            background: #2e86c1;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 32px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .nav-links {
+            background: #eaf2f8;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .nav-links a {
+            color: #2e86c1;
+            text-decoration: none;
+            margin-right: 15px;
+        }
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Arduino_dsPIC33CK User Guide</h1>
+<h2 style="border:none; padding:0; margin-top:5px; color:#666; font-size:1em;">Part 1: Introduction & Setup</h2>
+
+<div class="nav-links">
+    <strong>Navigation:</strong>
+    <a href="part1_introduction_setup.html"><b>Part 1: Setup</b></a>
+    <a href="part2_pin_mapping_hardware.html">Part 2: Pin Mapping</a>
+    <a href="part3_api_reference.html">Part 3: API Reference</a>
+    <a href="part4_testing_sketches.html">Part 4: Testing Sketches</a>
+    <a href="part5_upload_troubleshooting.html">Part 5: Upload & Troubleshooting</a>
+</div>
+
+<h2>1.1 What is Arduino_dsPIC33CK?</h2>
+
+<p>
+    <strong>Arduino_dsPIC33CK</strong> is a custom Arduino-compatible platform that allows you to program
+    Microchip's <strong>dsPIC33CK32MP102</strong> digital signal controller using the familiar Arduino programming style.
+</p>
+
+<p>Instead of writing complex register-level code like this:</p>
+
+<pre><code>// Traditional dsPIC33CK code (complex)
+TRISAbits.TRISA0 = 0;      // Set RA0 as output
+LATAbits.LATA0 = 1;        // Set RA0 high
+T1CONbits.TON = 1;         // Start timer
+// ... many more register manipulations
+</code></pre>
+
+<p>You can write simple Arduino-style code:</p>
+
+<pre><code>// Arduino_dsPIC33CK code (simple)
+pinMode(LED_BUILTIN, OUTPUT);
+digitalWrite(LED_BUILTIN, HIGH);
+delay(1000);
+</code></pre>
+
+<h3>How It Works (Architecture)</h3>
+
+<pre><code>
+  +---------------------------+
+  |   Your Arduino Sketch     |   &lt;-- You write this (setup/loop)
+  |   (Blink.ino)             |
+  +---------------------------+
+             |
+             v
+  +---------------------------+
+  |   Arduino Core API        |   &lt;-- Arduino_dsPIC33CK provides this
+  |   (Arduino.h)             |
+  |   digitalWrite()          |
+  |   analogRead()            |
+  |   millis()                |
+  |   Serial_print()          |
+  +---------------------------+
+             |
+             v
+  +---------------------------+
+  |   dsPIC33CK Hardware      |   &lt;-- Registers, peripherals
+  |   Abstraction Layer       |
+  |   (variant.c, pin_map)    |
+  +---------------------------+
+             |
+             v
+  +---------------------------+
+  |   XC16 Compiler (XC-DSC)  |   &lt;-- Compiles to dsPIC machine code
+  +---------------------------+
+             |
+             v
+  +---------------------------+
+  |   dsPIC33CK32MP102 MCU    |   &lt;-- Physical hardware
+  +---------------------------+
+</code></pre>
+
+<h2>1.2 What You Need (Prerequisites)</h2>
+
+<table>
+    <tr>
+        <th>Item</th>
+        <th>Required?</th>
+        <th>Download / Notes</th>
+    </tr>
+    <tr>
+        <td>XC16 Compiler (XC-DSC) v3.31+</td>
+        <td><strong>YES</strong></td>
+        <td><a href="https://www.microchip.com/xc16">microchip.com/xc16</a> — Free mode available</td>
+    </tr>
+    <tr>
+        <td>MPLAB X IDE v6.20+</td>
+        <td>Recommended</td>
+        <td><a href="https://www.microchip.com/mplab">microchip.com/mplab</a></td>
+    </tr>
+    <tr>
+        <td>dsPIC33CK-MP Device Family Pack</td>
+        <td><strong>YES</strong></td>
+        <td>Install via MPLAB X "Packs" tab</td>
+    </tr>
+    <tr>
+        <td>PICkit 4 or MPLAB SNAP</td>
+        <td><strong>YES</strong> (for programming)</td>
+        <td>ICSP programmer/debugger</td>
+    </tr>
+    <tr>
+        <td>dsPIC33CK32MP102 board</td>
+        <td><strong>YES</strong></td>
+        <td>Custom board or dev board with this MCU</td>
+    </tr>
+    <tr>
+        <td>USB-to-UART adapter</td>
+        <td>For Serial output</td>
+        <td>FTDI, CP2102, CH340 — any 3.3V adapter</td>
+    </tr>
+    <tr>
+        <td>Python 3.8+</td>
+        <td>For UART upload</td>
+        <td><a href="https://python.org">python.org</a></td>
+    </tr>
+    <tr>
+        <td>LED + 330 ohm resistor</td>
+        <td>For Blink test</td>
+        <td>Standard through-hole components</td>
+    </tr>
+</table>
+
+<div class="danger-box">
+    <strong>IMPORTANT: 3.3V ONLY!</strong><br>
+    The dsPIC33CK32MP102 operates at 3.3V. Do NOT connect 5V signals to any pin.
+    If using a USB-Serial adapter, ensure it supports 3.3V logic levels.
+</div>
+
+<h2>1.3 Installation Steps</h2>
+
+<div class="step">
+    <h3><span class="step-number">1</span>Install XC16 Compiler</h3>
+    <ol>
+        <li>Download XC16 (XC-DSC) from <a href="https://www.microchip.com/xc16">microchip.com/xc16</a></li>
+        <li>Run the installer (accept defaults)</li>
+        <li>Default path: <code>C:\Program Files\Microchip\xc16\v3.31\</code></li>
+        <li>Add to system PATH: <code>C:\Program Files\Microchip\xc16\v3.31\bin</code></li>
+    </ol>
+
+    <p><strong>Verify installation</strong> — open Command Prompt and type:</p>
+    <pre><code>xc16-gcc --version</code></pre>
+    <p>Expected output: <code>xc16-gcc v3.31 ...</code></p>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">2</span>Install MPLAB X IDE</h3>
+    <ol>
+        <li>Download from <a href="https://www.microchip.com/mplab">microchip.com/mplab</a></li>
+        <li>Install with default options</li>
+        <li>Open MPLAB X → Tools → Packs</li>
+        <li>Search for <strong>dsPIC33CK-MP_DFP</strong> and install it</li>
+    </ol>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">3</span>Set Up the Arduino_dsPIC33CK Platform</h3>
+    <p>The platform files are already in your project at:</p>
+    <pre><code>C:\Users\A18434\MPLABProjects\SCCP1_dsPIC33CK\arduino-platform\</code></pre>
+
+    <p><strong>Folder contents:</strong></p>
+    <pre><code>arduino-platform/
+├── microchip/dspic33ck/
+│   ├── boards.txt            (board config)
+│   ├── platform.txt          (compiler config)
+│   ├── cores/arduino/        (Arduino API source files)
+│   ├── variants/dspic33ck32mp102/  (pin mapping)
+│   ├── tools/upload_uart.py  (upload script)
+│   └── examples/             (Blink, AnalogRead)
+├── package_...index.json     (board manager)
+└── README.md
+</code></pre>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">4</span>Create an MPLAB X Project Using This Platform</h3>
+    <ol>
+        <li>Open MPLAB X → <strong>File → New Project</strong></li>
+        <li>Select <strong>Microchip Embedded → Standalone Project</strong></li>
+        <li>Device: <strong>dsPIC33CK32MP102</strong></li>
+        <li>Tool: <strong>PICkit 4</strong> (or your programmer)</li>
+        <li>Compiler: <strong>XC-DSC (v3.31)</strong></li>
+        <li>Project Name: <strong>Arduino_dsPIC33CK_Test</strong></li>
+    </ol>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">5</span>Add Arduino Core Files to Project</h3>
+    <p>In MPLAB X, right-click <strong>"Source Files"</strong> → Add Existing Items From Folders:</p>
+
+    <p><strong>Add these source files (.c):</strong></p>
+    <pre><code>arduino-platform/microchip/dspic33ck/cores/arduino/main.c
+arduino-platform/microchip/dspic33ck/cores/arduino/system_config.c
+arduino-platform/microchip/dspic33ck/cores/arduino/wiring.c
+arduino-platform/microchip/dspic33ck/cores/arduino/wiring_digital.c
+arduino-platform/microchip/dspic33ck/cores/arduino/wiring_analog.c
+arduino-platform/microchip/dspic33ck/cores/arduino/wiring_shift.c
+arduino-platform/microchip/dspic33ck/cores/arduino/HardwareSerial.c
+arduino-platform/microchip/dspic33ck/variants/dspic33ck32mp102/variant.c
+</code></pre>
+
+    <p><strong>Add these header files (.h):</strong></p>
+    <pre><code>arduino-platform/microchip/dspic33ck/cores/arduino/Arduino.h
+arduino-platform/microchip/dspic33ck/cores/arduino/system_config.h
+arduino-platform/microchip/dspic33ck/cores/arduino/HardwareSerial.h
+arduino-platform/microchip/dspic33ck/variants/dspic33ck32mp102/pins_arduino.h
+</code></pre>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">6</span>Configure Include Paths</h3>
+    <p>Right-click Project → <strong>Properties → XC-DSC (Global Options) → xc-dsc-gcc → Preprocessing and messages</strong></p>
+    <p>Add Include directories:</p>
+    <pre><code>../arduino-platform/microchip/dspic33ck/cores/arduino
+../arduino-platform/microchip/dspic33ck/variants/dspic33ck32mp102
+</code></pre>
+
+    <p><strong>Add Preprocessor Macros</strong> (in the same properties page):</p>
+    <pre><code>F_CPU=8000000UL
+FCY=4000000UL
+ARDUINO_DSPIC33CK32MP102
+</code></pre>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">7</span>Write Your First Sketch</h3>
+    <p>Create a new file called <code>sketch.c</code> in your project's Source Files:</p>
+    <pre><code>/* sketch.c - Your Arduino sketch */
+#include "Arduino.h"
+
+void setup()
+{
+    pinMode(LED_BUILTIN, OUTPUT);  // D0 = RA0
+}
+
+void loop()
+{
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(1000);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(1000);
+}
+</code></pre>
+
+    <div class="info-box">
+        <strong>Note:</strong> Do NOT include your own <code>main()</code> function.
+        The Arduino core's <code>main.c</code> already handles calling <code>setup()</code> once
+        and <code>loop()</code> repeatedly.
+    </div>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">8</span>Build & Program</h3>
+    <ol>
+        <li>Click the <strong>Build</strong> button (hammer icon) or press F11</li>
+        <li>Fix any errors (see Troubleshooting in Part 5)</li>
+        <li>Connect PICkit 4 to the board ICSP header</li>
+        <li>Click <strong>Make and Program Device</strong> (down-arrow icon)</li>
+        <li>Watch the LED blink!</li>
+    </ol>
+</div>
+
+<h2>1.4 Project Structure Summary</h2>
+
+<pre><code>Your MPLAB X Project/
+├── Source Files/
+│   ├── sketch.c              &lt;-- YOUR CODE (setup + loop)
+│   ├── main.c                &lt;-- Arduino entry point (DO NOT EDIT)
+│   ├── system_config.c       &lt;-- Clock &amp; config bits
+│   ├── wiring.c              &lt;-- millis/delay
+│   ├── wiring_digital.c      &lt;-- GPIO functions
+│   ├── wiring_analog.c       &lt;-- ADC &amp; PWM
+│   ├── wiring_shift.c        &lt;-- shiftOut/In
+│   ├── HardwareSerial.c      &lt;-- UART Serial
+│   └── variant.c             &lt;-- Pin lookup table
+├── Header Files/
+│   ├── Arduino.h             &lt;-- Main API (include this)
+│   ├── system_config.h
+│   ├── HardwareSerial.h
+│   └── pins_arduino.h        &lt;-- Pin definitions
+└── Important Files/
+    └── (linker script auto-selected by compiler)
+</code></pre>
+
+<div class="info-box">
+    <strong>Next:</strong> Continue to <a href="part2_pin_mapping_hardware.html">Part 2: Pin Mapping & Hardware</a>
+    to learn which physical pins correspond to which Arduino pin numbers.
+</div>
+
+</body>
+</html>

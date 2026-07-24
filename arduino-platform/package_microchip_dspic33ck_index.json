@@ -1,0 +1,54 @@
+{
+  "packages": [
+    {
+      "name": "microchip",
+      "maintainer": "Microchip Technology",
+      "websiteURL": "https://www.microchip.com",
+      "email": "support@microchip.com",
+      "platforms": [
+        {
+          "name": "Arduino_dsPIC33CK",
+          "architecture": "dspic33ck",
+          "version": "1.0.0",
+          "category": "Contributed",
+          "url": "",
+          "archiveFileName": "dspic33ck-arduino-core-1.0.0.zip",
+          "checksum": "",
+          "size": "",
+          "boards": [
+            { "name": "Arduino_dsPIC33CK" }
+          ],
+          "toolsDependencies": [
+            {
+              "packager": "microchip",
+              "name": "xc16",
+              "version": "3.31"
+            }
+          ]
+        }
+      ],
+      "tools": [
+        {
+          "name": "xc16",
+          "version": "3.31",
+          "systems": [
+            {
+              "host": "x86_64-pc-linux-gnu",
+              "url": "",
+              "archiveFileName": "xc16-v3.31-linux-x64.tar.gz",
+              "size": "",
+              "checksum": ""
+            },
+            {
+              "host": "i686-mingw32",
+              "url": "",
+              "archiveFileName": "xc16-v3.31-windows.zip",
+              "size": "",
+              "checksum": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

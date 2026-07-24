@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How To Use - Part 4: Upload to Hardware</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.8; max-width: 920px; margin: 0 auto; padding: 30px; background: #f8f9fa; color: #333; }
+        h1 { color: #1a5276; border-bottom: 3px solid #2e86c1; padding-bottom: 10px; font-size: 1.8em; }
+        h2 { color: #2e86c1; margin-top: 40px; border-left: 4px solid #2e86c1; padding-left: 12px; }
+        h3 { color: #1a5276; margin-top: 25px; }
+        .info-box { background: #d4efdf; border-left: 5px solid #27ae60; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .warning-box { background: #fdebd0; border-left: 5px solid #f39c12; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .danger-box { background: #fadbd8; border-left: 5px solid #e74c3c; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        code { background: #ecf0f1; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 0.9em; }
+        pre { background: #2c3e50; color: #ecf0f1; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+        pre code { background: none; padding: 0; color: inherit; }
+        .step { background: white; border: 1px solid #d5dbdb; border-radius: 8px; padding: 20px 25px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.06); }
+        .step-number { display: inline-block; background: #2e86c1; color: white; width: 34px; height: 34px; border-radius: 50%; text-align: center; line-height: 34px; font-weight: bold; margin-right: 10px; }
+        .nav-bar { background: #1a5276; padding: 12px 20px; border-radius: 6px; margin-bottom: 30px; }
+        .nav-bar a { color: #aed6f1; text-decoration: none; margin-right: 18px; font-size: 0.9em; }
+        .nav-bar a:hover { color: #fff; text-decoration: underline; }
+        .nav-bar a.active { color: #fff; font-weight: bold; border-bottom: 2px solid #f39c12; padding-bottom: 2px; }
+        .terminal { background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 6px; font-family: 'Consolas', monospace; font-size: 0.82em; line-height: 1.6; border: 1px solid #333; }
+        .terminal .success { color: #4ec9b0; }
+        .terminal .error { color: #f44747; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #bdc3c7; padding: 10px 14px; text-align: left; }
+        th { background: #2e86c1; color: white; }
+        tr:nth-child(even) { background: #eaf2f8; }
+    </style>
+</head>
+<body>
+
+<div class="nav-bar">
+    <a href="part1_installation.html">1. Installation</a>
+    <a href="part2_writing_sketches.html">2. Writing Sketches</a>
+    <a href="part3_build_verify.html">3. Build &amp; Verify</a>
+    <a href="part4_upload_hardware.html" class="active">4. Upload to Hardware</a>
+    <a href="part5_serial_debugging.html">5. Serial &amp; Debugging</a>
+</div>
+
+<h1>How To Use Arduino_dsPIC33CK</h1>
+<h2 style="border:none;padding:0;margin-top:5px;color:#666;font-size:1.1em;">Part 4: Upload to Hardware</h2>
+
+<h2>4.1 Hardware Connections</h2>
+
+<div class="step">
+    <h3><span class="step-number">1</span>Connect PICkit 4 to the Board</h3>
+    <p>Wire the 5-pin ICSP header between PICkit 4 and your dsPIC33CK board:</p>
+    <pre><code>
+     PICkit 4                       dsPIC33CK32MP102
+     (5-pin header)                 (28-pin chip)
+    ┌──────────────┐               ┌──────────────────┐
+    │ Pin 1: MCLR  │──────────────▶│ Pin 1:  MCLR     │
+    │ Pin 2: VDD   │──────────────▶│ Pin 13: VDD      │
+    │ Pin 3: GND   │──────────────▶│ Pin 8:  VSS/GND  │
+    │ Pin 4: PGD   │──────────────▶│ PGD1 pin         │
+    │ Pin 5: PGC   │──────────────▶│ PGC1 pin         │
+    └──────────────┘               └──────────────────┘
+
+    ▲ Pin 1 on PICkit 4 is marked with a triangle/arrow
+    </code></pre>
+
+    <div class="danger-box">
+        <strong>Check VDD before connecting!</strong>
+        <ul style="margin-bottom:0;">
+            <li>PICkit 4 can supply power (3.3V) if configured — or you use external power</li>
+            <li>NEVER set PICkit to supply 5V to dsPIC33CK!</li>
+            <li>If using external power, connect VDD/GND from your power supply too</li>
+        </ul>
+    </div>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">2</span>Connect PICkit 4 to PC</h3>
+    <ol>
+        <li>Plug PICkit 4 into a USB port on your PC</li>
+        <li>Wait for Windows to recognize it (driver installs automatically with MPLAB X)</li>
+        <li>The PICkit 4 LED should be solid or blinking to indicate it's ready</li>
+    </ol>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">3</span>Add the Test LED</h3>
+    <p>For the Blink example, connect an LED to RA0 (Arduino pin D0):</p>
+    <pre><code>
+    dsPIC33CK Pin 2 (RA0)
+         │
+        [330Ω]   ← Current limiting resistor
+         │
+        [LED]    ← Anode (+, longer leg)
+         │
+        [LED]    ← Cathode (-, shorter leg / flat side)
+         │
+        GND      ← Pin 8 (VSS)
+    </code></pre>
+</div>
+
+<h2>4.2 Upload from Arduino IDE</h2>
+
+<div class="step">
+    <h3><span class="step-number">4</span>Select Programmer in Arduino IDE</h3>
+    <ol>
+        <li>Go to <strong>Tools → Programmer</strong></li>
+        <li>Select <strong>PICkit 4 (ICSP)</strong></li>
+    </ol>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">5</span>Click Upload</h3>
+    <ol>
+        <li>Click the <strong>Upload button (→ arrow)</strong> in the toolbar</li>
+        <li>Or press <strong>Ctrl+U</strong></li>
+        <li>Arduino IDE will:
+            <ul>
+                <li>Compile the sketch (if not already compiled)</li>
+                <li>Call <code>ipecmd.exe</code> to program the device</li>
+            </ul>
+        </li>
+    </ol>
+</div>
+
+<h3>Successful Upload Output</h3>
+
+<div class="terminal">
+Compiling sketch...<br>
+Linking...<br>
+<span class="success">Done compiling.</span><br><br>
+Uploading...<br>
+<span class="success">"C:/Program Files/Microchip/MPLABX/v6.20/mplab_platform/bin/ipecmd.exe" -TPPK4 -P33CK32MP102 -M -F"Blink.hex"</span><br><br>
+Connecting to MPLAB PICkit 4...<br>
+Firmware Suite Version: 01.63.18<br>
+Target voltage detected: 3.30V<br>
+Device ID Revision = A3<br><br>
+Erasing...<br>
+<span class="success">Erase successful</span><br><br>
+Programming...<br>
+<span class="success">Programming successful</span><br><br>
+Verify...<br>
+<span class="success">Verify successful</span><br><br>
+<span class="success">Done uploading.</span>
+</div>
+
+<div class="info-box">
+    <strong>After upload:</strong> The device automatically resets and starts running your sketch. If you wired an LED to D0, it should start blinking immediately!
+</div>
+
+<h2>4.3 Upload Errors and Solutions</h2>
+
+<table>
+    <tr><th>Error Message</th><th>Cause</th><th>Solution</th></tr>
+    <tr>
+        <td><code>ipecmd: not found</code></td>
+        <td>MPLAB X not installed or wrong path</td>
+        <td>Edit <code>platform.local.txt</code>, set <code>tools.pickit4.path</code> to your actual MPLAB X bin folder</td>
+    </tr>
+    <tr>
+        <td><code>Target device not found</code></td>
+        <td>PICkit not connected or bad wiring</td>
+        <td>Check USB connection; verify all 5 ICSP wires; check pin orientation</td>
+    </tr>
+    <tr>
+        <td><code>Device ID does not match</code></td>
+        <td>Wrong device selected</td>
+        <td>Verify board is actually dsPIC33CK32MP102. Read chip markings.</td>
+    </tr>
+    <tr>
+        <td><code>Failed to program</code></td>
+        <td>Device is code-protected</td>
+        <td>Use MPLAB IPE to do a "Bulk Erase" first, then retry upload</td>
+    </tr>
+    <tr>
+        <td><code>VDD out of range</code></td>
+        <td>Power supply issue</td>
+        <td>Check VDD is 3.3V (2.7-3.6V range). Enable "Power from PICkit" if no external supply.</td>
+    </tr>
+    <tr>
+        <td><code>Unable to enter programming mode</code></td>
+        <td>MCLR not connected properly</td>
+        <td>Ensure MCLR pin has 10K pull-up to VDD and is connected to PICkit Pin 1</td>
+    </tr>
+</table>
+
+<h2>4.4 Alternative: UART Bootloader Upload</h2>
+
+<p>If you have a UART bootloader pre-programmed, you can upload via serial port:</p>
+
+<div class="step">
+    <h3>Setup for UART Upload</h3>
+    <ol>
+        <li>Select programmer: <strong>Tools → Programmer → UART Bootloader (Serial)</strong></li>
+        <li>Select port: <strong>Tools → Port → COMx</strong> (your USB-Serial adapter)</li>
+        <li>Put device in bootloader mode (reset while holding BOOT pin)</li>
+        <li>Click Upload (→)</li>
+    </ol>
+    <div class="warning-box">
+        <strong>Note:</strong> UART bootloader requires a bootloader to be pre-programmed using PICkit first. This is a one-time setup. After that, you can update via UART only.
+    </div>
+</div>
+
+<h2>4.5 Verifying Your Upload Worked</h2>
+
+<div class="step">
+    <h3>Check: Is the Program Running?</h3>
+    <table>
+        <tr><th>What to Check</th><th>Expected Result</th><th>If Not Working</th></tr>
+        <tr>
+            <td>LED on D0 (Blink sketch)</td>
+            <td>Blinks 1 second on / 1 second off</td>
+            <td>Check LED polarity, resistor, wiring to pin 2</td>
+        </tr>
+        <tr>
+            <td>Serial output (Serial sketch)</td>
+            <td>Text appears in terminal at correct baud</td>
+            <td>Check TX/RX wiring, baud rate setting</td>
+        </tr>
+        <tr>
+            <td>Current consumption</td>
+            <td>~10-30mA at 3.3V (active)</td>
+            <td>If 0mA: device not powered. If >100mA: short circuit!</td>
+        </tr>
+    </table>
+</div>
+
+<h2>4.6 Re-uploading New Code</h2>
+
+<p>To change your program:</p>
+<ol>
+    <li>Edit your sketch in Arduino IDE</li>
+    <li>Click Upload (→) again</li>
+    <li>The previous program is erased and replaced with the new one</li>
+    <li>Device resets and runs the new code immediately</li>
+</ol>
+
+<div class="info-box">
+    You can upload as many times as you want. Flash memory supports approximately 10,000 erase/write cycles before wearing out.
+</div>
+
+<div class="info-box">
+    <strong>Next:</strong> Continue to <a href="part5_serial_debugging.html">Part 5: Serial Monitor &amp; Debugging</a> to learn how to monitor output and debug problems.
+</div>
+
+</body>
+</html>

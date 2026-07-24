@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How To Use - Part 1: Installation</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.8; max-width: 920px; margin: 0 auto; padding: 30px; background: #f8f9fa; color: #333; }
+        h1 { color: #1a5276; border-bottom: 3px solid #2e86c1; padding-bottom: 10px; font-size: 1.8em; }
+        h2 { color: #2e86c1; margin-top: 40px; border-left: 4px solid #2e86c1; padding-left: 12px; }
+        h3 { color: #1a5276; margin-top: 25px; }
+        .info-box { background: #d4efdf; border-left: 5px solid #27ae60; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .warning-box { background: #fdebd0; border-left: 5px solid #f39c12; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .danger-box { background: #fadbd8; border-left: 5px solid #e74c3c; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        code { background: #ecf0f1; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 0.9em; }
+        pre { background: #2c3e50; color: #ecf0f1; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+        pre code { background: none; padding: 0; color: inherit; }
+        .step { background: white; border: 1px solid #d5dbdb; border-radius: 8px; padding: 20px 25px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.06); }
+        .step-number { display: inline-block; background: #2e86c1; color: white; width: 34px; height: 34px; border-radius: 50%; text-align: center; line-height: 34px; font-weight: bold; margin-right: 10px; font-size: 1em; }
+        .nav-bar { background: #1a5276; padding: 12px 20px; border-radius: 6px; margin-bottom: 30px; }
+        .nav-bar a { color: #aed6f1; text-decoration: none; margin-right: 18px; font-size: 0.9em; }
+        .nav-bar a:hover { color: #fff; text-decoration: underline; }
+        .nav-bar a.active { color: #fff; font-weight: bold; border-bottom: 2px solid #f39c12; padding-bottom: 2px; }
+        .terminal { background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 6px; font-family: 'Consolas', monospace; font-size: 0.85em; line-height: 1.6; border: 1px solid #333; }
+        .terminal .prompt { color: #6a9955; }
+        .terminal .output { color: #9cdcfe; }
+        .terminal .success { color: #4ec9b0; }
+        .terminal .error { color: #f44747; }
+        .checklist { list-style: none; padding: 0; }
+        .checklist li { padding: 8px 0; padding-left: 30px; position: relative; }
+        .checklist li:before { content: "☐"; position: absolute; left: 0; color: #2e86c1; font-size: 1.2em; }
+        img { max-width: 100%; border: 1px solid #ddd; border-radius: 4px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+<div class="nav-bar">
+    <a href="part1_installation.html" class="active">1. Installation</a>
+    <a href="part2_writing_sketches.html">2. Writing Sketches</a>
+    <a href="part3_build_verify.html">3. Build &amp; Verify</a>
+    <a href="part4_upload_hardware.html">4. Upload to Hardware</a>
+    <a href="part5_serial_debugging.html">5. Serial &amp; Debugging</a>
+</div>
+
+<h1>How To Use Arduino_dsPIC33CK</h1>
+<h2 style="border:none;padding:0;margin-top:5px;color:#666;font-size:1.1em;">Part 1: Installation</h2>
+
+<p>This guide walks you through installing the Arduino_dsPIC33CK platform into your Arduino IDE so you can start writing and uploading sketches to the dsPIC33CK32MP102 microcontroller.</p>
+
+<h2>1.1 What You Need to Install</h2>
+
+<p>Three software components must be installed in order:</p>
+
+<table style="width:100%;border-collapse:collapse;margin:20px 0;">
+    <tr style="background:#2e86c1;color:white;"><th style="padding:12px;border:1px solid #1a5276;">Software</th><th style="padding:12px;border:1px solid #1a5276;">Version</th><th style="padding:12px;border:1px solid #1a5276;">Purpose</th><th style="padding:12px;border:1px solid #1a5276;">Download</th></tr>
+    <tr><td style="padding:10px;border:1px solid #ddd;"><strong>1. Arduino IDE</strong></td><td style="padding:10px;border:1px solid #ddd;">2.x</td><td style="padding:10px;border:1px solid #ddd;">The development environment (editor + build system)</td><td style="padding:10px;border:1px solid #ddd;"><a href="https://www.arduino.cc/en/software">arduino.cc</a></td></tr>
+    <tr style="background:#eaf2f8;"><td style="padding:10px;border:1px solid #ddd;"><strong>2. XC-DSC Compiler</strong></td><td style="padding:10px;border:1px solid #ddd;">v3.31+</td><td style="padding:10px;border:1px solid #ddd;">Compiles C code into dsPIC33CK machine code</td><td style="padding:10px;border:1px solid #ddd;"><a href="https://www.microchip.com/xc-dsc">microchip.com</a></td></tr>
+    <tr><td style="padding:10px;border:1px solid #ddd;"><strong>3. MPLAB X IDE</strong></td><td style="padding:10px;border:1px solid #ddd;">v6.20+</td><td style="padding:10px;border:1px solid #ddd;">Provides ipecmd.exe for PICkit4 upload + DFP packs</td><td style="padding:10px;border:1px solid #ddd;"><a href="https://www.microchip.com/mplab">microchip.com</a></td></tr>
+</table>
+
+<h2>1.2 Install Arduino IDE</h2>
+
+<div class="step">
+    <h3><span class="step-number">1</span>Download Arduino IDE 2.x</h3>
+    <ol>
+        <li>Go to <a href="https://www.arduino.cc/en/software">https://www.arduino.cc/en/software</a></li>
+        <li>Download <strong>Arduino IDE 2.x</strong> for Windows</li>
+        <li>Run the installer with default settings</li>
+        <li>Launch Arduino IDE once to create the data folders</li>
+    </ol>
+    <div class="info-box">
+        After first launch, Arduino creates: <code>%LOCALAPPDATA%\Arduino15\</code><br>
+        This is where our platform will be installed.
+    </div>
+</div>
+
+<h2>1.3 Install XC-DSC Compiler</h2>
+
+<div class="step">
+    <h3><span class="step-number">2</span>Download and Install XC-DSC</h3>
+    <ol>
+        <li>Go to <a href="https://www.microchip.com/xc-dsc">https://www.microchip.com/xc-dsc</a></li>
+        <li>Download <strong>MPLAB XC-DSC Compiler</strong> v3.31</li>
+        <li>Run installer → Accept license → Install to default path:
+            <pre><code>C:\Program Files\Microchip\xc-dsc\v3.31\</code></pre>
+        </li>
+        <li>When prompted "Add to PATH", select <strong>YES</strong></li>
+    </ol>
+    <div class="info-box">
+        <strong>Note:</strong> XC-DSC is Microchip's compiler for dsPIC DSC devices. It is C-only (no C++ support), which is why the Arduino platform compiles all files as C.
+    </div>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">3</span>Verify XC-DSC Installation</h3>
+    <p>Open <strong>Command Prompt</strong> (Win+R → type <code>cmd</code> → Enter) and run:</p>
+    <div class="terminal">
+        <span class="prompt">C:\Users\YourName&gt;</span> xc-dsc-gcc --version<br>
+        <span class="output">Microchip XC-DSC Compiler v3.31</span><br>
+        <span class="output">Copyright (C) Microchip Technology Inc.</span><br>
+        <br>
+        <span class="success">✓ If you see version info, XC-DSC is correctly installed.</span>
+    </div>
+    <br>
+    <p>If you get "not recognized", add XC-DSC to PATH manually:</p>
+    <ol>
+        <li>Press Win+S, search "Environment Variables"</li>
+        <li>Click "Edit the system environment variables"</li>
+        <li>Click "Environment Variables" button</li>
+        <li>Under "System variables", find <strong>Path</strong>, click Edit</li>
+        <li>Click "New" and add: <code>C:\Program Files\Microchip\xc-dsc\v3.31\bin</code></li>
+        <li>Click OK on all dialogs</li>
+        <li>Reopen Command Prompt and retry</li>
+    </ol>
+</div>
+
+<h2>1.4 Install MPLAB X IDE (for ipecmd + Device Family Pack)</h2>
+
+<div class="step">
+    <h3><span class="step-number">4</span>Download and Install MPLAB X</h3>
+    <ol>
+        <li>Go to <a href="https://www.microchip.com/mplab">https://www.microchip.com/mplab</a></li>
+        <li>Download <strong>MPLAB X IDE</strong> v6.20+</li>
+        <li>Run installer with default settings</li>
+        <li>This installs <code>ipecmd.exe</code> which Arduino IDE uses to program via PICkit 4</li>
+    </ol>
+    <div class="info-box">
+        <strong>You don't need to use MPLAB X IDE itself</strong> — we only need its <code>ipecmd.exe</code> tool for uploading and its DFP (Device Family Pack) for device definitions. You'll write and compile everything in Arduino IDE.
+    </div>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">4b</span>Install the Device Family Pack (DFP)</h3>
+    <p>The XC-DSC compiler needs a DFP to recognize the target device. Open MPLAB X IDE once to install it:</p>
+    <ol>
+        <li>Open MPLAB X IDE</li>
+        <li>Go to <strong>Tools → Packs (or Pack Manager)</strong></li>
+        <li>Search for and install the DFP for your board:
+            <table style="margin:10px 0;">
+                <tr><th style="padding:6px 12px;">Board</th><th style="padding:6px 12px;">DFP to Install</th></tr>
+                <tr><td style="padding:6px 12px;">dsPIC33CK32MP102</td><td style="padding:6px 12px;"><strong>dsPIC33CK-MP_DFP</strong> (latest version)</td></tr>
+                <tr><td style="padding:6px 12px;">dsPIC33CK256MC002</td><td style="padding:6px 12px;"><strong>dsPIC33CK-MC_DFP</strong> (latest version)</td></tr>
+            </table>
+        </li>
+        <li>Close MPLAB X IDE</li>
+    </ol>
+    <p>DFPs install to:</p>
+    <pre><code>%USERPROFILE%\.mchp_packs\Microchip\dsPIC33CK-MP_DFP\
+%USERPROFILE%\.mchp_packs\Microchip\dsPIC33CK-MC_DFP\</code></pre>
+    <div class="warning-box">
+        <strong>Important:</strong> Without the DFP, the compiler will fail with "unknown device" errors. The installer auto-detects the DFP location — no manual path editing needed.
+    </div>
+</div>
+
+<h2>1.5 Install Arduino_dsPIC33CK Platform</h2>
+
+<div class="step">
+    <h3><span class="step-number">5</span>Run the Installation Script</h3>
+    <ol>
+        <li>Open Windows Explorer</li>
+        <li>Navigate to the <code>arduino-platform</code> folder you received</li>
+        <li>Double-click <strong>install_arduino_ide.bat</strong></li>
+        <li>Wait for completion — the script auto-detects all tool paths</li>
+    </ol>
+    <div class="terminal">
+        <span class="prompt">C:\...arduino-platform&gt;</span> install_arduino_ide.bat<br><br>
+        ============================================<br>
+        &nbsp;Arduino_dsPIC33CK Platform Installer<br>
+        ============================================<br><br>
+        [1/5] Creating installation directory...<br>
+        [2/5] Copying platform files...<br>
+        [3/5] Verifying installation...<br>
+        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;boards.txt .... OK</span><br>
+        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;platform.txt .. OK</span><br>
+        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Arduino.h ..... OK</span><br>
+        [4/5] Auto-detecting tool paths...<br>
+        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XC-DSC found: C:\Program Files\Microchip\xc-dsc\v3.31\bin\</span><br>
+        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DFP [MP] found: ...dsPIC33CK-MP_DFP\1.15.423\xc16</span><br>
+        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DFP [MC] found: ...dsPIC33CK-MC_DFP\1.10.386\xc16</span><br>
+        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;MPLAB X found: ...MPLABX\v6.30\mplab_platform\mplab_ipe</span><br>
+        [5/5] Generating platform.local.txt...<br><br>
+        ============================================<br>
+        <span class="success">&nbsp;Installation Complete!</span><br>
+        ============================================<br>
+    </div>
+    <div class="info-box">
+        The installer auto-detects your XC-DSC compiler, DFP packs, and MPLAB X installation. No manual path editing is needed if you installed everything to default locations.
+    </div>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">6</span>Verify Platform is Detected</h3>
+    <ol>
+        <li>Open <strong>Arduino IDE</strong></li>
+        <li>Go to <strong>Tools → Board</strong></li>
+        <li>Look for the dsPIC33CK boards:</li>
+    </ol>
+    <div class="terminal">
+        Tools → Board:<br>
+        ┌────────────────────────────────────────────────────┐<br>
+        │ Arduino AVR Boards                                  │<br>
+        │ &nbsp;&nbsp;Arduino Uno                                      │<br>
+        │ &nbsp;&nbsp;Arduino Mega                                     │<br>
+        │ <span class="success">Arduino_dsPIC33CK (dsPIC33CK32MP102)   ← 32KB MP</span>  │<br>
+        │ <span class="success">Arduino_dsPIC33CK (dsPIC33CK256MC002)  ← 256KB MC</span> │<br>
+        └────────────────────────────────────────────────────┘<br>
+    </div>
+    <div class="warning-box">
+        <strong>Don't see it?</strong> Close ALL Arduino IDE windows completely, then reopen. The IDE only scans for new boards on startup.
+    </div>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">7</span>Manual Path Override (only if auto-detect fails)</h3>
+    <p>The installer auto-detects paths. Only edit manually if you see [WARNING] messages during install:</p>
+    <ol>
+        <li>Open this file in a text editor:<br>
+            <code>%LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\1.0.0\platform.local.txt</code></li>
+        <li>Edit the paths to match your installation:
+            <pre><code># XC-DSC compiler bin/ directory
+build.compiler.path=C:/Program Files/Microchip/xc-dsc/v3.31/bin/
+
+# DFP paths (MP and MC families)
+build.dfp.path=C:/Users/YOU/.mchp_packs/Microchip/dsPIC33CK-MP_DFP/1.15.423/xc16
+build.dfp.path.mc=C:/Users/YOU/.mchp_packs/Microchip/dsPIC33CK-MC_DFP/1.10.386/xc16
+
+# MPLAB X IPE (for PICkit 4/SNAP upload)
+build.tools.mplab.path=C:/Program Files/Microchip/MPLABX/v6.30/mplab_platform/mplab_ipe</code></pre>
+        </li>
+        <li>Save the file and restart Arduino IDE</li>
+    </ol>
+</div>
+
+<h2>1.6 Installation Verification Checklist</h2>
+
+<ul class="checklist">
+    <li>Arduino IDE 2.x opens without errors</li>
+    <li><code>xc-dsc-gcc --version</code> works in Command Prompt</li>
+    <li>MPLAB X is installed (ipecmd.exe exists)</li>
+    <li>DFP installed (at least one): dsPIC33CK-MP_DFP and/or dsPIC33CK-MC_DFP</li>
+    <li>install_arduino_ide.bat completed — all paths auto-detected</li>
+    <li>"Arduino_dsPIC33CK" boards appear in Tools → Board menu</li>
+</ul>
+
+<div class="info-box">
+    <strong>Installation complete!</strong> Continue to <a href="part2_writing_sketches.html">Part 2: Writing Sketches</a> to learn how to write code for the dsPIC33CK in Arduino IDE.
+</div>
+
+</body>
+</html>
