@@ -9,6 +9,15 @@
  *   - ADC trigger synchronization
  *   - Hardware fault protection
  *
+ * Device support: this library requires a part with the high-resolution PWM
+ * option, i.e. an Auxiliary PLL (ACLKCON1/APLLFBD1/APLLDIV1) feeding the PWM
+ * master clock and a PCLKCON.HRRDY status bit. The MP family (e.g. 33CK32MP102,
+ * 33CK256MP508) has both; the MC Value Line parts (e.g. 33CK256MC002,
+ * 33CK256MC005) have neither register — their PWM generators are
+ * standard-resolution only and PCLKCON carries just MCLKSEL/DIVSEL/LOCK.
+ * Including this header on such a part is a hard error (see HRPWM_SUPPORTED
+ * below); use analogWrite() for standard-resolution PWM instead.
+ *
  * Pin mapping (dsPIC33CK256MP508, 80-pin):
  *   PG1: PWM1H=RB14(D19), PWM1L=RB15(D20)
  *   PG2: PWM2H=RB12(D17), PWM2L=RB13(D18)
@@ -24,6 +33,23 @@
 #define HRPWM_H
 
 #include <stdint.h>
+#include <xc.h>     /* needed before HRPWM_SUPPORTED / HRPWM_CH_MAX: the
+                     * ACLKCON1 and PGxCONL self-#defines in the device header
+                     * are what tell us which peripherals this part has */
+
+/* Does this device have the high-resolution PWM hardware at all?
+ * ACLKCON1 is the Auxiliary PLL control register; on every dsPIC33CK checked,
+ * its presence coincides exactly with PCLKCON.HRRDY, so one test covers both
+ * the 500 MHz AFPLLO clock source and the high-resolution-ready status. */
+#if defined(ACLKCON1) && defined(PG1CONL)
+#define HRPWM_SUPPORTED         1
+#else
+#define HRPWM_SUPPORTED         0
+#endif
+
+#if !HRPWM_SUPPORTED
+#error "HRPWM: the selected dsPIC33CK has no high-resolution PWM (no Auxiliary PLL / no PCLKCON.HRRDY). Use analogWrite() for standard-resolution PWM, or select an MP-family device such as dsPIC33CK256MP508."
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,9 +74,27 @@ extern "C" {
 #define HRPWM_EDGE_ALIGNED      0   /* Standard edge-aligned (MODSEL=0b000) */
 #define HRPWM_CENTER_ALIGNED    4   /* Center-aligned (MODSEL=0b100) */
 
-/* Channel range */
+/* Channel range — not every dsPIC33CK has eight PWM generators.
+ * MP508 has PG1-PG8; the 48-pin Value Line parts (e.g. 33CK256MC005 on the
+ * EV08P02A Curiosity Nano) have only PG1-PG4. */
 #define HRPWM_CH_MIN            1
+#if   defined(PG8CONL)
 #define HRPWM_CH_MAX            8
+#elif defined(PG7CONL)
+#define HRPWM_CH_MAX            7
+#elif defined(PG6CONL)
+#define HRPWM_CH_MAX            6
+#elif defined(PG5CONL)
+#define HRPWM_CH_MAX            5
+#elif defined(PG4CONL)
+#define HRPWM_CH_MAX            4
+#elif defined(PG3CONL)
+#define HRPWM_CH_MAX            3
+#elif defined(PG2CONL)
+#define HRPWM_CH_MAX            2
+#else
+#define HRPWM_CH_MAX            1
+#endif
 
 /* Library API struct (dot-notation via function pointers) */
 typedef struct {

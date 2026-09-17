@@ -14,6 +14,7 @@
 #define SPI_H
 
 #include <stdint.h>
+#include <xc.h>     /* must come first — see the SPI name clash note below */
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,6 +52,16 @@ typedef struct {
     void    (*setClockDivider)(uint8_t divider);
     void    (*setDataMode)(uint8_t mode);
 } SPIClass_t;
+
+/*
+ * Name clash with the device headers: every p33CK*.h declares
+ *   typedef struct tagSPI { ... } SPI, *PSPI;
+ * to give the SPI1/SPI2 SFR blocks a type, so the bare name `SPI` is already
+ * taken at file scope and a typedef cannot be #undef'd. Redirect the name
+ * instead — the object is really called ArduinoSPI, and sketches keep
+ * writing SPI.begin() / SPI.transfer() unchanged.
+ */
+#define SPI ArduinoSPI
 
 extern SPIClass_t SPI;
 

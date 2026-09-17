@@ -28,7 +28,7 @@ void loop()
     int sensorValue = analogRead(A0);
 
     Serial.print("ADC Value: ");
-    Serial.println_int(sensorValue, DEC);
+    Serial.println(sensorValue);
 
     delay(250);
 }

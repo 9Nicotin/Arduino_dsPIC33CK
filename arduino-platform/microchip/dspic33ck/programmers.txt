@@ -24,6 +24,12 @@ pkob4.protocol=icsp
 pkob4.program.tool=pkob4
 pkob4.program.extra_params=
 
+nedbg.name=nEDBG (Curiosity Nano On-Board)
+nedbg.communication=usb
+nedbg.protocol=icsp
+nedbg.program.tool=nedbg
+nedbg.program.extra_params=
+
 uart_bootloader.name=UART Bootloader
 uart_bootloader.communication=serial
 uart_bootloader.protocol=uart

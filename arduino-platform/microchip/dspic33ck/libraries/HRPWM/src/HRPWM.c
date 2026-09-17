@@ -5,6 +5,11 @@
 #include "HRPWM.h"
 #include <xc.h>
 
+/* HRPWM.h already emits a clear #error on parts with no high-resolution PWM.
+ * Skip the body there so that #error is the only diagnostic, instead of being
+ * buried under a cascade of undeclared-register errors. */
+#if HRPWM_SUPPORTED
+
 #ifndef FCY
 #define FCY (F_CPU / 2)
 #endif
@@ -12,7 +17,9 @@
 /* PWM master clock = AFPLLO = 500 MHz (from Auxiliary PLL) */
 #define HRPWM_MCLK_HZ  500000000UL
 
-/* Register pointer table for PG1-PG8 */
+/* Register pointer table for PG1-PGn.
+ * Entries beyond the generators this device implements are compiled out —
+ * HRPWM_CH_MAX (HRPWM.h) is derived from the same PGxCONL self-#defines. */
 typedef struct {
     volatile uint16_t *CONL;
     volatile uint16_t *CONH;
@@ -34,31 +41,47 @@ typedef struct {
     volatile uint16_t *FPCIH;
 } hrpwm_regs_t;
 
-static const hrpwm_regs_t _pg[8] = {
+static const hrpwm_regs_t _pg[HRPWM_CH_MAX] = {
+#if HRPWM_CH_MAX >= 1
     { &PG1CONL, &PG1CONH, &PG1STAT, &PG1IOCONL, &PG1IOCONH, &PG1EVTL, &PG1EVTH,
       &PG1DC, &PG1DCA, &PG1PER, &PG1PHASE, &PG1DTL, &PG1DTH,
       &PG1TRIGA, &PG1TRIGB, &PG1TRIGC, &PG1FPCIL, &PG1FPCIH },
+#endif
+#if HRPWM_CH_MAX >= 2
     { &PG2CONL, &PG2CONH, &PG2STAT, &PG2IOCONL, &PG2IOCONH, &PG2EVTL, &PG2EVTH,
       &PG2DC, &PG2DCA, &PG2PER, &PG2PHASE, &PG2DTL, &PG2DTH,
       &PG2TRIGA, &PG2TRIGB, &PG2TRIGC, &PG2FPCIL, &PG2FPCIH },
+#endif
+#if HRPWM_CH_MAX >= 3
     { &PG3CONL, &PG3CONH, &PG3STAT, &PG3IOCONL, &PG3IOCONH, &PG3EVTL, &PG3EVTH,
       &PG3DC, &PG3DCA, &PG3PER, &PG3PHASE, &PG3DTL, &PG3DTH,
       &PG3TRIGA, &PG3TRIGB, &PG3TRIGC, &PG3FPCIL, &PG3FPCIH },
+#endif
+#if HRPWM_CH_MAX >= 4
     { &PG4CONL, &PG4CONH, &PG4STAT, &PG4IOCONL, &PG4IOCONH, &PG4EVTL, &PG4EVTH,
       &PG4DC, &PG4DCA, &PG4PER, &PG4PHASE, &PG4DTL, &PG4DTH,
       &PG4TRIGA, &PG4TRIGB, &PG4TRIGC, &PG4FPCIL, &PG4FPCIH },
+#endif
+#if HRPWM_CH_MAX >= 5
     { &PG5CONL, &PG5CONH, &PG5STAT, &PG5IOCONL, &PG5IOCONH, &PG5EVTL, &PG5EVTH,
       &PG5DC, &PG5DCA, &PG5PER, &PG5PHASE, &PG5DTL, &PG5DTH,
       &PG5TRIGA, &PG5TRIGB, &PG5TRIGC, &PG5FPCIL, &PG5FPCIH },
+#endif
+#if HRPWM_CH_MAX >= 6
     { &PG6CONL, &PG6CONH, &PG6STAT, &PG6IOCONL, &PG6IOCONH, &PG6EVTL, &PG6EVTH,
       &PG6DC, &PG6DCA, &PG6PER, &PG6PHASE, &PG6DTL, &PG6DTH,
       &PG6TRIGA, &PG6TRIGB, &PG6TRIGC, &PG6FPCIL, &PG6FPCIH },
+#endif
+#if HRPWM_CH_MAX >= 7
     { &PG7CONL, &PG7CONH, &PG7STAT, &PG7IOCONL, &PG7IOCONH, &PG7EVTL, &PG7EVTH,
       &PG7DC, &PG7DCA, &PG7PER, &PG7PHASE, &PG7DTL, &PG7DTH,
       &PG7TRIGA, &PG7TRIGB, &PG7TRIGC, &PG7FPCIL, &PG7FPCIH },
+#endif
+#if HRPWM_CH_MAX >= 8
     { &PG8CONL, &PG8CONH, &PG8STAT, &PG8IOCONL, &PG8IOCONH, &PG8EVTL, &PG8EVTH,
       &PG8DC, &PG8DCA, &PG8PER, &PG8PHASE, &PG8DTL, &PG8DTH,
       &PG8TRIGA, &PG8TRIGB, &PG8TRIGC, &PG8FPCIL, &PG8FPCIH },
+#endif
 };
 
 /* CONL bit positions */
@@ -378,3 +401,5 @@ HRPWMClass_t HRPWM = {
     .isFaulted      = _hrpwm_isFaulted,
     .isRunning      = _hrpwm_isRunning,
 };
+
+#endif /* HRPWM_SUPPORTED */

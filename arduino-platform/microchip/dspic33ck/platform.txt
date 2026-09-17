@@ -162,3 +162,16 @@ tools.pkob4.path={build.tools.mplab.path}
 tools.pkob4.upload.params.verbose=
 tools.pkob4.upload.params.quiet=
 tools.pkob4.upload.pattern="{path}/{cmd}" -TPPKOB4 -P{build.mcu} -M -OL -F"{build.path}/{build.project_name}.hex"
+
+# Tool: nEDBG (on-board debugger on Curiosity Nano boards, e.g. EV08P02A)
+# "nEDBG" is the ipecmd -TP short name (see MPLAB X docs "Readme for IPECMD")
+tools.nedbg.cmd=ipecmd
+tools.nedbg.cmd.windows=ipecmd.exe
+tools.nedbg.path={build.tools.mplab.path}
+tools.nedbg.upload.params.verbose=
+tools.nedbg.upload.params.quiet=
+tools.nedbg.upload.pattern="{path}/{cmd}" -TPnEDBG -P{build.mcu} -M -OL -F"{build.path}/{build.project_name}.hex"
+# On Windows, go through a wrapper that also reboots the debugger afterwards:
+# ipecmd wedges the nEDBG's USB-CDC bridge, leaving the Serial Monitor silent
+# until "pymcuprog reboot-debugger" runs. See tools/nedbg-upload.bat.
+tools.nedbg.upload.pattern.windows="{runtime.platform.path}/tools/nedbg-upload.bat" "{path}/{cmd}" {build.mcu} "{build.path}/{build.project_name}.hex"

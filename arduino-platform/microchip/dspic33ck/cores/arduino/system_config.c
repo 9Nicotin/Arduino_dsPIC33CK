@@ -38,6 +38,20 @@ extern "C" {
 #pragma config SWDTPS = PS1     /* Sleep WDT prescaler */
 #pragma config ICS = PGD3       /* PKOB4 on DM330030 uses PGC3/PGD3 */
 #pragma config DMTDIS = ON      /* Dead Man Timer disabled */
+
+#elif defined(__dsPIC33CK256MC005__)
+/* dsPIC33CK256MC005 - 48-pin (EV08P02A Curiosity Nano)
+ * Cross-checked against Microchip's Out-of-Box Demo config_bits.c for this kit.
+ *
+ * ICS MUST be PGD3 here. The on-board nEDBG is wired to PGC3/PGD3 (RB6/RB5),
+ * NOT to PGC1/PGD1 like the 28-pin boards, so the shared 28-pin `#else` branch
+ * below would point the debug channel at pins nothing is connected to and cost
+ * debug access on this board. */
+#pragma config OSCIOFNC = ON    /* OSC2 pin is digital I/O */
+#pragma config RWDTPS = PS32768 /* WDT period */
+#pragma config WINDIS = ON      /* WDT window disabled (standard mode) */
+#pragma config ICS = PGD3       /* nEDBG on EV08P02A uses PGC3/PGD3 */
+
 #else
 /* dsPIC33CK32MP102 / dsPIC33CK256MC002 - 28-pin devices */
 #pragma config OSCIOFNC = ON    /* OSC2 pin is digital I/O */

@@ -28,9 +28,9 @@ static int testNum = 0;
 
 void printHeader(const char *title)
 {
-    Serial.println("");
+    Serial.println();
     Serial.print("=== Test ");
-    Serial.print_int(++testNum, DEC);
+    Serial.print(++testNum);
     Serial.print(": ");
     Serial.print(title);
     Serial.println(" ===");
@@ -46,12 +46,12 @@ void setup()
 
     Serial.println("=== PWM Hardware Test (Phase 9) ===");
     Serial.print("F_CPU = ");
-    Serial.print_int((long)F_CPU, DEC);
+    Serial.print(F_CPU);
     Serial.println(" Hz");
     Serial.print("FCY   = ");
-    Serial.print_int((long)FCY, DEC);
+    Serial.print(FCY);
     Serial.println(" Hz");
-    Serial.println("");
+    Serial.println();
     Serial.println("PWM on LED2 (RE5/D58) via SCCP5");
     Serial.println("Expected frequency: ~490 Hz");
     Serial.println("Waiting 3s before starting tests...");
@@ -98,11 +98,11 @@ void setup()
     Serial.println("OK - PWM re-enabled after stop");
 
     /* --- Done with static tests --- */
-    Serial.println("");
+    Serial.println();
     Serial.println("=== Static tests complete ===");
     Serial.println("Entering breathing loop on LED2...");
     Serial.println("LED1 toggles each cycle as heartbeat.");
-    Serial.println("");
+    Serial.println();
 }
 
 void loop()

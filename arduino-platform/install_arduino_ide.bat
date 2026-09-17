@@ -107,7 +107,7 @@ if defined DFP_MC_PATH (
     )
 )
 if not defined DFP_MC_PATH (
-    echo       [INFO] MC Device Family Pack not found ^(optional, for MC002 board^)
+    echo       [INFO] MC Device Family Pack not found ^(optional, for MC002 / MC005 boards^)
     echo       Install via MPLAB X IDE: Tools ^> Packs ^> search "dsPIC33CK-MC_DFP"
     set "DFP_MC_PATH="
 )
@@ -160,7 +160,7 @@ echo.
 echo # Device Family Pack path ^(MP family - for dsPIC33CK32MP102^)
 echo build.dfp.path=%DFP_FWD%
 echo.
-echo # Device Family Pack path ^(MC family - for dsPIC33CK256MC002^)
+echo # Device Family Pack path ^(MC family - for dsPIC33CK256MC002 / MC005^)
 echo build.dfp.path.mc=%DFP_MC_FWD%
 echo.
 echo # MPLAB X IPE directory ^(for PICkit 4 / SNAP programming^)

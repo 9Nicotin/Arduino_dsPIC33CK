@@ -109,3 +109,38 @@ dspic33ck256mp508.menu.clock.100mhz_pll=200 MHz PLL (alias)
 dspic33ck256mp508.menu.clock.100mhz_pll.build.f_cpu=200000000UL
 dspic33ck256mp508.menu.clock.100mhz_pll.build.fcy=100000000UL
 
+# ============================================================
+# Board: dsPIC33CK256MC005 (48-pin, Value Line Curiosity Nano EV08P02A)
+# 256KB Flash (ECC), 16KB RAM, dsPIC33CK-MC_DFP >= 1.10.386
+# On-board nEDBG debugger (PKOB nano) + CDC virtual COM on U1 (RC10/RC11)
+# ============================================================
+
+dspic33ck256mc005.name=Arduino_dsPIC33CK (dsPIC33CK256MC005 Curiosity Nano)
+
+# Upload defaults (nEDBG = on-board debugger on EV08P02A)
+dspic33ck256mc005.upload.tool=nedbg
+dspic33ck256mc005.upload.tool.default=nedbg
+dspic33ck256mc005.upload.protocol=icsp
+dspic33ck256mc005.upload.maximum_size=262144
+dspic33ck256mc005.upload.maximum_data_size=16384
+dspic33ck256mc005.upload.speed=115200
+
+# Build configuration (uses MC DFP, not MP DFP)
+dspic33ck256mc005.build.mcu=33CK256MC005
+dspic33ck256mc005.build.dfp.path={build.dfp.path.mc}
+dspic33ck256mc005.build.f_cpu=8000000UL
+dspic33ck256mc005.build.fcy=4000000UL
+dspic33ck256mc005.build.board=DSPIC33CK256MC005
+dspic33ck256mc005.build.core=arduino
+dspic33ck256mc005.build.variant=dspic33ck256mc005
+dspic33ck256mc005.build.ldscript=p33CK256MC005.gld
+
+# Clock Speed Selection
+dspic33ck256mc005.menu.clock.8mhz_internal=8 MHz Internal FRC (Default)
+dspic33ck256mc005.menu.clock.8mhz_internal.build.f_cpu=8000000UL
+dspic33ck256mc005.menu.clock.8mhz_internal.build.fcy=4000000UL
+
+dspic33ck256mc005.menu.clock.200mhz_pll=200 MHz PLL
+dspic33ck256mc005.menu.clock.200mhz_pll.build.f_cpu=200000000UL
+dspic33ck256mc005.menu.clock.200mhz_pll.build.fcy=100000000UL
+

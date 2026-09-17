@@ -83,7 +83,7 @@ public:
 // ===== Function overloading =====
 void printValue(int val) {
     Serial.print("Int: ");
-    Serial.println_int(val, DEC);
+    Serial.println(val);
 }
 
 void printValue(const char *str) {
@@ -93,7 +93,7 @@ void printValue(const char *str) {
 
 void printValue(float val) {
     Serial.print("Float: ");
-    Serial.println_float(val, 2);
+    Serial.println(val, 2);
 }
 
 // ===== Global objects =====
@@ -109,7 +109,7 @@ void setup()
     delay(2000);
     Serial.println("=== C++ Demo on dsPIC33CK ===");
     Serial.println("XC-DSC v4.00 C++ Support");
-    Serial.println("");
+    Serial.println();
 
     led1.begin();
     led2.begin();
@@ -118,7 +118,7 @@ void setup()
     printValue(42);
     printValue("Hello C++!");
     printValue(3.14f);
-    Serial.println("");
+    Serial.println();
 }
 
 void loop()
@@ -133,9 +133,9 @@ void loop()
         lastPrint = now;
 
         Serial.print("ADC avg(");
-        Serial.print_int(adcSamples.size(), DEC);
+        Serial.print(adcSamples.size());
         Serial.print(" samples): ");
-        Serial.println_int(adcSamples.average(), DEC);
+        Serial.println(adcSamples.average());
 
         // Drain buffer after reporting
         while (!adcSamples.isEmpty()) {
