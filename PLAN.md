@@ -27,6 +27,38 @@
 > **Known inconsistency, not yet fixed:** the Phase 6 documentation still teaches the
 > superseded suffixed `Serial` API and does not mention the MC005 board, `tone()` or
 > `attachInterrupt()`. See "Documentation is behind the code" under Phase 12.
+>
+> ### PRIORITY, set September 17, 2026: dsPIC33CK256MC005 only
+>
+> **From now on the dsPIC33CK256MC005 (EV08P02A Curiosity Nano) is the priority device.
+> The other three — 33CK32MP102, 33CK256MC002, 33CK256MP508 / DM330030 — are ON HOLD.**
+> Items below that can only be done on a held board are marked `ON HOLD`; do not propose
+> them as next steps. This is a change of *priority*, not of support: all four boards stay
+> in `boards.txt` and all four must keep building.
+>
+> Three consequences worth knowing before planning anything:
+>
+> - **`_build/allboards.sh` keeps building all four devices, deliberately.** A compile +
+>   link check on a held board costs seconds and is the only thing stopping the held
+>   variants from rotting into a broken state that is expensive to diagnose later. Narrowing
+>   the gate to MC005 would be the wrong economy. The same goes for the plain-C check and
+>   for `01.Basics` in `examples_all.sh`.
+> - **The priority is already aligned with the outstanding work.** All four bench checks
+>   still owed from Phase 10 are on EV08P02A: `tone()` on LED0, `attachInterrupt()` on SW0
+>   and on a PORTA pin, the `INPUT_PULLUP`-survives test, and the `GIE` assertion. MC005 is
+>   also the only board ever verified on silicon (Phase 13), so it is the only one where a
+>   hardware result means anything today.
+> - **What MC005 can and cannot do — checked against `p33CK256MC005.h`, not assumed:**
+>   it has **no `ACLKCON1`, i.e. no Auxiliary PLL, so HRPWM cannot work on it at all** —
+>   that one is silicon and is moot rather than deferred. It **does** have a DAC, one
+>   channel (`DAC1CONL`/`DACCTRL1L` present; MP508 has three), so the Phase 10 DAC item is
+>   *reachable* here after all.
+> - **Clock: FCY is a menu choice, not a device property, and the default is slow.** All
+>   four boards default to `build.f_cpu=8000000UL`, i.e. **FCY = 4 MHz**, and all four —
+>   MC005 included — offer a `200mhz_pll` entry on the Tools > Clock menu. So the 100 MHz
+>   figures in the Phase 9 notes are not "the MP508's speed": they assume the PLL menu
+>   option is selected. Check which clock entry is active before reusing any prescaler or
+>   period figure, on any board.
 
 ## Project Goal
 Build a portable Arduino-compatible platform for Microchip dsPIC33CK family using XC-DSC compiler, enabling familiar Arduino APIs (digitalWrite, analogRead, Serial, analogWrite) while leveraging the XC-DSC toolchain underneath.
@@ -246,19 +278,35 @@ Found during the August 25, 2026 reconciliation.
 
 ---
 
-## IN PROGRESS
+## ON HOLD — held-device work
 
-### Phase 9: Hardware PWM Verification
+### Phase 9: Hardware PWM Verification — ON HOLD (DM330030 / MP102 only)
+**Held September 17, 2026 by the MC005-only priority.** This phase was the long-standing
+"IN PROGRESS" item and is now parked: every remaining task needs a DM330030 or an MP102 on
+the bench. Nothing here is blocked on code.
+
+Note before resuming: pre-existing bug 2 below means **`analogWrite(58, x)` can never reach
+LED2** — `PWM5_RP 181` is a virtual pin RPV5, not a bond wire — so the headline PWMTest
+target does not work as written and the sketch needs re-pointing at a real PWM pin first.
+Resuming this phase without reading that will waste a bench session.
+
 - [x] Test sketches written:
   - `examples/03.PWM/PWMTest/PWMTest.ino` — 4 tests on LED2 (RE5 = D58 = RP181 → SCCP5):
     50%; 25/50/75/full; smooth fade; PWM→digital→PWM transition. Serial 115200 via PKOB4 CDC.
     Expected ~490 Hz (at FCY=100 MHz: prescaler 1:64, period=3187 → 490.5 Hz)
   - `examples/03.PWM/Fade/Fade.ino`
-- [ ] Run PWMTest on DM330030 and confirm frequency + duty accuracy (scope or LED)
-- [ ] Test `analogWrite()` output on D5-D8
-- [ ] Test on MP102 board (not just DM330030)
+- [ ] ON HOLD — Run PWMTest on DM330030 and confirm frequency + duty accuracy (scope or LED)
+- [ ] ON HOLD — Test `analogWrite()` output on D5-D8
+- [ ] ON HOLD — Test on MP102 board (not just DM330030)
 
-**Blocked on bench access only** — the code side is done; what remains is measurement.
+**Was blocked on bench access; now held by priority.** The code side is done.
+
+**The MC005 equivalent is NOT held** — `analogWrite()` on the Curiosity Nano is worth
+verifying on its own terms, and does not need this phase. It is a different measurement: the
+~490 Hz figure and the 1:64 prescaler quoted above assume the **200 MHz PLL clock menu entry
+(FCY = 100 MHz)**, whereas the default on every board is `f_cpu=8000000UL` → **FCY = 4 MHz**,
+where the same prescaler gives ~19.6 Hz. Re-derive against whichever clock entry is actually
+selected. Filed under Phase 12.
 
 ---
 
@@ -269,6 +317,11 @@ The three functions this phase was actually about are done and committed; what i
 under this heading are two items that were only ever filed here for convenience. The
 implementation write-up is under "The six missing functions" below, and the four
 remaining checks are bench-only.
+
+Under the MC005-only priority both remaining items stay live: the `round` fix is
+device-independent, and the DAC turns out to be present on MC005 (one channel — see below),
+so it is developable and bench-testable on the priority board. The four outstanding bench
+checks are all MC005 checks, so they are the live end of this phase.
 
 - [x] `tone()` / `noTone()` — SCCP4 as a timer, ISR toggles any pin (Sep 17, 2026)
 - [x] `attachInterrupt()` / `detachInterrupt()` — Change Notification, every pin
@@ -289,20 +342,42 @@ remaining checks are bench-only.
       must **not** be "fixed" by removing the macro — that would break sketch compatibility.
       The fix is `#undef round` immediately before line 72, which silences the plain-C
       redefinition warning while keeping the Arduino semantics exactly. One line.
-- [ ] **DAC output** — dsPIC33CK256MP508 has 3x 12-bit DAC channels (DAC1/DAC2/DAC3)
+- [ ] **DAC output — NOT held; MC005 has one DAC channel.** Checked in
+      `p33CK256MC005.h`: `DAC1CONL` and `DACCTRL1L` are present, `DAC2CONL`/`DAC3CONL` are
+      not, so the priority board gives **1 channel** against the MP508's 3. That is enough
+      to develop and bench-verify the whole API on MC005; guard the 2nd and 3rd channels on
+      `#if defined(DAC2CONL)` the way the platform already guards PWM5 and HRPWM
+      (constraint 12). Do not size the API around 3 channels.
   - Registers: DACxCONL (DACEN, DACOEN), DACxDATH (12-bit value), DACCTRL1L (DACON)
   - Also includes built-in comparator (CMPSTAT, CMPPOL, INSEL)
   - API options: `analogWrite()` on DAC pins (true analog), or dedicated `DAC.write()` library
 
 ### Phase 11: Advanced Features (Discussion)
+
+Re-read under the MC005-only priority: **HRPWM is unreachable** (no Auxiliary PLL on Value
+Line MC parts — this is silicon, not a porting gap), and the DMA and software-USB items were
+both scoped against MP508 silicon and its 100 MIPS. What *is* newly interesting is the motor
+control item at the bottom, because MC005 is an MC part — that is the one line of Phase 11
+work the priority makes more relevant rather than less.
+
 - [~] Higher-level peripheral libraries for users needing more than Arduino APIs
-  - PWM side is **already done** — see HRPWM under "Delivered Ahead of Plan"
-  - Still open: an ADC equivalent (dsPIC_ADC.h) — multi-channel, triggered, DMA-fed
-- [ ] **DMA library** — 4 DMA channels (DMACH0–DMACH3) on MP508
+  - PWM side is **already done** — see HRPWM under "Delivered Ahead of Plan", but note it
+    **cannot run on MC005 at all**, so it is effectively held with the MP508
+  - Still open: an ADC equivalent (dsPIC_ADC.h) — multi-channel, triggered, DMA-fed.
+    Portable in principle; would need re-scoping against MC005's ADC and 4 MHz FCY
+- [ ] **DMA library — NOT held.** Checked: MC005 has the **same four channels** as MP508
+      (`DMACH0`–`DMACH3` all present in `p33CK256MC005.h`), so this is fully developable and
+      testable on the priority board. The "on MP508" in the line below is just where it was
+      first scoped. — 4 DMA channels (DMACH0–DMACH3)
   - No standard Arduino DMA API exists; create dsPIC-specific `dsPIC_DMA.h`
   - Use cases: ADC→buffer, memory→SPI, memory→UART (zero-CPU-overhead transfers)
   - API concept: `DMA.begin(ch, src, dst, count, trigger)`
-- [ ] **Software USB (V-USB style) — Virtual COM port via GPIO**
+- [ ] **Software USB (V-USB style) — Virtual COM port via GPIO. ON HOLD, and largely
+      pointless on the priority device:** MC005 already has a working CDC through the
+      on-board nEDBG (proven on silicon in Phase 13), which was the entire motivation —
+      eliminating an external USB bridge. The cycle budget below is *reachable* on MC005 via
+      the `200mhz_pll` clock entry, so this is not a silicon limit; it is simply the item
+      whose payoff the priority board already has for free.
   - dsPIC33CK at 200 MHz / 100 MIPS gives ~67 cycles per USB bit (6x more than AVR V-USB)
   - USB Low-Speed (1.5 Mbps): 2 GPIO pins for D+/D-, 1.5k pull-up on D-
   - Implementation: cycle-counted pic30 assembly for NRZI/bit-stuff/CRC + C for descriptors
@@ -312,7 +387,15 @@ remaining checks are bench-only.
 - [ ] Code generator / MCC-like configurator for Arduino sketches
 - [~] UART bootloader upload support (alternative to IPE programmer)
   - `tools/upload_uart.py` written — see "Delivered Ahead of Plan"; hardware-untested
-- [ ] Motor control library (PWM, QEI) for MC devices
+- [ ] Motor control library (PWM, QEI) for MC devices — **inventory checked against
+      `p33CK256MC005.h`, and it splits: the PWM half is available, the QEI half is not.**
+      MC005 has **no `QEI1CON`/`QEI2CON` at all** (MP508 has two QEI modules), and **4 PWM
+      generators** `PG1`–`PG4` against MP508's 8. So on the priority board this reduces to a
+      PWM-only motor library with no hardware quadrature decode — encoder feedback would
+      have to be done in software off `attachInterrupt()`, which the platform now has.
+      Worth knowing before scoping: the "MC" in the part name does **not** imply the full
+      motor-control peripheral set. Also note HRPWM cannot run here (no APLL), so this would
+      build on plain `analogWrite()`-class PWM, not the 250 ps path.
 
 ### Phase 12: Testing & Polish
 - [ ] **Documentation is behind the code** — the highest-value item left, because it is
@@ -328,12 +411,29 @@ remaining checks are bench-only.
       `part3_api_reference.html`, `part4_testing_sketches.html`,
       `part5_upload_troubleshooting.html`, `how-to-use/part2_writing_sketches.html`,
       `how-to-use/part5_serial_debugging.html`.
+      Under the MC005 priority this item gets *easier and more urgent at once*: the docs
+      need to describe one board rather than four, and that board is the one they currently
+      barely mention.
 - [ ] No example uses `tone()` or `attachInterrupt()` — the two newest APIs are the two
-      with no example. A Nano sketch covering both would double as the bench checklist.
-- [ ] Test MC002 board on actual hardware
-- [ ] Test all APIs across all 4 board variants (on hardware — all 4 build clean)
-- [ ] Add more example sketches (SPI sensor, I2C EEPROM)
-- [ ] Package for distribution to colleagues
+      with no example. **A `04.CuriosityNano` sketch covering both is now the highest-value
+      code task**: it doubles as the Phase 10 bench checklist (all four outstanding checks
+      are MC005 checks), and it is on the priority board, so it can actually be run.
+- [ ] Verify `analogWrite()` on MC005 — the Phase 9 measurement retargeted at the priority
+      board. Re-derive the expected frequency from the clock menu entry in use (default
+      `f_cpu=8000000UL` → FCY = 4 MHz → ~19.6 Hz at prescaler 1:64, *not* the ~490 Hz the
+      Phase 9 notes quote for the 200 MHz PLL entry). `NanoPWMFade` already exists as the
+      sketch. Worth testing under both clock entries, since that is a one-menu-click change
+      a user will make and nothing has ever verified the PLL path on silicon.
+- [ ] ON HOLD — Test MC002 board on actual hardware
+- [ ] ON HOLD — Test all APIs across all 4 board variants (all 4 still build clean; the
+      MC005 column of this matrix is the part that is not held)
+- [ ] Add more example sketches (SPI sensor, I2C EEPROM) — target `04.CuriosityNano`.
+      Note both `SPI` and `Wire` are **untested on any silicon**: the SPI library had never
+      compiled on any board until the September 8 fix, so "it builds" is the entire extent
+      of what is known about either. An I2C/SPI example on MC005 would be the first real
+      exercise of them.
+- [ ] Package for distribution to colleagues — with one board prioritised, the honest
+      framing is "supports MC005, builds for three others" rather than "supports 4 boards".
 
 ---
 
@@ -775,24 +875,30 @@ be slotted in without reshaping the file.
 ### Pre-existing bugs surfaced by this work
 
 Found while designing the above; one fixed, the rest filed here rather than bundled.
+**Under the MC005-only priority: 2 and 5 are MP508-only and go on hold with that board;
+3 becomes more relevant, not less, because the file it names is the priority device's;
+4 and 6 are device-independent and stay actionable.**
 
 1. **`analogWrite()` had no bounds check — FIXED.** The mid-range path dereferenced
    `g_pin_map[pin]` unguarded and then wrote through the resulting garbage
    `ansel_reg`/`tris_reg` pointers, so `analogWrite(200, 128)` corrupted arbitrary SFRs.
    (The `val<=0` and `val>=255` paths were safe only because they end in `digitalWrite`,
    which does check.) One line, in a file already being edited.
-2. **MP508 `PWM5_RP 181` is not a pin.** `variants/dspic33ck256mp508/pins_arduino.h`
+2. **MP508 `PWM5_RP 181` is not a pin — ON HOLD with the MP508.** `variants/dspic33ck256mp508/pins_arduino.h`
    maps `PWM5_PIN 58` (RE5) to RP181, but **RP176-181 are the virtual pins RPV0-RPV5** —
    internal nodes with no bond wire. `analogWrite(58, x)` can never reach RE5, so LED2 on
    the DM330030 will not dim. No PPS fix exists; RE5 would need the same ISR-toggle
    mechanism as `tone()`.
 3. **`cmake/Arduino_dsPIC33CK/.../file.cmake` lists only three of four variants** —
    `dspic33ck256mc005` is absent, so its `variant.c` gets no plain-C check from that
-   project. Left as is because the `dsPIC33CK256MC005_Curiosity_Nano_Out_of_Box_Demo`
-   project does cover it.
+   project. Previously left as is because the
+   `dsPIC33CK256MC005_Curiosity_Nano_Out_of_Box_Demo` project does cover it. **Now worth
+   fixing:** the one variant missing from the main project is the one variant that
+   matters, and the coverage currently depends on a demo project nobody would think to
+   open. One line in a generated file list.
 4. **`wiring.c:19`** — `static volatile unsigned long _micros_overflow` declared, never
    used.
-5. **MP508 `variant.c`** gives RE0-RE3 `&ANSELE` and channels AN20-23, but `ANSELE` may
+5. **MP508 `variant.c` — ON HOLD with the MP508.** It gives RE0-RE3 `&ANSELE` and channels AN20-23, but `ANSELE` may
    be unimplemented on that part. Needs a pinout cross-check before trusting
    `analogRead()` on those pins.
 6. **The `round` macro at `Arduino.h:72` collides with `math.h`'s own `round` macro** —
