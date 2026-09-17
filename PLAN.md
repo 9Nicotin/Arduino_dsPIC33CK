@@ -12,8 +12,21 @@
 > functions (`tone`, `noTone`, `attachInterrupt`, `detachInterrupt`, `interrupts`,
 > `noInterrupts`) are implemented; all builds green, hardware checks still owed.
 > Some later-phase items were delivered ahead of the plan — see "Delivered Ahead
-> of Plan" below. Git history is not a usable timeline: the whole tree landed in
-> one initial commit (`9c14696`), so this file is the only phase record.
+> of Plan" below.
+>
+> **Where the code lives now.** Git history is still not a usable timeline — the whole
+> tree landed in one initial commit (`9c14696`), so this file remains the phase record —
+> but it is no longer flat. Phase 13 and Phase 10 are committed as `b585acb` and
+> `7553e21` on branch **`phase10-platform-cleanup`**, branched from `0a24860`. `main`
+> does **not** have them yet; merge when the diffs have been read. The Arduino IDE
+> install at `%LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\1.0.0` was
+> refreshed from this tree on September 17, 2026, so it is current — but it is a *copy*,
+> and `install_arduino_ide.bat` must be re-run after any change to the platform tree or
+> the IDE will silently build the old core.
+>
+> **Known inconsistency, not yet fixed:** the Phase 6 documentation still teaches the
+> superseded suffixed `Serial` API and does not mention the MC005 board, `tone()` or
+> `attachInterrupt()`. See "Documentation is behind the code" under Phase 12.
 
 ## Project Goal
 Build a portable Arduino-compatible platform for Microchip dsPIC33CK family using XC-DSC compiler, enabling familiar Arduino APIs (digitalWrite, analogRead, Serial, analogWrite) while leveraging the XC-DSC toolchain underneath.
@@ -251,12 +264,31 @@ Found during the August 25, 2026 reconciliation.
 
 ## TODO (Next Steps)
 
-### Phase 10: Additional APIs
+### Phase 10: Additional APIs — the Arduino API surface is CLOSED, two extras remain
+The three functions this phase was actually about are done and committed; what is left
+under this heading are two items that were only ever filed here for convenience. The
+implementation write-up is under "The six missing functions" below, and the four
+remaining checks are bench-only.
+
 - [x] `tone()` / `noTone()` — SCCP4 as a timer, ISR toggles any pin (Sep 17, 2026)
 - [x] `attachInterrupt()` / `detachInterrupt()` — Change Notification, every pin
       (Sep 17, 2026). `interrupts()` / `noInterrupts()` closed at the same time —
       they were declared but unimplemented too. See "The six missing functions" below.
-- [ ] Fix `round` macro warning (Arduino.h vs math.h conflict)
+- [ ] `round` macro vs `math.h` — **re-measured Sep 17, 2026; the warning is real but
+      appears in only one of the two build modes**, which is why every Arduino-path build
+      reports zero warnings and the item looked stale:
+      - **plain C** (`xc-dsc-gcc`, i.e. the `cmake/` projects): `math.h` defines `round` as
+        a *macro* (`#define round __MPROTO(round)`), and `Arduino.h:72` redefines it →
+        `warning: "round" redefined`, once per translation unit.
+      - **C++** (`xc-dsc-g++ -x c++`, i.e. every Arduino IDE build): `math.h` does not
+        define that macro, so there is no diagnostic in either include order.
+
+      Because `Arduino.h` includes `math.h` at line 19 *before* defining `round` at line 72,
+      the macro always wins, in both modes: `round(2.7)` yields `(long)3`, not `3.0`.
+      That truncation is stock AVR Arduino behaviour (byte-identical macro upstream), so it
+      must **not** be "fixed" by removing the macro — that would break sketch compatibility.
+      The fix is `#undef round` immediately before line 72, which silences the plain-C
+      redefinition warning while keeping the Arduino semantics exactly. One line.
 - [ ] **DAC output** — dsPIC33CK256MP508 has 3x 12-bit DAC channels (DAC1/DAC2/DAC3)
   - Registers: DACxCONL (DACEN, DACOEN), DACxDATH (12-bit value), DACCTRL1L (DACON)
   - Also includes built-in comparator (CMPSTAT, CMPPOL, INSEL)
@@ -283,10 +315,33 @@ Found during the August 25, 2026 reconciliation.
 - [ ] Motor control library (PWM, QEI) for MC devices
 
 ### Phase 12: Testing & Polish
+- [ ] **Documentation is behind the code** — the highest-value item left, because it is
+      what a new user reads first. Eleven HTML files under `arduino-platform/docs/`
+      (the 5-part guide plus `how-to-use/`); **seven of them still teach the suffixed
+      `Serial` API** (`print_int`, `println_int`, `print_float`, `println_float`) that
+      Phase 10 replaced. Those calls still compile — the suffixed methods were kept
+      deliberately — so this is not a broken-docs bug, it is worse: the docs teach the
+      dsPIC-specific spelling as *the* API when stock Arduino syntax now works. Also
+      missing everywhere: the MC005 / Curiosity Nano board (only `installation_guide.html`
+      mentions it at all), `tone()`, `attachInterrupt()`, and the fact that the debugger
+      reboot is now automatic. Affected: `arduino_ide_setup.html`,
+      `part3_api_reference.html`, `part4_testing_sketches.html`,
+      `part5_upload_troubleshooting.html`, `how-to-use/part2_writing_sketches.html`,
+      `how-to-use/part5_serial_debugging.html`.
+- [ ] No example uses `tone()` or `attachInterrupt()` — the two newest APIs are the two
+      with no example. A Nano sketch covering both would double as the bench checklist.
 - [ ] Test MC002 board on actual hardware
 - [ ] Test all APIs across all 4 board variants (on hardware — all 4 build clean)
 - [ ] Add more example sketches (SPI sensor, I2C EEPROM)
 - [ ] Package for distribution to colleagues
+
+---
+
+## COMPLETED (continued) — Phases 13 and 10
+
+> Both of these are **done**, and both used to sit under "TODO" above purely because
+> they were appended in the order the work happened. Phase 13 is closed on silicon;
+> Phase 10 is closed in code with four bench checks outstanding.
 
 ### Phase 13: 4th Board — EV08P02A (dsPIC33CK Value Line Curiosity Nano)
 
@@ -740,8 +795,10 @@ Found while designing the above; one fixed, the rest filed here rather than bund
 5. **MP508 `variant.c`** gives RE0-RE3 `&ANSELE` and channels AN20-23, but `ANSELE` may
    be unimplemented on that part. Needs a pinout cross-check before trusting
    `analogRead()` on those pins.
-6. **The `round` macro at `Arduino.h:72` collides with `math.h:490`**, producing one
-   warning per translation unit in every plain-C build. Already on the Phase 10 list.
+6. **The `round` macro at `Arduino.h:72` collides with `math.h`'s own `round` macro** —
+   one `warning: "round" redefined` per translation unit, **in plain-C builds only**
+   (`xc-dsc-gcc`); the C++ path is clean, which is why the Arduino builds all report zero
+   warnings. Measured both ways Sep 17, 2026. Fix and full reasoning on the Phase 10 list.
 
 ---
 
@@ -752,7 +809,11 @@ Found while designing the above; one fixed, the rest filed here rather than bund
 4. **XC-DSC v4.00 has C++ support** — g++ with `-D__prog__=""` for DFP compat; all .c MUST be compiled with `g++ -x c++` for linker ABI match (see Phase 8)
 5. **`--whole-archive`** — required around core.a for CRT startup
 6. **stderr suppression** — Arduino IDE treats any stderr as error
-7. **Dot-notation via struct + function pointers** — C trick for Arduino-style `Object.method()` syntax
+7. **Dot-notation via struct + function pointers** — C trick for Arduino-style
+   `Object.method()` syntax. Still how `SPI`, `Wire` and `HRPWM` work. **`Serial` no
+   longer does** — a struct member cannot be overloaded, so it became an inline C++
+   class in C++ mode with the C struct kept under `#ifndef __cplusplus` (see "Serial
+   overloads"). Any future object that needs overloads must go the same way.
 8. **MC parts need the MC DFP override** — `boards.txt` must set
    `build.dfp.path={build.dfp.path.mc}`; without it the build reaches for the MP DFP
 9. **A board is only addable if its device is in an installed DFP** — the linker
@@ -773,7 +834,14 @@ Found while designing the above; one fixed, the rest filed here rather than bund
 
 ## API Style Guide (C "OOP" Pattern)
 
-All peripheral libraries use the same pattern:
+**There are now two patterns, and the choice is forced by one question: does the object
+need overloaded methods?** `Serial` does (`print(int)` vs `print(double)` vs
+`print(const char *)`), and a struct member name can only ever mean one function, so
+`Serial` is the C++-class pattern below. Everything else — `SPI`, `Wire`, `HRPWM` — has
+no overloads and stays on the C struct pattern. Use the struct pattern by default; it is
+the one that keeps working when the file is compiled as plain C by the `cmake/` projects.
+
+### Pattern A — C struct of function pointers (`SPI`, `Wire`, `HRPWM`)
 
 ```c
 // Header: typedef struct with function pointers, extern global object
@@ -789,6 +857,38 @@ static void _impl_begin(void) { ... }
 ClassName_t ObjectName = { .begin = _impl_begin, ... };
 ```
 
+Cost to know about: the initialiser names every function, so `--gc-sections` cannot drop
+any of them, and the pointers themselves sit in `.data`. This is exactly why dropping the
+pattern for `Serial` made every board *smaller*.
+
+### Pattern B — external C functions + an inline C++ class (`Serial` only)
+
+```c
+/* .c file — the implementation stays C, and stays in a .c file, because the
+ * cmake/ projects compile it as C. */
+size_t serial_write(uint8_t c) { ... }        /* external linkage, not static */
+#ifndef __cplusplus
+HardwareSerial_t Serial = { .write = serial_write, ... };   /* C mode keeps the struct */
+#else
+HardwareSerial Serial;                                       /* C++ mode: the object */
+#endif
+```
+```cpp
+/* .h file, after the extern "C" block closes */
+class HardwareSerial {
+public:
+    size_t write(uint8_t c) { return serial_write(c); }   /* every method inline */
+    size_t print(int v, int base = DEC);                  /* overloads + defaults */
+};
+```
+
+Rules that make this safe: **every method inline** (no new translation unit, and the link
+step runs the C driver `xc-dsc-gcc`, which must never be handed anything needing
+libstdc++), **no data members** (the object is 1 byte, versus 26 for the struct), and the
+C struct retained under `#ifndef __cplusplus` so the `cmake/` plain-C build still links.
+A function needing a C++ default argument — `tone(pin, freq)` — declares that default in
+an `#ifdef __cplusplus` branch in `Arduino.h`, never in the definition.
+
 User sketch syntax:
 ```c
 #include <Arduino.h>   // includes Serial automatically
@@ -796,8 +896,12 @@ User sketch syntax:
 #include <Wire.h>      // opt-in
 
 Serial.begin(9600);
+Serial.println(42);            // stock Arduino spelling, since Sep 17 2026
+Serial.print(255, HEX);
+Serial.println(3.14159, 3);
 SPI.transfer(0x55);
 Wire.beginTransmission(0x50);
+Wire.endTransmissionStop(1);   // still a suffix workaround -- Wire was NOT migrated
 ```
 
 ---
@@ -809,16 +913,20 @@ Arduino_dsPIC33CK/
 │   ├── microchip/dspic33ck/
 │   │   ├── cores/arduino/      <- Core API source files
 │   │   │   ├── Arduino.h
-│   │   │   ├── HardwareSerial.h / .c  (Serial object)
-│   │   │   ├── wiring.c               (millis/delay)
-│   │   │   ├── wiring_digital.c       (GPIO)
-│   │   │   ├── wiring_analog.c        (ADC/PWM)
-│   │   │   ├── wiring_shift.c         (shiftIn/Out)
-│   │   │   ├── system_config.c / .h   (clock/fuses)
-│   │   │   └── main.c                 (entry point)
+│   │   │   ├── wiring_private.h        (core-INTERNAL contract; not in Arduino.h)
+│   │   │   ├── HardwareSerial.h / .c   (Serial: C struct + C++ class, one file)
+│   │   │   ├── wiring.c                (millis/delay)
+│   │   │   ├── wiring_digital.c        (GPIO, pinToRP)
+│   │   │   ├── wiring_analog.c         (ADC/PWM)
+│   │   │   ├── wiring_shift.c          (shiftIn/Out)
+│   │   │   ├── wiring_tone.c           (tone/noTone, SCCP4)
+│   │   │   ├── wiring_interrupts.c     (attachInterrupt via CN, GIE pair)
+│   │   │   ├── system_config.c / .h    (clock/fuses)
+│   │   │   └── main.c                  (entry point)
 │   │   ├── variants/
 │   │   │   ├── dspic33ck32mp102/
 │   │   │   ├── dspic33ck256mc002/
+│   │   │   ├── dspic33ck256mc005/      (Phase 13 - the only board run on silicon)
 │   │   │   └── dspic33ck256mp508/
 │   │   ├── libraries/
 │   │   │   ├── SPI/src/SPI.h + SPI.c
@@ -829,24 +937,46 @@ Arduino_dsPIC33CK/
 │   │   │   ├── suppress-stderr.bat       (stderr -> silence for Arduino IDE)
 │   │   │   ├── xc-dsc-size-wrapper.bat   (size reporting)
 │   │   │   ├── xc-dsc-link.bat           (linker CWD workaround)
+│   │   │   ├── nedbg-upload.bat          (flash + reboot the wedged CDC bridge)
 │   │   │   ├── upload_uart.py            (UART bootloader upload)
 │   │   │   └── pre_build.py              (ORPHANED - not in platform.txt)
 │   │   ├── examples/
-│   │   │   ├── 01.Basics/       Blink, AnalogReadSerial
-│   │   │   ├── 02.CppFeatures/  CppDemo
-│   │   │   └── 03.PWM/          Fade, PWMTest      (Phase 9)
+│   │   │   ├── 01.Basics/        Blink, AnalogReadSerial   (all 4 boards)
+│   │   │   ├── 02.CppFeatures/   CppDemo                   (MP508 only: LED1/A22)
+│   │   │   ├── 03.PWM/           Fade, PWMTest    (MP508 only: LED2; Phase 9)
+│   │   │   └── 04.CuriosityNano/ NanoBlink, NanoSerialHello, NanoButtonLED,
+│   │   │                         NanoAnalogRead, NanoPWMFade, NanoSelfTest
+│   │   ├── bootloaders/
 │   │   ├── boards.txt
 │   │   ├── platform.txt
 │   │   ├── platform.local.txt.template
 │   │   └── programmers.txt
 │   ├── docs/                   <- 5-part guide + how-to-use/ (5 more)
-│   ├── install_arduino_ide.bat
+│   │                              STALE: teaches the pre-Phase-10 Serial API
+│   ├── install_arduino_ide.bat  <- RE-RUN after any platform change
 │   └── README.md
 ├── docs/                       <- Flash CRC integrity check note (standalone)
 ├── config.mcc/                 <- MCC-generated reference code
 ├── test_led/                   <- Hardware test builds & objects
 │   └── DM330030_RGB_POT/       <- Phase 7 sketch (not in examples/)
 ├── cpp_support/                <- OBSOLETE (Phase 8); xc16_gcc_source ~500MB
-├── cmake/                      <- MPLAB X project files (legacy)
+├── cmake/                      <- 3 MPLAB X projects: Arduino_dsPIC33CK,
+│                                  SCCP1_dsPIC33CK, ...MC005_Out_of_Box_Demo.
+│                                  NOT legacy: they compile the core with
+│                                  xc-dsc-gcc in C mode, and are the ONLY gate
+│                                  catching C++-only syntax in a .c file, since
+│                                  the Arduino path builds everything as C++.
+│                                  Add every new core .c to their file.cmake.
+├── _build/                     <- gitignored regression harness (see below)
 └── PLAN.md                     <- THIS FILE
 ```
+
+**The build gates live in `_build/` and are gitignored**, so they do not survive a fresh
+clone — recreate or copy them before trusting a "builds clean" claim:
+
+| script | what it proves |
+|---|---|
+| `allboards.sh` | all 4 devices compile + link + emit hex; `sketch.cpp` is a synthetic sketch calling the whole API, including all six Phase 10 functions plus `analogWrite(PWM4_PIN, …)` in one translation unit, which is what proves the `wiring_private.h` link contract closes |
+| `examples_mc005.sh` | the six `04.CuriosityNano` sketches, warning count per sketch |
+| `examples_all.sh` | `01.Basics` on all 4 devices, `02.CppFeatures` + `03.PWM` on MP508 only (they use `LED1`/`LED2`/`A22`, which only that variant defines) |
+| plain-C check | every core `.c` + `variant.c` built with `xc-dsc-gcc -Wall -Wextra` in C mode on all 4 devices — the same guard the `cmake/` projects give, run from the shell |
