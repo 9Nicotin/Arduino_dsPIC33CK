@@ -10,6 +10,7 @@
  */
 
 #include "Arduino.h"
+#include "wiring_private.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -155,109 +156,121 @@ static void _pps_out_clear(uint16_t rp_num)
 static uint8_t _pwm_initialized = 0;
 static uint8_t _pwm_active = 0;    /* bitmask: bit0=CCP1, bit1=CCP2, etc. */
 
+/*
+ * Clear the Peripheral Module Disable bit for every SCCP the device has.
+ *
+ * A module whose PMD bit is set has no clock, and writes to its registers are
+ * silently dropped -- no fault, no trap, the value simply does not land. So
+ * this has to run before the first CCPx write and not one instruction later.
+ *
+ * Declared in wiring_private.h because tone() borrows SCCP4 and needs the same
+ * gate opened; it is idempotent, so both callers can just call it.
+ */
+void _sccp_pmd_enable(void)
+{
+    if (_pwm_initialized) return;
+
+    PMD2bits.CCP1MD = 0;
+    PMD2bits.CCP2MD = 0;
+    PMD2bits.CCP3MD = 0;
+    PMD2bits.CCP4MD = 0;
+#ifdef PWM5_PIN
+    PMD2bits.CCP5MD = 0;
+#endif
+    _pwm_initialized = 1;
+}
+
+/*
+ * Stop PWM on one pin and give the pin back to the GPIO: CCPON off, then the
+ * PPS output mapping torn down so the module no longer drives the pad.
+ *
+ * A no-op for a pin with no PWM running, and for a pin that is not a PWM pin at
+ * all, which is what lets the callers invoke it unconditionally.
+ *
+ * This used to be two byte-identical switch statements inlined in
+ * analogWrite() -- one in the val<=0 path, one in the val>=255 path. They were
+ * a divergence bug waiting to happen: any fix applied to one copy and not the
+ * other would produce a PWM that tears down correctly at duty 0 but not at duty
+ * 255, or vice versa. tone() needs a third caller, which settled it.
+ */
+void _pwm_disable_pin(uint8_t pin)
+{
+    switch (pin) {
+        case PWM1_PIN:
+            if (_pwm_active & 0x01) {
+                CCP1CON1Lbits.CCPON = 0;
+                __builtin_write_RPCON(0x0000);
+                _pps_out_clear(PWM1_RP);
+                __builtin_write_RPCON(0x0800);
+                _pwm_active &= ~0x01;
+            }
+            break;
+        case PWM2_PIN:
+            if (_pwm_active & 0x02) {
+                CCP2CON1Lbits.CCPON = 0;
+                __builtin_write_RPCON(0x0000);
+                _pps_out_clear(PWM2_RP);
+                __builtin_write_RPCON(0x0800);
+                _pwm_active &= ~0x02;
+            }
+            break;
+        case PWM3_PIN:
+            if (_pwm_active & 0x04) {
+                CCP3CON1Lbits.CCPON = 0;
+                __builtin_write_RPCON(0x0000);
+                _pps_out_clear(PWM3_RP);
+                __builtin_write_RPCON(0x0800);
+                _pwm_active &= ~0x04;
+            }
+            break;
+        case PWM4_PIN:
+            if (_pwm_active & 0x08) {
+                CCP4CON1Lbits.CCPON = 0;
+                __builtin_write_RPCON(0x0000);
+                _pps_out_clear(PWM4_RP);
+                __builtin_write_RPCON(0x0800);
+                _pwm_active &= ~0x08;
+            }
+            break;
+#ifdef PWM5_PIN
+        case PWM5_PIN:
+            if (_pwm_active & 0x10) {
+                CCP5CON1Lbits.CCPON = 0;
+                __builtin_write_RPCON(0x0000);
+                _pps_out_clear(PWM5_RP);
+                __builtin_write_RPCON(0x0800);
+                _pwm_active &= ~0x10;
+            }
+            break;
+#endif
+        default:
+            break;
+    }
+}
+
 void analogWrite(uint8_t pin, int val)
 {
+    /* The mid-range path below writes through g_pin_map[pin].ansel_reg and
+     * .tris_reg without checking them, so an out-of-range pin would scribble
+     * through whatever pointers happen to follow the table. (The val<=0 and
+     * val>=255 paths only ever got away with it because they end in
+     * digitalWrite(), which does bounds-check.) */
+    if (pin >= NUM_DIGITAL_PINS) return;
+
+    /* Hand SCCP4 back before we look at anything else. This has to come before
+     * the val<=0 test: with a tone playing on D8, analogWrite(8, 0) would find
+     * _pwm_active & 0x08 clear, skip the teardown entirely, and digitalWrite()
+     * the pin LOW while the tone ISR was still toggling it. See
+     * wiring_private.h for the policy this implements. */
+    _tone_release();
+
     if (val <= 0) {
-        /* Turn off PWM if it was running on this pin */
-        switch (pin) {
-            case PWM1_PIN:
-                if (_pwm_active & 0x01) {
-                    CCP1CON1Lbits.CCPON = 0;
-                    __builtin_write_RPCON(0x0000);
-                    _pps_out_clear(PWM1_RP);
-                    __builtin_write_RPCON(0x0800);
-                    _pwm_active &= ~0x01;
-                }
-                break;
-            case PWM2_PIN:
-                if (_pwm_active & 0x02) {
-                    CCP2CON1Lbits.CCPON = 0;
-                    __builtin_write_RPCON(0x0000);
-                    _pps_out_clear(PWM2_RP);
-                    __builtin_write_RPCON(0x0800);
-                    _pwm_active &= ~0x02;
-                }
-                break;
-            case PWM3_PIN:
-                if (_pwm_active & 0x04) {
-                    CCP3CON1Lbits.CCPON = 0;
-                    __builtin_write_RPCON(0x0000);
-                    _pps_out_clear(PWM3_RP);
-                    __builtin_write_RPCON(0x0800);
-                    _pwm_active &= ~0x04;
-                }
-                break;
-            case PWM4_PIN:
-                if (_pwm_active & 0x08) {
-                    CCP4CON1Lbits.CCPON = 0;
-                    __builtin_write_RPCON(0x0000);
-                    _pps_out_clear(PWM4_RP);
-                    __builtin_write_RPCON(0x0800);
-                    _pwm_active &= ~0x08;
-                }
-                break;
-            case PWM5_PIN:
-                if (_pwm_active & 0x10) {
-                    CCP5CON1Lbits.CCPON = 0;
-                    __builtin_write_RPCON(0x0000);
-                    _pps_out_clear(PWM5_RP);
-                    __builtin_write_RPCON(0x0800);
-                    _pwm_active &= ~0x10;
-                }
-                break;
-        }
+        _pwm_disable_pin(pin);
         digitalWrite(pin, LOW);
         return;
     }
     if (val >= 255) {
-        /* Turn off PWM, drive high */
-        switch (pin) {
-            case PWM1_PIN:
-                if (_pwm_active & 0x01) {
-                    CCP1CON1Lbits.CCPON = 0;
-                    __builtin_write_RPCON(0x0000);
-                    _pps_out_clear(PWM1_RP);
-                    __builtin_write_RPCON(0x0800);
-                    _pwm_active &= ~0x01;
-                }
-                break;
-            case PWM2_PIN:
-                if (_pwm_active & 0x02) {
-                    CCP2CON1Lbits.CCPON = 0;
-                    __builtin_write_RPCON(0x0000);
-                    _pps_out_clear(PWM2_RP);
-                    __builtin_write_RPCON(0x0800);
-                    _pwm_active &= ~0x02;
-                }
-                break;
-            case PWM3_PIN:
-                if (_pwm_active & 0x04) {
-                    CCP3CON1Lbits.CCPON = 0;
-                    __builtin_write_RPCON(0x0000);
-                    _pps_out_clear(PWM3_RP);
-                    __builtin_write_RPCON(0x0800);
-                    _pwm_active &= ~0x04;
-                }
-                break;
-            case PWM4_PIN:
-                if (_pwm_active & 0x08) {
-                    CCP4CON1Lbits.CCPON = 0;
-                    __builtin_write_RPCON(0x0000);
-                    _pps_out_clear(PWM4_RP);
-                    __builtin_write_RPCON(0x0800);
-                    _pwm_active &= ~0x08;
-                }
-                break;
-            case PWM5_PIN:
-                if (_pwm_active & 0x10) {
-                    CCP5CON1Lbits.CCPON = 0;
-                    __builtin_write_RPCON(0x0000);
-                    _pps_out_clear(PWM5_RP);
-                    __builtin_write_RPCON(0x0800);
-                    _pwm_active &= ~0x10;
-                }
-                break;
-        }
+        _pwm_disable_pin(pin);
         digitalWrite(pin, HIGH);
         return;
     }
@@ -265,15 +278,7 @@ void analogWrite(uint8_t pin, int val)
     /* Scale 0-255 duty to 0-PWM_PERIOD */
     uint16_t duty = (uint16_t)((uint32_t)val * PWM_PERIOD / 255);
 
-    /* Enable SCCP modules (PMD) on first use */
-    if (!_pwm_initialized) {
-        PMD2bits.CCP1MD = 0;
-        PMD2bits.CCP2MD = 0;
-        PMD2bits.CCP3MD = 0;
-        PMD2bits.CCP4MD = 0;
-        PMD2bits.CCP5MD = 0;
-        _pwm_initialized = 1;
-    }
+    _sccp_pmd_enable();
 
     /* Set pin as output, clear analog mode */
     if (g_pin_map[pin].ansel_reg != NULL) {
@@ -371,6 +376,7 @@ void analogWrite(uint8_t pin, int val)
             }
             break;
 
+#ifdef PWM5_PIN
         case PWM5_PIN:
             if (_pwm_active & 0x10) {
                 CCP5RB = duty;
@@ -392,6 +398,7 @@ void analogWrite(uint8_t pin, int val)
                 _pwm_active |= 0x10;
             }
             break;
+#endif
 
         default:
             digitalWrite(pin, (val >= 128) ? HIGH : LOW);

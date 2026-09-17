@@ -103,6 +103,11 @@ extern const pin_map_t g_pin_map[];
 /* PWM capable pins */
 #define digitalPinHasPWM(p) ((p) >= 5 && (p) <= 8)
 
+/* Every pin can carry an interrupt (Change Notification covers all ports), so
+ * this is the identity -- it exists only so sketches written for AVR, where the
+ * mapping is real, compile unchanged. attachInterrupt() takes the pin number. */
+#define digitalPinToInterrupt(p) (((p) < NUM_DIGITAL_PINS) ? (int)(p) : -1)
+
 /* Analog channel for a pin (-1 if not analog) */
 #define analogPinToChannel(p) (g_pin_map[p].adc_channel)
 

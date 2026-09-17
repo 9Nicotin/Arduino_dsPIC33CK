@@ -31,6 +31,7 @@ set(SCCP1_dsPIC33CK_default_default_XC_DSC_FILE_TYPE_compile
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../arduino-platform/microchip/dspic33ck/libraries/SPI/src/SPI.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../arduino-platform/microchip/dspic33ck/libraries/Wire/src/Wire.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../arduino-platform/microchip/dspic33ck/variants/dspic33ck256mc002/variant.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../arduino-platform/microchip/dspic33ck/variants/dspic33ck256mc005/variant.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../arduino-platform/microchip/dspic33ck/variants/dspic33ck256mp508/variant.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../arduino-platform/microchip/dspic33ck/variants/dspic33ck32mp102/variant.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../config.mcc/main.c"
@@ -52,6 +53,7 @@ set(SCCP1_dsPIC33CK_default_default_XC_DSC_FILE_TYPE_compile_cpp
 set_source_files_properties(${SCCP1_dsPIC33CK_default_default_XC_DSC_FILE_TYPE_compile_cpp} PROPERTIES LANGUAGE CXX)
 set(SCCP1_dsPIC33CK_default_default_XC_DSC_FILE_TYPE_link "${CMAKE_CURRENT_SOURCE_DIR}/../../../test_led/arduino_build/core.a")
 set(SCCP1_dsPIC33CK_default_default_XC_DSC_FILE_TYPE_bin2hex)
+set(SCCP1_dsPIC33CK_default_default_XC_DSC_FILE_TYPE_objcopy_lss)
 set(SCCP1_dsPIC33CK_default_image_name "default.elf")
 set(SCCP1_dsPIC33CK_default_image_base_name "default")
 
