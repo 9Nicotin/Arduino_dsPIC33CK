@@ -12,9 +12,10 @@
 > functions (`tone`, `noTone`, `attachInterrupt`, `detachInterrupt`, `interrupts`,
 > `noInterrupts`) are implemented; all builds green, hardware checks still owed.
 > **Phase 14 (install from a Boards Manager URL) opened September 17, 2026 and is
-> IN PROGRESS** — parts 1–4 are done and `_build/install_check.sh` passes end to end,
-> but the GitHub release is not cut and the clean-machine hardware test is not run.
-> See that section; it is the only phase currently open besides 9.
+> PUBLISHED September 18, 2026.** The repo is public, `main` is at `9fd77f7`, release
+> `v1.0.0` carries the three archives plus the index, and `_build/live_check.sh` installs
+> from the real URL and builds all four boards at baseline. **One item remains: the
+> upload path on hardware**, which every gate stops short of. See that section.
 > Some later-phase items were delivered ahead of the plan — see "Delivered Ahead
 > of Plan" below.
 >
@@ -418,36 +419,43 @@ available" instead of a half-working install.
       the gate now asserts directly rather than inferring from the absent re-download,
       since that ordering is arduino-cli's internal business and not a contract.
 
-**Still open:**
-- [x] **Branch pushed September 18, 2026** — `origin/phase10-platform-cleanup` is at
-      `6abb2ff`, so Phases 10, 13 and 14 now exist off this machine. `origin/main` is
-      deliberately left at `0a24860`; merging it is part of the release step, not a
-      backup. Nine commits ahead.
-- [ ] **THE REPOSITORY IS PRIVATE, and that blocks the whole design — discovered
-      September 18, 2026.** Unauthenticated `GET https://github.com/9Nicotin/Arduino_dsPIC33CK`
-      returns **404**, as do `raw.githubusercontent.com/.../main/README.md` and the
-      releases API, while a known-public repo returns 200 through the same curl. GitHub
-      returns 404 rather than 403 for private repos, and `git push` succeeds with our
-      credentials, so the repo exists and is **private**. Arduino IDE fetches the
-      Additional Boards Manager URL **unauthenticated and with no way to supply a
-      credential**, so cutting the release is *not sufficient*: until the repo is public
-      (or the three archives plus the index are hosted somewhere public), every end user
-      gets a download failure, and the URL printed in nine documents cannot work for
-      anyone but this machine. This was never in the plan — the plan assumed the URL
-      resolves once the release exists. **Make the repo public, or pick a public host,
-      before cutting `v1.0.0`.**
-- [ ] **Cut the GitHub release** `v1.0.0` with the three zips + the index as assets, from
-      a ref that carries this work (`origin/main` still has none of `b585acb`, `7553e21`,
-      `78fe2fd`, `37f0b52` or this phase — a release cut from `main` today would ship the
-      pre-Phase-10 tree). Needs the user's go-ahead, being outward-facing, and note
-      **`gh` is not installed**.
-- [ ] Clean-machine acceptance test **on hardware**: wipe
-      `%LOCALAPPDATA%\Arduino15\packages\microchip`, add the URL, install, compile
-      `NanoBlink`, upload to the EV08P02A, confirm the Serial Monitor is live afterwards
-      (the nEDBG program-then-reboot path must survive the refactor).
+**PUBLISHED September 18, 2026 — the URL in the docs now works for anyone:**
+- [x] **Branch pushed, then `main` fast-forwarded to it** — `origin/main` is at `9fd77f7`
+      (was `0a24860`). This had to happen *before* the repo went public: `main`'s README
+      still said *"Run `install_arduino_ide.bat` — One-click installer"*, so a visitor
+      would have landed on the retired path with no Boards Manager URL anywhere.
+- [x] **Repository made public.** It was **private**, which blocked the entire design and
+      was not in the plan: Arduino IDE fetches the Additional Boards Manager URL
+      unauthenticated with no way to pass a credential, so cutting a release would not
+      have been enough on its own — unauthenticated GETs of the repo, of
+      `raw.githubusercontent.com` and of the releases API all returned 404 (GitHub answers
+      404, not 403, for private repos). Publishing the artifacts while keeping the source
+      private is not an available option either: an Arduino platform archive *is* source.
+- [x] **Release `v1.0.0` cut** at `9fd77f7`, with **four** assets — the three zips *and*
+      the index, since the index is what the pasted URL resolves to. Two traps avoided:
+      the tag must be exactly `v1.0.0` because the index pins the archive URLs to
+      `releases/download/v1.0.0/`, and the release must **not** be marked pre-release
+      because GitHub's `/releases/latest/` skips pre-releases — which would have left the
+      documented URL 404ing exactly as before. `gh` is not installed; the release was
+      created through the REST API with the credential-manager token.
+- [x] **`_build/live_check.sh` — PASS, and it closes the one gap `install_check.sh`
+      documents in its own header ("the only thing it cannot test is GitHub itself").**
+      A fresh Arduino data directory pointed at the real
+      `releases/latest/download/package_microchip_dspic33ck_index.json`, a real
+      `core install` pulling all three archives off GitHub's CDN, then all four boards
+      compiled at the exact baselines **11904 / 13992 / 11916 / 12876 bytes** with zero
+      warnings and no `platform.local.txt`. Also verified independently of arduino-cli:
+      the three published archives' SHA-256s match the published index.
 
-**So what is left in this phase needs things this bench cannot supply on its own: the
-board on the desk, a decision to make the repo public, and your go-ahead to publish.**
+**Still open — and this now needs only the board on the desk:**
+- [ ] Clean-machine acceptance test **on hardware**: install from the URL (now genuinely
+      possible), compile `NanoBlink`, **upload** to the EV08P02A, confirm the Serial
+      Monitor is live afterwards (the nEDBG program-then-reboot path must survive the
+      refactor). **Upload is the one part of this phase with no verification anywhere** —
+      every gate, `live_check.sh` included, stops at compile, and the nEDBG sequence moved
+      out of the deleted `nedbg-upload.bat` into `ipecmd-upload.bat` without touching
+      silicon since. The release notes say so explicitly, so a co-worker cross-checking it
+      knows that is the part to try.
 
 **Flagged, deliberately not changed here:** `compiler.ld.flags` passes
 `-ffunction-sections -fdata-sections` at compile time but never `-Wl,--gc-sections` at
@@ -1264,4 +1272,5 @@ clone — recreate or copy them before trusting a "builds clean" claim:
 | `install_check.sh` | **Phase 14, the acceptance gate.** Serves the real release archives over local HTTP and runs `arduino-cli core install microchip:dspic33ck`, so checksums, archive roots, tool placement and `toolsDependencies` are all really exercised. Asserts **no `platform.local.txt` anywhere** and the same four sizes |
 | `upgrade_check.sh` | **Phase 14.** Installs 1.0.0 then upgrades to a synthesised 1.0.1 off a two-version index: asserts the DFP packs are reused with no second HTTP GET *and* are still on disk afterwards, the old version's directory is gone, and no `platform.local.txt` appears at either version |
 | `parallel_check.sh` | **Phase 14.** Five cold-cache `-j16` builds — the only gate that exercises the resolver's cache race, which a serial build cannot reach. Fails on output drift, any warning, or an orphan `.tmp` left by a lost race |
+| `live_check.sh` | **Phase 14, post-publication.** Installs from the **real published GitHub URL** into a fresh data directory and compiles all four boards at the baselines. The only gate that covers GitHub itself — a wrong tag in the index's asset URLs, a pre-release flag hiding the release from `/latest`, an asset that failed to upload, or a CDN redirect problem all fail here and nowhere else. Run it after any release |
 | plain-C check | every core `.c` + `variant.c` built with `xc-dsc-gcc -Wall -Wextra` in C mode on all 4 devices — the same guard the `cmake/` projects give, run from the shell |
