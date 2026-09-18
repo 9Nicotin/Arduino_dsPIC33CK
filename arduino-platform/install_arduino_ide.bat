@@ -1,17 +1,25 @@
 @echo off
 REM ============================================================
-REM  Arduino_dsPIC33CK - Arduino IDE Installation Script
+REM  Arduino_dsPIC33CK - install the working copy for development
 REM
-REM  This script:
-REM   1. Copies platform files to Arduino IDE hardware folder
-REM   2. Auto-detects XC-DSC, DFP, and MPLAB X paths
-REM   3. Generates platform.local.txt with detected paths
+REM  END USERS DO NOT NEED THIS SCRIPT. The platform installs from the
+REM  Boards Manager like any other third-party core; see README.md for the
+REM  URL. This script exists for the one thing the Boards Manager cannot do:
+REM  install the *uncommitted* tree you are editing, which is what every
+REM  hardware iteration needs.
+REM
+REM  It copies microchip\dspic33ck\ over the installed platform and then
+REM  checks the prerequisites. It writes almost nothing: the compiler and
+REM  MPLAB X are located at build/upload time by tools\xc-dsc-find.bat, and
+REM  the Device Family Packs normally come from the Boards Manager tool
+REM  packs. platform.local.txt is only generated when those packs are
+REM  absent - i.e. when you have never installed the released core.
 REM ============================================================
 
 cd /d "%~dp0"
 echo.
 echo ============================================
-echo  Arduino_dsPIC33CK Platform Installer
+echo  Arduino_dsPIC33CK - development install
 echo ============================================
 echo.
 
@@ -27,189 +35,158 @@ if not exist "%ARDUINO_DATA%" (
     exit /b 1
 )
 
-REM Target installation path
+REM Target installation path. Must match the version in platform.txt, so that
+REM this overwrites the Boards Manager install rather than sitting beside it.
 set "INSTALL_PATH=%ARDUINO_DATA%\packages\microchip\hardware\dspic33ck\1.0.0"
+set "TOOLS_PATH=%ARDUINO_DATA%\packages\microchip\tools"
 
-echo [1/5] Creating installation directory...
+echo [1/4] Creating installation directory...
 if exist "%INSTALL_PATH%" (
     echo       Removing existing installation...
     rmdir /s /q "%INSTALL_PATH%"
 )
 mkdir "%INSTALL_PATH%"
 
-echo [2/5] Copying platform files...
+echo [2/4] Copying platform files...
 xcopy /E /I /Q "microchip\dspic33ck\*" "%INSTALL_PATH%\"
 
-echo [3/5] Verifying installation...
+echo [3/4] Verifying installation...
 if exist "%INSTALL_PATH%\boards.txt" (
-    echo       boards.txt .... OK
+    echo       boards.txt ......... OK
 ) else (
     echo       [ERROR] boards.txt missing!
     goto :error
 )
 if exist "%INSTALL_PATH%\platform.txt" (
-    echo       platform.txt .. OK
+    echo       platform.txt ....... OK
 ) else (
     echo       [ERROR] platform.txt missing!
     goto :error
 )
 if exist "%INSTALL_PATH%\cores\arduino\Arduino.h" (
-    echo       Arduino.h ..... OK
+    echo       Arduino.h .......... OK
 ) else (
     echo       [ERROR] Arduino.h missing!
     goto :error
 )
+if exist "%INSTALL_PATH%\tools\bin\xc-dsc-g++.bat" (
+    echo       compiler shims ..... OK
+) else (
+    echo       [ERROR] tools\bin\ shims missing - the build cannot find the compiler!
+    goto :error
+)
 
-echo [4/5] Auto-detecting tool paths...
+echo [4/4] Checking prerequisites...
 echo.
 
-REM ---- Detect XC-DSC Compiler ----
-set "XC_DSC_PATH="
-for /d %%V in ("C:\Program Files\Microchip\xc-dsc\v*") do (
-    if exist "%%V\bin\xc-dsc-gcc.exe" set "XC_DSC_PATH=%%V\bin\"
-)
-if defined XC_DSC_PATH (
-    echo       XC-DSC found: %XC_DSC_PATH%
+REM Ask the platform's own resolver rather than re-implementing the search, so
+REM this reports exactly what a build would use. It prints its own actionable
+REM message on failure, hence no message here.
+set "XCDSC_DIR="
+call "%INSTALL_PATH%\tools\xc-dsc-find.bat" xcdsc
+if errorlevel 1 (
+    echo       [WARNING] XC-DSC compiler not found - sketches will not compile.
 ) else (
-    echo       [WARNING] XC-DSC compiler NOT found!
-    echo       Expected at: C:\Program Files\Microchip\xc-dsc\v*\bin\
-    echo       Download from: https://www.microchip.com/xc-dsc
-    set "XC_DSC_PATH=C:\Program Files\Microchip\xc-dsc\v3.31\bin\"
-    echo       Using default: %XC_DSC_PATH%
-)
-
-REM ---- Detect DFP: MP family (dsPIC33CK-MP_DFP) - pick newest version ----
-set "DFP_PATH="
-for /f "delims=" %%P in ('powershell -NoProfile -Command "Get-ChildItem '%USERPROFILE%\.mchp_packs\Microchip\dsPIC33CK-MP_DFP' -Directory 2>$null | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1 | ForEach-Object { $_.FullName + '\xc16' }"') do set "DFP_PATH=%%P"
-if defined DFP_PATH (
-    if exist "%DFP_PATH%" (
-        echo       DFP [MP] found: %DFP_PATH%
-    ) else (
-        set "DFP_PATH="
+    echo       XC-DSC ............. %XCDSC_DIR%
+    if not exist "%XCDSC_DIR%\xc-dsc-g++.exe" (
+        echo       [ERROR] this XC-DSC has no xc-dsc-g++.exe.
+        echo               The core is C++ throughout; v4.00 or newer is required.
+        echo               Download: https://www.microchip.com/xc-dsc
     )
 )
+
+set "IPE_DIR="
+call "%INSTALL_PATH%\tools\xc-dsc-find.bat" ipe
+if errorlevel 1 (
+    echo       [WARNING] MPLAB X not found - PICkit/SNAP/nEDBG upload will not work.
+) else (
+    echo       MPLAB X IPE ........ %IPE_DIR%
+)
+
+REM ---- Device Family Packs -------------------------------------------------
+REM Normally supplied by the Boards Manager tool packs, in which case
+REM platform.txt resolves them itself and an override here would only shadow
+REM them with a stale path. Fall back to a local pack install only if they are
+REM genuinely absent.
+set "DFP_MP_TOOL="
+set "DFP_MC_TOOL="
+if exist "%TOOLS_PATH%\dsPIC33CK-MP_DFP\" set "DFP_MP_TOOL=1"
+if exist "%TOOLS_PATH%\dsPIC33CK-MC_DFP\" set "DFP_MC_TOOL=1"
+
+if defined DFP_MP_TOOL if defined DFP_MC_TOOL (
+    echo       Device Family Packs  Boards Manager tool packs ^(no override written^)
+    goto :dfp_done
+)
+
+if exist "%INSTALL_PATH%\platform.local.txt" (
+    echo       [INFO] platform.local.txt came from your working tree; leaving it alone.
+    goto :dfp_done
+)
+
+echo       [INFO] DFP tool packs not installed; falling back to %%USERPROFILE%%\.mchp_packs
+call :find_pack dsPIC33CK-MP_DFP DFP_PATH
+call :find_pack dsPIC33CK-MC_DFP DFP_MC_PATH
+
 if not defined DFP_PATH (
-    echo       [WARNING] MP Device Family Pack NOT found!
-    echo       Expected at: %USERPROFILE%\.mchp_packs\Microchip\dsPIC33CK-MP_DFP\*\xc16
-    echo       Install via MPLAB X IDE: Tools ^> Packs ^> search "dsPIC33CK-MP_DFP"
-    set "DFP_PATH=%USERPROFILE%\.mchp_packs\Microchip\dsPIC33CK-MP_DFP\1.15.423\xc16"
-    echo       Using default: %DFP_PATH%
-)
-
-REM ---- Detect DFP: MC family (dsPIC33CK-MC_DFP) - pick newest version ----
-set "DFP_MC_PATH="
-for /f "delims=" %%P in ('powershell -NoProfile -Command "Get-ChildItem '%USERPROFILE%\.mchp_packs\Microchip\dsPIC33CK-MC_DFP' -Directory 2>$null | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1 | ForEach-Object { $_.FullName + '\xc16' }"') do set "DFP_MC_PATH=%%P"
-if defined DFP_MC_PATH (
-    if exist "%DFP_MC_PATH%" (
-        echo       DFP [MC] found: %DFP_MC_PATH%
-    ) else (
-        set "DFP_MC_PATH="
-    )
+    echo       [WARNING] dsPIC33CK-MP_DFP not found ^(needed by MP102 / MP508^)
+    echo                 Install it via MPLAB X: Tools ^> Packs, or install the
+    echo                 released core once from the Boards Manager URL in README.md.
 )
 if not defined DFP_MC_PATH (
-    echo       [INFO] MC Device Family Pack not found ^(optional, for MC002 / MC005 boards^)
-    echo       Install via MPLAB X IDE: Tools ^> Packs ^> search "dsPIC33CK-MC_DFP"
-    set "DFP_MC_PATH="
-)
-
-REM ---- Detect MPLAB X IPE ----
-set "MPLAB_PATH="
-for /d %%V in ("C:\Program Files\Microchip\MPLABX\v*") do (
-    if exist "%%V\mplab_platform\mplab_ipe\ipecmd.exe" set "MPLAB_PATH=%%V\mplab_platform\mplab_ipe"
-)
-if defined MPLAB_PATH (
-    echo       MPLAB X found: %MPLAB_PATH%
-) else (
-    echo       [WARNING] MPLAB X IDE NOT found!
-    echo       Expected at: C:\Program Files\Microchip\MPLABX\v*\mplab_platform\mplab_ipe\
-    echo       Upload via PICkit4/SNAP will not work without it.
-    set "MPLAB_PATH=C:\Program Files\Microchip\MPLABX\v6.20\mplab_platform\mplab_ipe"
-    echo       Using default: %MPLAB_PATH%
-)
-
-echo.
-echo [5/5] Generating platform.local.txt...
-
-REM Convert backslashes to forward slashes for Arduino compatibility
-set "XC_DSC_FWD=%XC_DSC_PATH:\=/%"
-set "DFP_FWD=%DFP_PATH:\=/%"
-set "MPLAB_FWD=%MPLAB_PATH:\=/%"
-set "DFP_MC_FWD=%DFP_MC_PATH:\=/%"
-
-REM ---- Detect C++ support (xc-dsc-g++.exe) ----
-set "CPP_MODE=0"
-if exist "%XC_DSC_PATH%xc-dsc-g++.exe" (
-    if exist "%XC_DSC_PATH%xc-dsc-cc1plus.exe" (
-        set "CPP_MODE=1"
-        echo       C++ support: ENABLED ^(xc-dsc-g++.exe found^)
-    )
-)
-if "%CPP_MODE%"=="0" (
-    echo       C++ support: not available ^(fallback to C mode^)
-    echo       To enable: place xc-dsc-cc1plus.exe + xc-dsc-g++.exe in compiler bin/
+    echo       [WARNING] dsPIC33CK-MC_DFP not found ^(needed by MC002 / MC005^)
 )
 
 (
-echo # platform.local.txt - Auto-generated by install_arduino_ide.bat
-echo # Edit paths below if auto-detection was incorrect.
+echo # platform.local.txt - written by install_arduino_ide.bat
+echo #
+echo # Only here because the Boards Manager DFP tool packs were not installed
+echo # when this ran. Delete this file after installing the released core once,
+echo # otherwise these paths shadow the tool packs and go stale on a pack update.
+echo #
 echo # Restart Arduino IDE after editing.
-echo.
-echo # XC-DSC compiler bin/ directory
-echo build.compiler.path=%XC_DSC_FWD%
-echo.
-echo # Device Family Pack path ^(MP family - for dsPIC33CK32MP102^)
-echo build.dfp.path=%DFP_FWD%
-echo.
-echo # Device Family Pack path ^(MC family - for dsPIC33CK256MC002 / MC005^)
-echo build.dfp.path.mc=%DFP_MC_FWD%
-echo.
-echo # MPLAB X IPE directory ^(for PICkit 4 / SNAP programming^)
-echo build.tools.mplab.path=%MPLAB_FWD%
+echo build.dfp.path=%DFP_PATH:\=/%
+echo build.dfp.path.mc=%DFP_MC_PATH:\=/%
 ) > "%INSTALL_PATH%\platform.local.txt"
+echo       platform.local.txt . written ^(DFP paths only^)
 
-REM If no C++ support, fall back to gcc for everything (plain C mode)
-if "%CPP_MODE%"=="0" (
-    (
-    echo.
-    echo # C++ fallback: xc-dsc-g++ not found, compile everything as plain C
-    echo compiler.c.cmd=xc-dsc-gcc
-    echo compiler.c.extra_flags=
-    echo compiler.cpp.cmd=xc-dsc-gcc
-    echo compiler.cpp.extra_flags=-x c
-    ) >> "%INSTALL_PATH%\platform.local.txt"
-)
+:dfp_done
 
-echo       platform.local.txt generated with detected paths
-
-REM Copy package index
-if exist "package_microchip_dspic33ck_index.json" (
-    copy /Y "package_microchip_dspic33ck_index.json" "%ARDUINO_DATA%\" >nul
+REM A copy of the package index in the data folder makes the IDE offer a
+REM Boards Manager install of this same version, which would fight the tree we
+REM just copied in. Remove any left by an older installer.
+if exist "%ARDUINO_DATA%\package_microchip_dspic33ck_index.json" (
+    del /q "%ARDUINO_DATA%\package_microchip_dspic33ck_index.json"
+    echo       removed a stale package index from the data folder
 )
 
 echo.
 echo ============================================
-echo  Installation Complete!
+echo  Development install complete
 echo ============================================
 echo.
 echo  Installed to:
 echo    %INSTALL_PATH%
 echo.
-echo  Detected paths:
-echo    Compiler:  %XC_DSC_PATH%
-echo    DFP [MP]:  %DFP_PATH%
-echo    DFP [MC]:  %DFP_MC_PATH%
-echo    MPLAB X:   %MPLAB_PATH%
-echo.
 echo  Next steps:
-echo    1. Open (or restart) Arduino IDE
-echo    2. Go to Tools ^> Board
-echo    3. Select "Arduino_dsPIC33CK (dsPIC33CK32MP102)"
-echo    4. Click Verify to test compilation
+echo    1. Open ^(or restart^) Arduino IDE
+echo    2. Tools ^> Board ^> Arduino_dsPIC33CK
+echo    3. Click Verify to test compilation
 echo.
-echo  If paths are wrong, edit:
-echo    %INSTALL_PATH%\platform.local.txt
+echo  Re-run this script after every source change: the IDE compiles what is
+echo  in the folder above, not what is in this repo.
 echo.
 pause
+exit /b 0
+
+REM ---- :find_pack <pack-name> <out-var> -----------------------------------
+REM Newest installed version of a local DFP, as <version>\xc16. Sorted as a
+REM version, not as a string, so 1.16.521 beats 1.9.x.
+:find_pack
+set "%~2="
+for /f "delims=" %%P in ('powershell -NoProfile -Command "Get-ChildItem '%USERPROFILE%\.mchp_packs\Microchip\%~1' -Directory 2>$null | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1 | ForEach-Object { $_.FullName + '\xc16' }"') do set "%~2=%%P"
+call set "PACKDIR=%%%~2%%"
+if defined PACKDIR if not exist "%PACKDIR%" set "%~2="
+if defined PACKDIR echo       %~1 %PACKDIR%
 exit /b 0
 
 :error
