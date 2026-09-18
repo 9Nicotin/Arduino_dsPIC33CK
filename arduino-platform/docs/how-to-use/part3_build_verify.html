@@ -44,6 +44,14 @@
 
 <h1>How To Use Arduino_dsPIC33CK</h1>
 <h2 style="border:none;padding:0;margin-top:5px;color:#666;font-size:1.1em;">Part 3: Build &amp; Verify (Compile)</h2>
+<!-- BOARDS-MANAGER-BANNER -->
+<div style="border:2px solid #2e7d32;background:#e8f5e9;padding:14px 16px;margin:18px 0;border-radius:6px;">
+<strong style="color:#1b5e20;font-size:1.05em;">Installing? Use the Boards Manager &mdash; no scripts, no path editing.</strong>
+<p style="margin:8px 0 6px;">In Arduino IDE open <b>File &rarr; Preferences &rarr; Additional Boards Manager URLs</b> and add:</p>
+<code style="display:block;padding:8px;background:#fff;border:1px solid #c8e6c9;word-break:break-all;">https://github.com/9Nicotin/Arduino_dsPIC33CK/releases/latest/download/package_microchip_dspic33ck_index.json</code>
+<p style="margin:8px 0 0;">Then <b>Tools &rarr; Board &rarr; Boards Manager</b>, search for <b>dsPIC33CK</b>, and click <b>Install</b>. You still need the <a href="https://www.microchip.com/xc-dsc">XC-DSC compiler v4.00+</a>, plus MPLAB X if you upload with a PICkit&nbsp;4 / SNAP / nEDBG: their licences forbid redistribution, so they cannot ship inside the platform and are located automatically when a build or upload runs. The Device Family Packs <i>are</i> redistributable and are installed for you.</p>
+<p style="margin:10px 0 0;font-size:0.92em;color:#33691e;">Anything below that uses <code>install_arduino_ide.bat</code> or <code>platform.local.txt</code> is the <b>developer</b> path &mdash; it installs an edited working copy of this repo. A normal install needs neither. <b>Windows only.</b></p>
+</div>
 
 <h2>3.1 Before You Build — Check Board Settings</h2>
 
@@ -121,23 +129,24 @@
 
 <div class="terminal">
 Compiling sketch...<br>
-<span class="path">"C:/Program Files/Microchip/xc-dsc/v3.31/bin/xc-dsc-gcc"</span> -mcpu=33CK32MP102 -mdfp=...dsPIC33CK-MP_DFP/1.15.423/xc16 -c -g -O1 -ffunction-sections -fdata-sections -DARDUINO=10819 -DARDUINO_DSPIC33CK32MP102 -DARDUINO_ARCH_DSPIC33 -DF_CPU=8000000UL -DFCY=4000000UL -x c "Blink.ino.cpp" -o "Blink.ino.cpp.o"<br><br>
+<span class="path">"...\hardware\dspic33ck\1.0.0\tools\bin\xc-dsc-g++.bat"</span> -mcpu=33CK32MP102 -mdfp=...\packages\microchip\tools\dsPIC33CK-MP_DFP\1.16.521-pruned.1\xc16 -c -g -O1 -ffunction-sections -fdata-sections -DARDUINO=10819 -DARDUINO_DSPIC33CK32MP102 -DARDUINO_ARCH_DSPIC33 -DF_CPU=8000000UL -DFCY=4000000UL -x c++ -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-use-cxa-atexit "Blink.ino.cpp" -o "Blink.ino.cpp.o"<br><br>
 Compiling core...<br>
-<span class="path">"xc-dsc-gcc"</span> ... main.c -o main.c.o<br>
-<span class="path">"xc-dsc-gcc"</span> ... wiring.c -o wiring.c.o<br>
-<span class="path">"xc-dsc-gcc"</span> ... wiring_digital.c -o wiring_digital.c.o<br>
-<span class="path">"xc-dsc-gcc"</span> ... wiring_analog.c -o wiring_analog.c.o<br>
-<span class="path">"xc-dsc-gcc"</span> ... HardwareSerial.c -o HardwareSerial.c.o<br>
-<span class="path">"xc-dsc-gcc"</span> ... system_config.c -o system_config.c.o<br>
-<span class="path">"xc-dsc-gcc"</span> ... variant.c -o variant.c.o<br><br>
+<span class="path">"xc-dsc-g++.bat"</span> ... main.c -o main.c.o<br>
+<span class="path">"xc-dsc-g++.bat"</span> ... wiring.c -o wiring.c.o<br>
+<span class="path">"xc-dsc-g++.bat"</span> ... wiring_digital.c -o wiring_digital.c.o<br>
+<span class="path">"xc-dsc-g++.bat"</span> ... wiring_analog.c -o wiring_analog.c.o<br>
+<span class="path">"xc-dsc-g++.bat"</span> ... HardwareSerial.c -o HardwareSerial.c.o<br>
+<span class="path">"xc-dsc-g++.bat"</span> ... system_config.c -o system_config.c.o<br>
+<span class="path">"xc-dsc-g++.bat"</span> ... variant.c -o variant.c.o<br><br>
+<span class="output">(every core file is compiled as C++ &mdash; the shims in tools\bin\ resolve the real compiler at each call)</span><br><br>
 Archiving core objects into core.a...<br>
-<span class="path">"suppress-stderr.bat"</span> "xc-dsc-ar.exe" rcs core.a main.c.o<br>
-<span class="path">"suppress-stderr.bat"</span> "xc-dsc-ar.exe" rcs core.a wiring.c.o<br>
+<span class="path">"tools\suppress-stderr.bat"</span> "tools\bin\xc-dsc-ar.bat" rcs core.a main.c.o<br>
+<span class="path">"tools\suppress-stderr.bat"</span> "tools\bin\xc-dsc-ar.bat" rcs core.a wiring.c.o<br>
 ... (all core objects)<br><br>
 Linking everything together...<br>
-<span class="path">"suppress-stderr.bat"</span> "xc-dsc-gcc.exe" -mcpu=33CK32MP102 -mdfp=... -T p33CK32MP102.gld -Wl,--gc-sections -o "Blink.elf" Blink.ino.cpp.o -Wl,--whole-archive core.a -Wl,--no-whole-archive -lm<br><br>
+<span class="path">"tools\xc-dsc-link.bat"</span> "tools\bin\xc-dsc-gcc.bat" -mcpu=33CK32MP102 -mdfp=... -T ...\support\dsPIC33C\gld\p33CK32MP102.gld -o "Blink.elf" Blink.ino.cpp.o -Wl,--whole-archive core.a -Wl,--no-whole-archive -lm<br><br>
 Creating .hex file...<br>
-<span class="path">"suppress-stderr.bat"</span> "xc-dsc-bin2hex.exe" "Blink.elf"<br><br>
+<span class="path">"tools\suppress-stderr.bat"</span> "tools\bin\xc-dsc-bin2hex.bat" -mdfp=... "Blink.elf"<br><br>
 <span class="success">Sketch uses 2,048 bytes (6%) of program storage space. Maximum is 32,768 bytes.</span><br>
 <span class="success">Global variables use 128 bytes (3%) of dynamic memory, leaving 3,968 bytes for local variables. Maximum is 4,096 bytes.</span><br><br>
 <span class="success">Done compiling.</span>
@@ -158,18 +167,24 @@ Creating .hex file...<br>
 <h3>Error Type 1: Compiler Not Found</h3>
 
 <div class="terminal">
-<span class="error">fork/exec C:/Program Files/Microchip/xc-dsc/v3.31/bin/xc-dsc-gcc: no such file or directory</span><br>
+<span class="error">[Arduino_dsPIC33CK] XC-DSC compiler not found.</span><br>
+<span class="error">&nbsp;&nbsp;Install MPLAB XC-DSC v4.00 or newer from https://www.microchip.com/xc-dsc</span><br>
+<span class="error">&nbsp;&nbsp;or set build.compiler.path in platform.local.txt (or %XCDSC_PATH%).</span><br>
 <span class="error">Error compiling for board Arduino_dsPIC33CK (dsPIC33CK32MP102).</span>
 </div>
 
 <div class="step">
     <strong>Solution:</strong>
     <ol>
-        <li>Check if XC-DSC is installed: look for <code>C:\Program Files\Microchip\xc-dsc\v3.31\bin\xc-dsc-gcc.exe</code></li>
-        <li>If the path is different, edit <code>platform.local.txt</code>:
+        <li>Check that XC-DSC v4.00+ is installed: look for
+        <code>C:\Program Files\Microchip\xc-dsc\v4.00\bin\xc-dsc-g++.exe</code>. Any
+        <code>v*</code> version directory under that root is found automatically,
+        newest first &mdash; and it does <strong>not</strong> need to be on <code>PATH</code>.</li>
+        <li>Only if XC-DSC is installed somewhere else, create
+        <code>platform.local.txt</code>:
             <pre><code>%LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\1.0.0\platform.local.txt</code></pre>
-        </li>
-        <li>Change <code>build.compiler.path=</code> to your actual path</li>
+        and set <code>build.compiler.path=D:/your/path/to/xc-dsc/v4.00/bin/</code>
+        (forward slashes, trailing slash).</li>
         <li>Restart Arduino IDE</li>
     </ol>
 </div>
@@ -231,7 +246,11 @@ void loop() { }    /* Even if empty, must be present */
         <li>Your code exceeds 32KB flash. Reduce code size:</li>
         <li>Remove unused functions or libraries</li>
         <li>Use shorter strings in Serial_print()</li>
-        <li>Enable optimization: the platform defaults to -O1; for more, add <code>compiler.c.extra_flags=-O2</code> to platform.local.txt</li>
+        <li>Enable optimization: the platform defaults to <code>-O1</code>. To raise it, repeat
+        the existing flags in <code>platform.local.txt</code> and append the new one &mdash;
+        this key carries the C++ switch, so replacing it outright breaks the build:
+        <pre><code>compiler.c.extra_flags=-x c++ -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-use-cxa-atexit -O2</code></pre>
+        Note the free XC-DSC edition limits optimization above <code>-O1</code>.</li>
     </ul>
 </div>
 

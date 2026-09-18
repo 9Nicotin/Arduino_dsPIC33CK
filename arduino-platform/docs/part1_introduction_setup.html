@@ -128,6 +128,14 @@
 
 <h1>Arduino_dsPIC33CK User Guide</h1>
 <h2 style="border:none; padding:0; margin-top:5px; color:#666; font-size:1em;">Part 1: Introduction & Setup</h2>
+<!-- BOARDS-MANAGER-BANNER -->
+<div style="border:2px solid #2e7d32;background:#e8f5e9;padding:14px 16px;margin:18px 0;border-radius:6px;">
+<strong style="color:#1b5e20;font-size:1.05em;">Installing? Use the Boards Manager &mdash; no scripts, no path editing.</strong>
+<p style="margin:8px 0 6px;">In Arduino IDE open <b>File &rarr; Preferences &rarr; Additional Boards Manager URLs</b> and add:</p>
+<code style="display:block;padding:8px;background:#fff;border:1px solid #c8e6c9;word-break:break-all;">https://github.com/9Nicotin/Arduino_dsPIC33CK/releases/latest/download/package_microchip_dspic33ck_index.json</code>
+<p style="margin:8px 0 0;">Then <b>Tools &rarr; Board &rarr; Boards Manager</b>, search for <b>dsPIC33CK</b>, and click <b>Install</b>. You still need the <a href="https://www.microchip.com/xc-dsc">XC-DSC compiler v4.00+</a>, plus MPLAB X if you upload with a PICkit&nbsp;4 / SNAP / nEDBG: their licences forbid redistribution, so they cannot ship inside the platform and are located automatically when a build or upload runs. The Device Family Packs <i>are</i> redistributable and are installed for you.</p>
+<p style="margin:10px 0 0;font-size:0.92em;color:#33691e;">Anything below that uses <code>install_arduino_ide.bat</code> or <code>platform.local.txt</code> is the <b>developer</b> path &mdash; it installs an edited working copy of this repo. A normal install needs neither. <b>Windows only.</b></p>
+</div>
 
 <div class="nav-links">
     <strong>Navigation:</strong>
@@ -189,7 +197,7 @@ delay(1000);
              |
              v
   +---------------------------+
-  |   XC16 Compiler (XC-DSC)  |   &lt;-- Compiles to dsPIC machine code
+  |   XC-DSC Compiler v4.00+  |   &lt;-- Compiles to dsPIC machine code
   +---------------------------+
              |
              v
@@ -207,9 +215,9 @@ delay(1000);
         <th>Download / Notes</th>
     </tr>
     <tr>
-        <td>XC16 Compiler (XC-DSC) v3.31+</td>
+        <td>XC-DSC Compiler v4.00+</td>
         <td><strong>YES</strong></td>
-        <td><a href="https://www.microchip.com/xc16">microchip.com/xc16</a> — Free mode available</td>
+        <td><a href="https://www.microchip.com/xc-dsc">microchip.com/xc-dsc</a> — free edition is enough; v4.00 is the first with C++, which this core requires</td>
     </tr>
     <tr>
         <td>MPLAB X IDE v6.20+</td>
@@ -257,17 +265,20 @@ delay(1000);
 <h2>1.3 Installation Steps</h2>
 
 <div class="step">
-    <h3><span class="step-number">1</span>Install XC16 Compiler</h3>
+    <h3><span class="step-number">1</span>Install the XC-DSC Compiler</h3>
     <ol>
-        <li>Download XC16 (XC-DSC) from <a href="https://www.microchip.com/xc16">microchip.com/xc16</a></li>
+        <li>Download XC-DSC v4.00 or newer from <a href="https://www.microchip.com/xc-dsc">microchip.com/xc-dsc</a></li>
         <li>Run the installer (accept defaults)</li>
-        <li>Default path: <code>C:\Program Files\Microchip\xc16\v3.31\</code></li>
-        <li>Add to system PATH: <code>C:\Program Files\Microchip\xc16\v3.31\bin</code></li>
+        <li>Default path: <code>C:\Program Files\Microchip\xc-dsc\v4.00\</code></li>
+        <li>No PATH change needed &mdash; the platform locates any <code>v*</code> directory
+        under <code>C:\Program Files\Microchip\xc-dsc\</code> when a build runs, newest first</li>
     </ol>
 
     <p><strong>Verify installation</strong> — open Command Prompt and type:</p>
-    <pre><code>xc16-gcc --version</code></pre>
-    <p>Expected output: <code>xc16-gcc v3.31 ...</code></p>
+    <pre><code>"C:\Program Files\Microchip\xc-dsc\v4.00\bin\xc-dsc-gcc.exe" --version</code></pre>
+    <p>Expected output: <code>xc-dsc-gcc (Microchip XC-DSC ... v4.00) ...</code>. Use the
+    full path: XC-DSC is not added to <code>PATH</code>, and the platform does not need
+    it to be.</p>
 </div>
 
 <div class="step">
@@ -282,8 +293,10 @@ delay(1000);
 
 <div class="step">
     <h3><span class="step-number">3</span>Set Up the Arduino_dsPIC33CK Platform</h3>
-    <p>The platform files are already in your project at:</p>
-    <pre><code>C:\Users\A18434\MPLABProjects\SCCP1_dsPIC33CK\arduino-platform\</code></pre>
+    <p>Installing from the Boards Manager URL (see the banner at the top) puts the
+    platform under <code>%LOCALAPPDATA%\Arduino15\packages\microchip\</code>. If you
+    cloned the repo to work on the platform itself, its source lives at:</p>
+    <pre><code>&lt;your-clone&gt;\arduino-platform\</code></pre>
 
     <p><strong>Folder contents:</strong></p>
     <pre><code>arduino-platform/
@@ -306,7 +319,7 @@ delay(1000);
         <li>Select <strong>Microchip Embedded → Standalone Project</strong></li>
         <li>Device: <strong>dsPIC33CK32MP102</strong></li>
         <li>Tool: <strong>PICkit 4</strong> (or your programmer)</li>
-        <li>Compiler: <strong>XC-DSC (v3.31)</strong></li>
+        <li>Compiler: <strong>XC-DSC (v4.00 or newer)</strong></li>
         <li>Project Name: <strong>Arduino_dsPIC33CK_Test</strong></li>
     </ol>
 </div>

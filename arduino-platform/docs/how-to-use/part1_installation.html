@@ -44,6 +44,14 @@
 
 <h1>How To Use Arduino_dsPIC33CK</h1>
 <h2 style="border:none;padding:0;margin-top:5px;color:#666;font-size:1.1em;">Part 1: Installation</h2>
+<!-- BOARDS-MANAGER-BANNER -->
+<div style="border:2px solid #2e7d32;background:#e8f5e9;padding:14px 16px;margin:18px 0;border-radius:6px;">
+<strong style="color:#1b5e20;font-size:1.05em;">Installing? Use the Boards Manager &mdash; no scripts, no path editing.</strong>
+<p style="margin:8px 0 6px;">In Arduino IDE open <b>File &rarr; Preferences &rarr; Additional Boards Manager URLs</b> and add:</p>
+<code style="display:block;padding:8px;background:#fff;border:1px solid #c8e6c9;word-break:break-all;">https://github.com/9Nicotin/Arduino_dsPIC33CK/releases/latest/download/package_microchip_dspic33ck_index.json</code>
+<p style="margin:8px 0 0;">Then <b>Tools &rarr; Board &rarr; Boards Manager</b>, search for <b>dsPIC33CK</b>, and click <b>Install</b>. You still need the <a href="https://www.microchip.com/xc-dsc">XC-DSC compiler v4.00+</a>, plus MPLAB X if you upload with a PICkit&nbsp;4 / SNAP / nEDBG: their licences forbid redistribution, so they cannot ship inside the platform and are located automatically when a build or upload runs. The Device Family Packs <i>are</i> redistributable and are installed for you.</p>
+<p style="margin:10px 0 0;font-size:0.92em;color:#33691e;">Anything below that uses <code>install_arduino_ide.bat</code> or <code>platform.local.txt</code> is the <b>developer</b> path &mdash; it installs an edited working copy of this repo. A normal install needs neither. <b>Windows only.</b></p>
+</div>
 
 <p>This guide walks you through installing the Arduino_dsPIC33CK platform into your Arduino IDE so you can start writing and uploading sketches to the dsPIC33CK32MP102 microcontroller.</p>
 
@@ -54,8 +62,8 @@
 <table style="width:100%;border-collapse:collapse;margin:20px 0;">
     <tr style="background:#2e86c1;color:white;"><th style="padding:12px;border:1px solid #1a5276;">Software</th><th style="padding:12px;border:1px solid #1a5276;">Version</th><th style="padding:12px;border:1px solid #1a5276;">Purpose</th><th style="padding:12px;border:1px solid #1a5276;">Download</th></tr>
     <tr><td style="padding:10px;border:1px solid #ddd;"><strong>1. Arduino IDE</strong></td><td style="padding:10px;border:1px solid #ddd;">2.x</td><td style="padding:10px;border:1px solid #ddd;">The development environment (editor + build system)</td><td style="padding:10px;border:1px solid #ddd;"><a href="https://www.arduino.cc/en/software">arduino.cc</a></td></tr>
-    <tr style="background:#eaf2f8;"><td style="padding:10px;border:1px solid #ddd;"><strong>2. XC-DSC Compiler</strong></td><td style="padding:10px;border:1px solid #ddd;">v3.31+</td><td style="padding:10px;border:1px solid #ddd;">Compiles C code into dsPIC33CK machine code</td><td style="padding:10px;border:1px solid #ddd;"><a href="https://www.microchip.com/xc-dsc">microchip.com</a></td></tr>
-    <tr><td style="padding:10px;border:1px solid #ddd;"><strong>3. MPLAB X IDE</strong></td><td style="padding:10px;border:1px solid #ddd;">v6.20+</td><td style="padding:10px;border:1px solid #ddd;">Provides ipecmd.exe for PICkit4 upload + DFP packs</td><td style="padding:10px;border:1px solid #ddd;"><a href="https://www.microchip.com/mplab">microchip.com</a></td></tr>
+    <tr style="background:#eaf2f8;"><td style="padding:10px;border:1px solid #ddd;"><strong>2. XC-DSC Compiler</strong></td><td style="padding:10px;border:1px solid #ddd;"><strong>v4.00+</strong></td><td style="padding:10px;border:1px solid #ddd;">Compiles your sketch. v4.00 is the first release with C++ (<code>xc-dsc-g++</code>), which this core requires.</td><td style="padding:10px;border:1px solid #ddd;"><a href="https://www.microchip.com/xc-dsc">microchip.com</a></td></tr>
+    <tr><td style="padding:10px;border:1px solid #ddd;"><strong>3. MPLAB X IDE</strong></td><td style="padding:10px;border:1px solid #ddd;">v6.20+ <em>(optional)</em></td><td style="padding:10px;border:1px solid #ddd;">Provides <code>ipecmd.exe</code> for PICkit&nbsp;4 / PICkit&nbsp;5 / SNAP / PKOB4 / nEDBG upload. The Device Family Packs no longer come from here &mdash; the Boards Manager installs them.</td><td style="padding:10px;border:1px solid #ddd;"><a href="https://www.microchip.com/mplab">microchip.com</a></td></tr>
 </table>
 
 <h2>1.2 Install Arduino IDE</h2>
@@ -80,41 +88,43 @@
     <h3><span class="step-number">2</span>Download and Install XC-DSC</h3>
     <ol>
         <li>Go to <a href="https://www.microchip.com/xc-dsc">https://www.microchip.com/xc-dsc</a></li>
-        <li>Download <strong>MPLAB XC-DSC Compiler</strong> v3.31</li>
+        <li>Download <strong>MPLAB XC-DSC Compiler v4.00 or newer</strong></li>
         <li>Run installer → Accept license → Install to default path:
-            <pre><code>C:\Program Files\Microchip\xc-dsc\v3.31\</code></pre>
+            <pre><code>C:\Program Files\Microchip\xc-dsc\v4.00\</code></pre>
         </li>
-        <li>When prompted "Add to PATH", select <strong>YES</strong></li>
+        <li>The "Add to PATH" prompt does not matter — this platform calls the compiler
+        by full path. Any <code>v*</code> directory under
+        <code>C:\Program Files\Microchip\xc-dsc\</code> is found automatically, newest first.</li>
     </ol>
     <div class="info-box">
-        <strong>Note:</strong> XC-DSC is Microchip's compiler for dsPIC DSC devices. It is C-only (no C++ support), which is why the Arduino platform compiles all files as C.
+        <strong>Note:</strong> XC-DSC is Microchip's compiler for dsPIC DSC devices. Version <strong>4.00</strong> added C++ (<code>xc-dsc-g++</code>), and this platform compiles everything as C++ &mdash; which is why v4.00 is the minimum. Earlier versions are C-only and will not build this core.
     </div>
 </div>
 
 <div class="step">
     <h3><span class="step-number">3</span>Verify XC-DSC Installation</h3>
-    <p>Open <strong>Command Prompt</strong> (Win+R → type <code>cmd</code> → Enter) and run:</p>
+    <p>Open <strong>Command Prompt</strong> (Win+R → type <code>cmd</code> → Enter) and
+    run it by full path — XC-DSC does not need to be on <code>PATH</code> for Arduino
+    builds, so testing the bare name proves nothing either way:</p>
     <div class="terminal">
-        <span class="prompt">C:\Users\YourName&gt;</span> xc-dsc-gcc --version<br>
-        <span class="output">Microchip XC-DSC Compiler v3.31</span><br>
+        <span class="prompt">C:\Users\YourName&gt;</span> "C:\Program Files\Microchip\xc-dsc\v4.00\bin\xc-dsc-gcc.exe" --version<br>
+        <span class="output">xc-dsc-gcc (Microchip XC-DSC v4.00) ...</span><br>
         <span class="output">Copyright (C) Microchip Technology Inc.</span><br>
         <br>
-        <span class="success">✓ If you see version info, XC-DSC is correctly installed.</span>
+        <span class="success">✓ A version of 4.00 or higher means you are ready.</span>
     </div>
     <br>
-    <p>If you get "not recognized", add XC-DSC to PATH manually:</p>
-    <ol>
-        <li>Press Win+S, search "Environment Variables"</li>
-        <li>Click "Edit the system environment variables"</li>
-        <li>Click "Environment Variables" button</li>
-        <li>Under "System variables", find <strong>Path</strong>, click Edit</li>
-        <li>Click "New" and add: <code>C:\Program Files\Microchip\xc-dsc\v3.31\bin</code></li>
-        <li>Click OK on all dialogs</li>
-        <li>Reopen Command Prompt and retry</li>
-    </ol>
+    <p>Also confirm the C++ driver is present, since the core is C++ throughout:</p>
+    <div class="terminal">
+        <span class="prompt">C:\Users\YourName&gt;</span> dir "C:\Program Files\Microchip\xc-dsc\v4.00\bin\xc-dsc-g++.exe"<br>
+        <span class="success">✓ If this file exists, this XC-DSC can build the platform.</span>
+    </div>
+    <p>If neither path exists, adjust the version number to whatever you installed. If XC-DSC
+    lives outside <code>C:\Program Files\Microchip\</code>, see <em>Manual Path Override</em>
+    below.</p>
 </div>
 
-<h2>1.4 Install MPLAB X IDE (for ipecmd + Device Family Pack)</h2>
+<h2>1.4 Install MPLAB X IDE (for ipecmd — only if you upload with a debugger)</h2>
 
 <div class="step">
     <h3><span class="step-number">4</span>Download and Install MPLAB X</h3>
@@ -122,69 +132,87 @@
         <li>Go to <a href="https://www.microchip.com/mplab">https://www.microchip.com/mplab</a></li>
         <li>Download <strong>MPLAB X IDE</strong> v6.20+</li>
         <li>Run installer with default settings</li>
-        <li>This installs <code>ipecmd.exe</code> which Arduino IDE uses to program via PICkit 4</li>
+        <li>This installs <code>ipecmd.exe</code>, which Arduino IDE uses to program via
+        PICkit&nbsp;4 / PICkit&nbsp;5 / SNAP / PKOB4 / nEDBG</li>
+        <li>Any <code>v*</code> directory under <code>C:\Program Files\Microchip\MPLABX\</code>
+        is found automatically, newest first</li>
     </ol>
     <div class="info-box">
-        <strong>You don't need to use MPLAB X IDE itself</strong> — we only need its <code>ipecmd.exe</code> tool for uploading and its DFP (Device Family Pack) for device definitions. You'll write and compile everything in Arduino IDE.
+        <strong>You never open MPLAB X IDE itself</strong> — the only file used from it is
+        <code>ipecmd.exe</code>. You write and compile everything in Arduino IDE.
+        <p style="margin:8px 0 0;">Skip this step entirely if you only compile, or if you
+        upload over a UART bootloader. The Device Family Packs no longer come from here
+        either — see the next step.</p>
     </div>
 </div>
 
 <div class="step">
-    <h3><span class="step-number">4b</span>Install the Device Family Pack (DFP)</h3>
-    <p>The XC-DSC compiler needs a DFP to recognize the target device. Open MPLAB X IDE once to install it:</p>
-    <ol>
-        <li>Open MPLAB X IDE</li>
-        <li>Go to <strong>Tools → Packs (or Pack Manager)</strong></li>
-        <li>Search for and install the DFP for your board:
-            <table style="margin:10px 0;">
-                <tr><th style="padding:6px 12px;">Board</th><th style="padding:6px 12px;">DFP to Install</th></tr>
-                <tr><td style="padding:6px 12px;">dsPIC33CK32MP102</td><td style="padding:6px 12px;"><strong>dsPIC33CK-MP_DFP</strong> (latest version)</td></tr>
-                <tr><td style="padding:6px 12px;">dsPIC33CK256MC002</td><td style="padding:6px 12px;"><strong>dsPIC33CK-MC_DFP</strong> (latest version)</td></tr>
-            </table>
-        </li>
-        <li>Close MPLAB X IDE</li>
-    </ol>
-    <p>DFPs install to:</p>
-    <pre><code>%USERPROFILE%\.mchp_packs\Microchip\dsPIC33CK-MP_DFP\
-%USERPROFILE%\.mchp_packs\Microchip\dsPIC33CK-MC_DFP\</code></pre>
-    <div class="warning-box">
-        <strong>Important:</strong> Without the DFP, the compiler will fail with "unknown device" errors. The installer auto-detects the DFP location — no manual path editing needed.
+    <h3><span class="step-number">4b</span>Device Family Packs — nothing to do</h3>
+    <p>The compiler does need a DFP to recognize the target device, but you no longer install
+    one. Both packs are Apache-2.0 licensed, so the Boards Manager ships them with the
+    platform, pruned to the four supported devices:</p>
+    <pre><code>%LOCALAPPDATA%\Arduino15\packages\microchip\tools\dsPIC33CK-MP_DFP\
+%LOCALAPPDATA%\Arduino15\packages\microchip\tools\dsPIC33CK-MC_DFP\</code></pre>
+    <div class="info-box">
+        Earlier versions of this guide had you install these through
+        <strong>Tools → Packs</strong> in MPLAB X. Packs already sitting in
+        <code>%USERPROFILE%\.mchp_packs\</code> are simply ignored by Arduino builds, and you
+        should <strong>not</strong> point <code>build.dfp.path</code> at them — that shadows
+        the packs the platform installed and goes stale on the next update.
     </div>
 </div>
 
 <h2>1.5 Install Arduino_dsPIC33CK Platform</h2>
 
 <div class="step">
-    <h3><span class="step-number">5</span>Run the Installation Script</h3>
+    <h3><span class="step-number">5</span>Install the Platform from the Boards Manager</h3>
     <ol>
-        <li>Open Windows Explorer</li>
-        <li>Navigate to the <code>arduino-platform</code> folder you received</li>
-        <li>Double-click <strong>install_arduino_ide.bat</strong></li>
-        <li>Wait for completion — the script auto-detects all tool paths</li>
+        <li>Open Arduino IDE → <strong>File → Preferences → Additional Boards
+        Manager URLs</strong> and add:
+        <pre><code>https://github.com/9Nicotin/Arduino_dsPIC33CK/releases/latest/download/package_microchip_dspic33ck_index.json</code></pre></li>
+        <li>Click <strong>OK</strong>, then open <strong>Tools → Board → Boards
+        Manager</strong>.</li>
+        <li>Search for <strong>dsPIC33CK</strong> and click <strong>Install</strong>
+        (under 1.5&nbsp;MB: the platform plus both pruned Device Family Packs).</li>
     </ol>
+    <div class="info-box">
+        Nothing to configure afterwards. The XC-DSC compiler and MPLAB X are located at the
+        moment a build or upload runs, newest version first, so no file needs your paths
+        written into it — and no <code>platform.local.txt</code> is created.
+    </div>
+    <div class="warning-box">
+        <strong>Editing the platform itself?</strong> The Boards Manager can only install
+        <em>released archives</em>, never your working tree. Clone the repo and run
+        <code>arduino-platform\install_arduino_ide.bat</code>, which copies your tree over the
+        installed platform and reports the tools a build would use. Re-run it after every
+        source change — the IDE compiles what is in <code>%LOCALAPPDATA%\Arduino15</code>,
+        not what is in your clone. Its output looks like this:
+    </div>
     <div class="terminal">
         <span class="prompt">C:\...arduino-platform&gt;</span> install_arduino_ide.bat<br><br>
         ============================================<br>
-        &nbsp;Arduino_dsPIC33CK Platform Installer<br>
+        &nbsp;Arduino_dsPIC33CK - developer install<br>
         ============================================<br><br>
-        [1/5] Creating installation directory...<br>
-        [2/5] Copying platform files...<br>
-        [3/5] Verifying installation...<br>
-        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;boards.txt .... OK</span><br>
-        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;platform.txt .. OK</span><br>
-        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Arduino.h ..... OK</span><br>
-        [4/5] Auto-detecting tool paths...<br>
-        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XC-DSC found: C:\Program Files\Microchip\xc-dsc\v3.31\bin\</span><br>
-        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DFP [MP] found: ...dsPIC33CK-MP_DFP\1.15.423\xc16</span><br>
-        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DFP [MC] found: ...dsPIC33CK-MC_DFP\1.10.386\xc16</span><br>
-        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;MPLAB X found: ...MPLABX\v6.30\mplab_platform\mplab_ipe</span><br>
-        [5/5] Generating platform.local.txt...<br><br>
+        [1/4] Creating installation directory...<br>
+        [2/4] Copying platform files...<br>
+        [3/4] Verifying installation...<br>
+        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;boards.txt ......... OK</span><br>
+        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;platform.txt ....... OK</span><br>
+        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Arduino.h .......... OK</span><br>
+        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;compiler shims ..... OK</span><br>
+        [4/4] Checking prerequisites...<br>
+        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XC-DSC ............. C:\Program Files\Microchip\xc-dsc\v4.00\bin</span><br>
+        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;MPLAB X IPE ........ C:\Program Files\Microchip\MPLABX\v6.35\mplab_platform\mplab_ipe</span><br>
+        <span class="output">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Device Family Packs  Boards Manager tool packs (no override written)</span><br><br>
         ============================================<br>
         <span class="success">&nbsp;Installation Complete!</span><br>
         ============================================<br>
     </div>
     <div class="info-box">
-        The installer auto-detects your XC-DSC compiler, DFP packs, and MPLAB X installation. No manual path editing is needed if you installed everything to default locations.
+        It writes no paths of its own: it asks the platform's own resolver what a build would
+        use and prints that. A two-line <code>platform.local.txt</code> appears only if the
+        Boards Manager DFP tool packs are missing, and the file it writes says to delete it
+        once you have installed the released core.
     </div>
 </div>
 
@@ -202,7 +230,9 @@
         │ &nbsp;&nbsp;Arduino Uno                                      │<br>
         │ &nbsp;&nbsp;Arduino Mega                                     │<br>
         │ <span class="success">Arduino_dsPIC33CK (dsPIC33CK32MP102)   ← 32KB MP</span>  │<br>
+        │ <span class="success">Arduino_dsPIC33CK (dsPIC33CK256MP508)  ← 256KB MP</span> │<br>
         │ <span class="success">Arduino_dsPIC33CK (dsPIC33CK256MC002)  ← 256KB MC</span> │<br>
+        │ <span class="success">Arduino_dsPIC33CK (dsPIC33CK256MC005)  ← EV08P02A</span>  │<br>
         └────────────────────────────────────────────────────┘<br>
     </div>
     <div class="warning-box">
@@ -211,34 +241,39 @@
 </div>
 
 <div class="step">
-    <h3><span class="step-number">7</span>Manual Path Override (only if auto-detect fails)</h3>
-    <p>The installer auto-detects paths. Only edit manually if you see [WARNING] messages during install:</p>
+    <h3><span class="step-number">7</span>Manual Path Override (only if a tool is installed elsewhere)</h3>
+    <p>Needed only if XC-DSC or MPLAB X is installed outside
+    <code>C:\Program Files\Microchip\</code>. A Boards Manager install creates no
+    <code>platform.local.txt</code>; you create one:</p>
     <ol>
-        <li>Open this file in a text editor:<br>
+        <li>Create this file in a text editor:<br>
             <code>%LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\1.0.0\platform.local.txt</code></li>
-        <li>Edit the paths to match your installation:
+        <li>Set only the keys you need &mdash; forward slashes, trailing slash on the compiler path:
             <pre><code># XC-DSC compiler bin/ directory
-build.compiler.path=C:/Program Files/Microchip/xc-dsc/v3.31/bin/
+build.compiler.path=D:/tools/xc-dsc/v4.00/bin/
 
-# DFP paths (MP and MC families)
-build.dfp.path=C:/Users/YOU/.mchp_packs/Microchip/dsPIC33CK-MP_DFP/1.15.423/xc16
-build.dfp.path.mc=C:/Users/YOU/.mchp_packs/Microchip/dsPIC33CK-MC_DFP/1.10.386/xc16
-
-# MPLAB X IPE (for PICkit 4/SNAP upload)
-build.tools.mplab.path=C:/Program Files/Microchip/MPLABX/v6.30/mplab_platform/mplab_ipe</code></pre>
+# MPLAB X IPE (for PICkit 4 / PICkit 5 / SNAP / PKOB4 / nEDBG upload)
+build.tools.mplab.path=D:/tools/MPLABX/v6.35/mplab_platform/mplab_ipe</code></pre>
+            The environment variables <code>XCDSC_PATH</code> and <code>MPLABX_IPE_PATH</code>
+            do the same job without editing any file.
         </li>
         <li>Save the file and restart Arduino IDE</li>
     </ol>
+    <div class="warning-box" style="margin-bottom:0;">
+        Do <strong>not</strong> add <code>build.dfp.path</code> or <code>build.dfp.path.mc</code>
+        here. Those point at the Device Family Packs the Boards Manager installed; an override
+        shadows them and goes stale on the next platform update.
+    </div>
 </div>
 
 <h2>1.6 Installation Verification Checklist</h2>
 
 <ul class="checklist">
     <li>Arduino IDE 2.x opens without errors</li>
-    <li><code>xc-dsc-gcc --version</code> works in Command Prompt</li>
-    <li>MPLAB X is installed (ipecmd.exe exists)</li>
-    <li>DFP installed (at least one): dsPIC33CK-MP_DFP and/or dsPIC33CK-MC_DFP</li>
-    <li>install_arduino_ide.bat completed — all paths auto-detected</li>
+    <li><code>"C:\Program Files\Microchip\xc-dsc\v4.00\bin\xc-dsc-gcc.exe" --version</code> reports v4.00 or newer</li>
+    <li><code>xc-dsc-g++.exe</code> exists in that same <code>bin</code> directory</li>
+    <li>MPLAB X is installed (ipecmd.exe exists) — only if you upload with a debugger</li>
+    <li>Boards Manager URL added, and <strong>dsPIC33CK</strong> shows as Installed</li>
     <li>"Arduino_dsPIC33CK" boards appear in Tools → Board menu</li>
 </ul>
 

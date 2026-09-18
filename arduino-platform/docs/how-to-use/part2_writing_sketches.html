@@ -126,7 +126,7 @@ void loop()
 
 <h2>2.3 C vs C++ — Important Differences</h2>
 
-<p>The XC-DSC compiler is <strong>C-only</strong> (no C++ support). This means some standard Arduino patterns must be written differently:</p>
+<p>XC-DSC v4.00+ compiles this core as <strong>C++</strong>, so <code>Serial.println()</code>, classes and templates all work. Two Arduino conveniences are still missing &mdash; there is no <code>String</code> class and no <code>new</code>/<code>delete</code> &mdash; so a few patterns must be written differently:</p>
 
 <div class="do-dont">
     <div class="do-box">

@@ -28,12 +28,20 @@
 
 <h1>Arduino_dsPIC33CK</h1>
 <h2 style="border:none; padding:0; margin-top:5px; color:#666; font-size:1em;">Arduino IDE Setup &amp; Usage Guide</h2>
+<!-- BOARDS-MANAGER-BANNER -->
+<div style="border:2px solid #2e7d32;background:#e8f5e9;padding:14px 16px;margin:18px 0;border-radius:6px;">
+<strong style="color:#1b5e20;font-size:1.05em;">Installing? Use the Boards Manager &mdash; no scripts, no path editing.</strong>
+<p style="margin:8px 0 6px;">In Arduino IDE open <b>File &rarr; Preferences &rarr; Additional Boards Manager URLs</b> and add:</p>
+<code style="display:block;padding:8px;background:#fff;border:1px solid #c8e6c9;word-break:break-all;">https://github.com/9Nicotin/Arduino_dsPIC33CK/releases/latest/download/package_microchip_dspic33ck_index.json</code>
+<p style="margin:8px 0 0;">Then <b>Tools &rarr; Board &rarr; Boards Manager</b>, search for <b>dsPIC33CK</b>, and click <b>Install</b>. You still need the <a href="https://www.microchip.com/xc-dsc">XC-DSC compiler v4.00+</a>, plus MPLAB X if you upload with a PICkit&nbsp;4 / SNAP / nEDBG: their licences forbid redistribution, so they cannot ship inside the platform and are located automatically when a build or upload runs. The Device Family Packs <i>are</i> redistributable and are installed for you.</p>
+<p style="margin:10px 0 0;font-size:0.92em;color:#33691e;">Anything below that uses <code>install_arduino_ide.bat</code> or <code>platform.local.txt</code> is the <b>developer</b> path &mdash; it installs an edited working copy of this repo. A normal install needs neither. <b>Windows only.</b></p>
+</div>
 
 <div class="warning-box">
     <strong>Prerequisites before starting:</strong>
     <ul style="margin-bottom:0">
         <li>Arduino IDE 2.x installed (<a href="https://www.arduino.cc/en/software">download here</a>)</li>
-        <li>Microchip XC16 compiler v3.31+ installed (<a href="https://www.microchip.com/xc16">download here</a>)</li>
+        <li>Microchip XC-DSC compiler v4.00+ installed (<a href="https://www.microchip.com/xc-dsc">download here</a>)</li>
         <li>MPLAB X IDE installed (for PICkit4/SNAP upload via ipecmd)</li>
     </ul>
 </div>
@@ -41,50 +49,68 @@
 <h2>Step 1: Install the Platform</h2>
 
 <div class="step">
-    <h3><span class="step-number">1</span>Run the Installer Script</h3>
+    <h3><span class="step-number">1</span>Add the Boards Manager URL</h3>
     <ol>
-        <li>Open Windows Explorer</li>
-        <li>Navigate to: <code>C:\Users\A18434\MPLABProjects\SCCP1_dsPIC33CK\arduino-platform\</code></li>
-        <li>Double-click <strong>install_arduino_ide.bat</strong></li>
-        <li>Wait for "Installation Complete!" message</li>
+        <li>Open <strong>Arduino IDE 2.x</strong></li>
+        <li>Go to <strong>File &rarr; Preferences</strong></li>
+        <li>In <strong>Additional Boards Manager URLs</strong>, paste:
+        <pre><code>https://github.com/9Nicotin/Arduino_dsPIC33CK/releases/latest/download/package_microchip_dspic33ck_index.json</code></pre></li>
+        <li>Click <strong>OK</strong></li>
     </ol>
-
-    <div class="screenshot">C:\> install_arduino_ide.bat
-
-============================================
- Arduino_dsPIC33CK Platform Installer
-============================================
-
-[1/4] Creating installation directory...
-[2/4] Copying platform files...
-[3/4] Verifying installation...
-      boards.txt .... OK
-      platform.txt .. OK
-      Arduino.h ..... OK
-[4/4] Creating package index entry...
-
-============================================
- Installation Complete!
-============================================</div>
-
-    <p><strong>What this does:</strong> Copies all platform files to:<br>
-    <code>%LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\1.0.0\</code></p>
 </div>
 
 <div class="step">
-    <h3><span class="step-number">2</span>Configure XC16 Compiler Path</h3>
-    <p>Open the file <code>platform.local.txt</code> in the installed location and verify the path matches your XC16 installation:</p>
-    <pre><code># Edit this file:
-%LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\1.0.0\platform.local.txt
+    <h3><span class="step-number">2</span>Install from the Boards Manager</h3>
+    <ol>
+        <li>Go to <strong>Tools &rarr; Board &rarr; Boards Manager</strong></li>
+        <li>Search for <strong>dsPIC33CK</strong></li>
+        <li>Click <strong>Install</strong></li>
+    </ol>
 
-# Verify this line points to your XC16 bin folder:
-build.compiler.path=C:/Program Files/Microchip/xc16/v3.31/bin/</code></pre>
+    <p><strong>What this does:</strong> downloads the platform and the two pruned
+    Device Family Packs into:<br>
+    <code>%LOCALAPPDATA%\Arduino15\packages\microchip\</code></p>
 
     <div class="info-box">
-        <strong>How to verify XC16 is installed:</strong> Open Command Prompt and type:
-        <pre><code>dir "C:\Program Files\Microchip\xc16\v3.31\bin\xc16-gcc.exe"</code></pre>
-        If it exists, the path is correct.
+        <strong>No path configuration.</strong> There is no
+        <code>platform.local.txt</code> to edit. The XC-DSC compiler and MPLAB X are
+        located automatically when a build or upload runs &mdash; including choosing
+        the newest of several installed versions &mdash; and the Device Family Packs
+        come from the Boards Manager itself.
     </div>
+</div>
+
+<div class="step">
+    <h3><span class="step-number">3</span>Check the Prerequisites</h3>
+    <p>Two Microchip tools stay user-installed, because their licences are
+    non-transferable and forbid redistribution:</p>
+    <table>
+        <tr><th>Tool</th><th>Needed for</th><th>Notes</th></tr>
+        <tr>
+            <td><a href="https://www.microchip.com/xc-dsc">XC-DSC v4.00+</a></td>
+            <td>compiling</td>
+            <td>v4.00 is the first with C++ (<code>xc-dsc-g++</code>), which this core
+            requires. The free edition is enough. It does <strong>not</strong> need to
+            be on <code>PATH</code>.</td>
+        </tr>
+        <tr>
+            <td><a href="https://www.microchip.com/mplabx">MPLAB X IDE</a></td>
+            <td>upload via PICkit&nbsp;4 / SNAP / nEDBG</td>
+            <td>Not needed to compile, or to upload over the UART bootloader.</td>
+        </tr>
+    </table>
+    <p>Installed somewhere other than <code>C:\Program Files\Microchip\</code>? Then
+    &mdash; and only then &mdash; create a <code>platform.local.txt</code> next to the
+    installed <code>platform.txt</code> with
+    <code>build.compiler.path=</code> and/or <code>build.tools.mplab.path=</code>.</p>
+</div>
+
+<div class="info-box">
+    <strong>Developing this platform?</strong> The Boards Manager can only install
+    released archives, never your working tree, so contributors run
+    <code>arduino-platform\install_arduino_ide.bat</code> from a clone instead. It
+    copies the edited tree over the installed platform and re-checks the
+    prerequisites; re-run it after every source change. Everyone else can ignore it.
 </div>
 
 <h2>Step 2: Select the Board in Arduino IDE</h2>
@@ -138,10 +164,10 @@ build.compiler.path=C:/Program Files/Microchip/xc16/v3.31/bin/</code></pre>
  * Blink - Arduino_dsPIC33CK
  * LED on pin D0 (RA0) blinks every 1 second.
  *
- * IMPORTANT: Since XC16 is C-only, use C-style syntax:
- *   - Use Serial_begin() not Serial.begin()
- *   - Use Serial_print() not Serial.print()
- *   - No String class, no new/delete
+ * NOTE: XC-DSC v4.00+ compiles this core as C++, so ordinary Arduino syntax works:
+ *   - Serial.begin() / Serial.print() (Serial_begin() still works from .c files)
+ *   - Classes, templates and overloading are available
+ *   - But there is no String class and no new/delete
  */
 #include "Arduino.h"
 
@@ -184,10 +210,10 @@ void loop()
 
     <div class="screenshot">Output:
 Compiling sketch...
-"C:/Program Files/Microchip/xc16/v3.31/bin/xc16-gcc" -mcpu=dsPIC33CK32MP102 ...
+"...\tools\bin\xc-dsc-g++.bat" -mcpu=33CK256MC005 -x c++ ...
 Compiling core...
 Linking everything together...
-"C:/Program Files/Microchip/xc16/v3.31/bin/xc16-size" -A sketch.elf
+"...\tools\xc-dsc-size-wrapper.bat" sketch.elf
 
 Sketch uses 2048 bytes (6%) of program storage space.
 Global variables use 128 bytes (3%) of dynamic memory.
@@ -276,7 +302,7 @@ void loop()
 │  7. Open Serial Monitor → see UART output               │
 │                                                          │
 │  Sketch.ino → [Arduino IDE] → .cpp → [XC16 as C]       │
-│     → .elf → [xc16-bin2hex] → .hex → [PICkit4] → MCU  │
+│     → .elf → [xc-dsc-bin2hex] → .hex → [PICkit4] → MCU  │
 │                                                          │
 └─────────────────────────────────────────────────────────┘
 </code></pre>
@@ -286,12 +312,12 @@ void loop()
 <table>
     <tr><th>Feature</th><th>Standard Arduino</th><th>Arduino_dsPIC33CK</th></tr>
     <tr><td>Serial</td><td><code>Serial.begin(9600)</code></td><td><code>Serial_begin(9600)</code></td></tr>
-    <tr><td>Print number</td><td><code>Serial.println(val)</code></td><td><code>Serial_println_int(val, DEC)</code></td></tr>
-    <tr><td>String type</td><td><code>String s = "hello";</code></td><td><code>const char *s = "hello";</code></td></tr>
-    <tr><td>Variables</td><td>Declare anywhere</td><td>Declare at top of block</td></tr>
+    <tr><td>Print number</td><td><code>Serial.println(val)</code></td><td><code>Serial.println(val)</code> &mdash; same</td></tr>
+    <tr><td>String type</td><td><code>String s = "hello";</code></td><td><code>const char *s = "hello";</code> (no <code>String</code> class)</td></tr>
+    <tr><td>Variables</td><td>Declare anywhere</td><td>Declare anywhere (C++)</td></tr>
     <tr><td>Voltage</td><td>5V (Uno) / 3.3V (Due)</td><td><strong>3.3V ONLY</strong></td></tr>
     <tr><td>Upload</td><td>USB bootloader</td><td>PICkit 4 ICSP (or UART bootloader)</td></tr>
-    <tr><td>Compiler</td><td>avr-gcc / arm-gcc</td><td>XC16 (xc16-gcc)</td></tr>
+    <tr><td>Compiler</td><td>avr-gcc / arm-gcc</td><td>XC-DSC v4.00+ (<code>xc-dsc-g++</code>, C++)</td></tr>
 </table>
 
 <h2>Troubleshooting Arduino IDE Issues</h2>
@@ -300,15 +326,15 @@ void loop()
     <tr><th>Problem</th><th>Solution</th></tr>
     <tr>
         <td>Board not visible in Tools menu</td>
-        <td>Run install_arduino_ide.bat again. Restart Arduino IDE completely (close all windows).</td>
+        <td>Re-install from <strong>Tools &rarr; Board &rarr; Boards Manager</strong>, then restart Arduino IDE completely (close all windows). Developer installs: re-run <code>install_arduino_ide.bat</code>.</td>
     </tr>
     <tr>
-        <td>"xc16-gcc: No such file or directory"</td>
-        <td>Edit <code>platform.local.txt</code> — set correct path to your XC16 bin folder.</td>
+        <td>"XC-DSC compiler not found"</td>
+        <td>Install <a href="https://www.microchip.com/xc-dsc">XC-DSC v4.00+</a>. It is found automatically and does <strong>not</strong> need to be on <code>PATH</code>. Only if it lives outside <code>C:\Program Files\Microchip\</code>, set <code>build.compiler.path</code> in <code>platform.local.txt</code>.</td>
     </tr>
     <tr>
-        <td>"error: expected ';' before..." (C++ syntax error)</td>
-        <td>You're using C++ syntax. Remove: classes, templates, String, new/delete. Use C-style.</td>
+        <td>C++ features rejected, or <code>xc-dsc-g++.exe</code> missing</td>
+        <td>Your XC-DSC predates v4.00. C++ (classes, templates, overloading) is supported from v4.00 on, and this core requires it &mdash; upgrade the compiler. There is still no <code>String</code> class and no <code>new</code>/<code>delete</code>.</td>
     </tr>
     <tr>
         <td>"undefined reference to _setup"</td>
@@ -316,7 +342,7 @@ void loop()
     </tr>
     <tr>
         <td>Upload fails: "ipecmd not found"</td>
-        <td>Edit <code>platform.local.txt</code> — set correct MPLAB X path for tools.pickit4.path</td>
+        <td>Install MPLAB X. It is located automatically, including picking the newest of several installed versions. Only if it lives outside <code>C:\Program Files\Microchip\</code>, set <code>build.tools.mplab.path</code> in <code>platform.local.txt</code>.</td>
     </tr>
     <tr>
         <td>Upload fails: "Target not found"</td>

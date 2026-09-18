@@ -1,6 +1,14 @@
 # Arduino_dsPIC33CK
 
-A custom Arduino-compatible platform that allows you to program Microchip dsPIC33CK32MP102 using familiar Arduino APIs (digitalWrite, analogRead, Serial, etc.) while using the XC16 (XC-DSC) compiler underneath.
+A custom Arduino-compatible platform that allows you to program Microchip dsPIC33CK
+devices using familiar Arduino APIs (digitalWrite, analogRead, Serial, etc.) while
+using the XC-DSC compiler underneath.
+
+> **Note:** the sections below on pin mapping, the API and MPLAB X still describe
+> only the dsPIC33CK32MP102, and predate C++ support. Four devices are supported
+> today (MP102, MP508, MC002, MC005) and the core is C++ throughout. The
+> Prerequisites, Installation and Troubleshooting sections are current; the rest
+> is being rewritten.
 
 ---
 
@@ -23,54 +31,82 @@ A custom Arduino-compatible platform that allows you to program Microchip dsPIC3
 
 ## Prerequisites
 
+**Windows only.** Every compile and upload goes through a `.bat` wrapper; a Linux
+and macOS port is outstanding (see `platform.txt` TODO markers).
+
 | Requirement | Version | Notes |
 |------------|---------|-------|
-| XC16 Compiler (XC-DSC) | v3.31+ | [Download](https://www.microchip.com/xc16) |
-| MPLAB X IDE (optional) | v6.20+ | For debugging / PICkit programming |
-| Python 3 | 3.8+ | For UART bootloader upload |
-| pyserial | latest | `pip install pyserial` |
-| intelhex | latest | `pip install intelhex` |
-| Arduino IDE (optional) | 2.x | For full Arduino IDE integration |
-| dsPIC33CK-MP DFP | 1.15+ | Device Family Pack (via MPLAB) |
+| XC-DSC compiler | **v4.00+** | [Download](https://www.microchip.com/xc-dsc). v4.00 is the first with C++ (`xc-dsc-g++`), which this core requires. Free edition is fine. |
+| Arduino IDE | 2.x | [Download](https://www.arduino.cc/en/software) |
+| MPLAB X IDE | v6.20+ | Only for PICkit 4 / SNAP / nEDBG upload and debugging |
+| Python 3 + pyserial + intelhex | 3.8+ | Only for UART bootloader upload |
+
+You do **not** need to install the Device Family Packs yourself: they are
+Apache-2.0 licensed, so the Boards Manager ships them (pruned to the supported
+devices) and the platform locates them automatically. The compiler and MPLAB X
+cannot be shipped — their licences are non-transferable — so they stay
+user-installed and are located at build/upload time instead.
 
 ### Hardware
-- dsPIC33CK32MP102 development board (or custom board)
-- PICkit 4 / SNAP programmer (for ICSP upload)
-- OR USB-to-UART adapter (for bootloader upload)
-- LED + 330Ω resistor (for Blink example)
-- Potentiometer (for AnalogRead example)
+- One of: EV08P02A Curiosity Nano (MC005), Curiosity DM330030 (MP508), or a
+  custom MC002 / MP102 board
+- PICkit 4 / SNAP programmer for ICSP upload — not needed on the Curiosity Nano,
+  which has an onboard nEDBG debugger
+- OR a USB-to-UART adapter (for bootloader upload)
+- LED + 330Ω resistor (for the Blink example)
+- Potentiometer (for the AnalogRead example)
 
 ---
 
 ## Installation
 
-### Option A: Arduino IDE Integration
+### Option A: Boards Manager (recommended)
 
-1. Open Arduino IDE → **File → Preferences**
-2. In "Additional Boards Manager URLs", add:
+1. Open Arduino IDE → **File → Preferences → Additional Boards Manager URLs**
+   and add:
    ```
-   file:///C:/Users/A18434/MPLABProjects/SCCP1_dsPIC33CK/arduino-platform/package_microchip_dspic33ck_index.json
+   https://github.com/9Nicotin/Arduino_dsPIC33CK/releases/latest/download/package_microchip_dspic33ck_index.json
    ```
-   (Or host the JSON on a local/web server)
+2. Go to **Tools → Board → Boards Manager**, search for "dsPIC33CK", and install.
+3. Select **Tools → Board → Arduino_dsPIC33CK**.
 
-3. Go to **Tools → Board → Boards Manager**
-4. Search for "dsPIC33CK" and install
+No path configuration is needed, and no `platform.local.txt` is involved.
 
-5. Select **Tools → Board → Arduino_dsPIC33CK**
+### Option B: Developer install (for working on this platform)
 
-### Option B: Manual Installation (Copy to Arduino hardware folder)
+The Boards Manager can only install *released* archives, so contributors run:
 
-```bash
-# Windows
-xcopy /E /I arduino-platform\microchip "%LOCALAPPDATA%\Arduino15\packages\microchip"
-
-# Linux/Mac
-cp -r arduino-platform/microchip ~/.arduino15/packages/
+```
+arduino-platform\install_arduino_ide.bat
 ```
 
-### Option C: Use Directly with XC16 (No Arduino IDE)
+which copies `microchip\dspic33ck\` over the installed platform and checks the
+prerequisites. Re-run it after every source change. If you have never installed
+the released core, it also writes a `platform.local.txt` holding just the two DFP
+paths, taken from your local `%USERPROFILE%\.mchp_packs` install; delete that file
+once you install from the Boards Manager, or it will shadow the tool packs.
 
-You can use this as a library within MPLAB X. See [Building with MPLAB X](#building-with-mplab-x--xc16).
+### Option C: Use directly with MPLAB X (no Arduino IDE)
+
+You can use this as a library within MPLAB X. See
+[Building with MPLAB X](#building-with-mplab-x--xc16).
+
+### Overriding tool paths
+
+Only needed if XC-DSC or MPLAB X is installed outside
+`C:\Program Files\Microchip\`. Create a `platform.local.txt` next to the installed
+`platform.txt` and set either of:
+
+```
+build.compiler.path=D:/tools/xc-dsc/v4.00/bin/
+build.tools.mplab.path=D:/tools/MPLABX/v6.35/mplab_platform/mplab_ipe
+```
+
+Restart the IDE afterwards. The `XCDSC_PATH` and `MPLABX_IPE_PATH` environment
+variables do the same job for one-off overrides. Without either, the newest
+version found under the default install roots is used, and a missing compiler
+fails the build with a message naming the download page rather than a confusing
+"command not found".
 
 ---
 
@@ -197,13 +233,20 @@ LED_BUILTIN:      D0 (RA0)
 | `tone()` | 🚧 | Future (use SCCP) |
 | `noTone()` | 🚧 | Future |
 
-### Not Yet Implemented
+### Since implemented (this table was written before they landed)
 | Feature | Notes |
 |---------|-------|
-| Wire (I2C) | Use I2C1 peripheral - future library |
-| SPI | Use SPI1 peripheral - future library |
-| `attachInterrupt()` | CN (Change Notification) interrupts |
-| EEPROM | dsPIC33CK has no EEPROM; use Flash emulation |
+| Wire (I2C) | `libraries/Wire/` on I2C1 |
+| SPI | `libraries/SPI/` on SPI1 |
+| HRPWM | `libraries/HRPWM/` — 500 MHz high-resolution PWM, 250 ps edges (MP parts only) |
+| `attachInterrupt()` | `cores/arduino/wiring_interrupts.c` |
+| `tone()` / `noTone()` | `cores/arduino/wiring_tone.c` |
+
+### Still not implemented
+| Feature | Notes |
+|---------|-------|
+| EEPROM | dsPIC33CK has no EEPROM; needs a Flash emulation library |
+| `String` class | Use C strings |
 
 ---
 
@@ -235,7 +278,34 @@ void loop()
 }
 ```
 
-**Key difference from standard Arduino:** Since XC16 is a C compiler (not C++), `Serial` is accessed via C function calls (`Serial_begin`, `Serial_print`) rather than C++ methods (`Serial.begin`).
+**Note:** the sketch above uses the older C-style calls. Since XC-DSC v4.00 the core
+is compiled as C++ and `Serial` is a class, so ordinary Arduino dot notation is what
+you should write:
+
+```cpp
+#include <Arduino.h>
+
+void setup()
+{
+    pinMode(LED_BUILTIN, OUTPUT);
+    Serial.begin(115200);
+    Serial.println("Hello from dsPIC33CK!");
+}
+
+void loop()
+{
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(500);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(500);
+
+    Serial.print("A0 = ");
+    Serial.println(analogRead(A0));
+}
+```
+
+The `Serial_begin()` style still works from `.c` files, where `Serial` is a struct of
+function pointers instead.
 
 ---
 
@@ -360,8 +430,8 @@ FOSC = FRC × M / (N1 × N2 × N3)
 
 | Area | Arduino (AVR/ARM) | This Platform (dsPIC33CK) |
 |------|-------------------|---------------------------|
-| Compiler | avr-gcc / arm-gcc (C++) | XC16 (C only) |
-| Serial API | `Serial.begin()` (C++ class) | `Serial_begin()` (C function) |
+| Compiler | avr-gcc / arm-gcc (C++) | XC-DSC v4.00+ (C++) |
+| Serial API | `Serial.begin()` (C++ class) | `Serial.begin()` (C++ class); `Serial_begin()` from `.c` |
 | Voltage | 5V (AVR) / 3.3V (ARM) | **3.3V only** |
 | ADC Resolution | 10-bit (AVR) | 12-bit (returned as 10-bit) |
 | PWM Resolution | 8-bit | 8-bit (configurable up to 16-bit) |
@@ -374,7 +444,9 @@ FOSC = FRC × M / (N1 × N2 × N3)
 
 ### Important Notes
 1. **3.3V ONLY** — Do NOT connect 5V signals to dsPIC33CK pins!
-2. **No C++ support** — XC16 is C-only. Use C-style function calls.
+2. **No `String` class, no `new`/`delete`** — C++ is available, but the core does not
+   ship a `String` implementation or a heap wrapper. Use C strings and `malloc`/`free`
+   if you must.
 3. **PPS (Peripheral Pin Select)** — UART/SPI/PWM outputs must be mapped via PPS. The core handles this automatically for default pins.
 4. **Analog pins are shared** — A0-A5 share physical pins with D5-D10.
 
@@ -386,8 +458,10 @@ FOSC = FRC × M / (N1 × N2 × N3)
 
 | Error | Solution |
 |-------|----------|
-| `xc16-gcc not found` | Add XC16 bin folder to PATH: `C:\Program Files\Microchip\xc16\v3.31\bin` |
-| `Cannot find <xc.h>` | Install dsPIC33CK-MP Device Family Pack |
+| `XC-DSC compiler not found` | Install [XC-DSC v4.00+](https://www.microchip.com/xc-dsc). It does **not** need to be on PATH. If it is installed outside `C:\Program Files\Microchip\`, see [Overriding tool paths](#overriding-tool-paths). |
+| `xc-dsc-g++.exe` missing / C++ errors from a C compiler | Your XC-DSC predates v4.00. The core is C++ throughout; upgrade. |
+| `Cannot find <xc.h>`, or `CPU not recognized` | The Device Family Pack is not resolving. With a Boards Manager install this should not happen — check for a stale `platform.local.txt` next to `platform.txt` overriding `build.dfp.path` with a path that no longer exists, and delete it. |
+| `ipecmd.exe not found` on upload | Install MPLAB X, or see [Overriding tool paths](#overriding-tool-paths). |
 | `Undefined _PORTA` | Ensure MCU is set to `dsPIC33CK32MP102` in build flags |
 | `Multiple definition of main` | Remove your own `main()` — use `setup()`/`loop()` instead |
 
@@ -413,14 +487,16 @@ FOSC = FRC × M / (N1 × N2 × N3)
 
 ## Future Roadmap
 
-- [ ] Wire (I2C) library using I2C1 peripheral
-- [ ] SPI library using SPI1 peripheral
-- [ ] `attachInterrupt()` via Change Notification (CN) pins
-- [ ] `tone()` / `noTone()` via SCCP timer
+- [x] Wire (I2C) library using I2C1 peripheral
+- [x] SPI library using SPI1 peripheral
+- [x] `attachInterrupt()` via Change Notification (CN) pins
+- [x] `tone()` / `noTone()` via SCCP timer
+- [x] Arduino IDE Board Manager package (install from the URL above)
+- [x] Support for dsPIC33CK256MP508, MC002 and MC005
+- [ ] Linux / macOS support (shell ports of the `tools\*.bat` wrappers)
 - [ ] Flash-based EEPROM emulation library
-- [ ] Support for dsPIC33CK64MP/128MP/256MP variants
-- [ ] Arduino IDE Board Manager JSON package
 - [ ] Pre-compiled UART bootloader hex file
+- [ ] Rewrite the pin-mapping and API sections above to cover all four devices
 
 ---
 

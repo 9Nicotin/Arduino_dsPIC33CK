@@ -139,14 +139,18 @@ python upload_uart.py --port COM3 --baud 115200 --hex project.hex</code></pre>
 <h2>5.3 Troubleshooting: Build Errors</h2>
 
 <div class="error-entry">
-    <h4>Error: "xc16-gcc: not found" or "xc-dsc-gcc: not found"</h4>
-    <p><strong>Cause:</strong> XC16 compiler not in system PATH.</p>
+    <h4>Error: "XC-DSC compiler not found"</h4>
+    <p><strong>Cause:</strong> XC-DSC is not installed, or is installed outside <code>C:\Program Files\Microchip\</code>. It does <strong>not</strong> need to be on <code>PATH</code> &mdash; the platform locates it when a build runs.</p>
     <p class="solution">Solution:</p>
     <ol>
-        <li>Open System Properties → Environment Variables</li>
-        <li>Edit PATH, add: <code>C:\Program Files\Microchip\xc16\v3.31\bin</code></li>
-        <li>Restart MPLAB X IDE</li>
-        <li>Verify: open cmd, type <code>xc16-gcc --version</code></li>
+        <li>Install <strong>XC-DSC v4.00 or newer</strong> from
+        <a href="https://www.microchip.com/xc-dsc">microchip.com/xc-dsc</a> — v4.00 is the
+        first release with the C++ compiler this core needs</li>
+        <li>Verify by full path: <code>"C:\Program Files\Microchip\xc-dsc\v4.00\bin\xc-dsc-gcc.exe" --version</code></li>
+        <li>If it is installed somewhere else, set <code>build.compiler.path</code> in
+        <code>platform.local.txt</code> (or the <code>XCDSC_PATH</code> environment variable)
+        — editing <code>PATH</code> has no effect on Arduino builds</li>
+        <li>Restart Arduino IDE</li>
     </ol>
 </div>
 
@@ -370,7 +374,7 @@ debugBlink(3);  // 3 blinks = reached point C
     </tr>
     <tr>
         <td>Can I use Arduino libraries?</td>
-        <td>Only C-compatible ones. C++ libraries (most of them) need porting because XC16 is C-only.</td>
+        <td>C++ libraries work in principle (XC-DSC v4.00+ compiles this core as C++), but most still need porting: they assume AVR/ARM registers, or the <code>String</code> class, which this core does not provide.</td>
     </tr>
     <tr>
         <td>Can I use 5V sensors?</td>
@@ -405,7 +409,7 @@ debugBlink(3);  // 3 blinks = reached point C
 |             Arduino_dsPIC33CK Quick Reference            |
 +=========================================================+
 | DEVICE:      dsPIC33CK32MP102 (28-pin, 3.3V)            |
-| COMPILER:    XC16 / XC-DSC v3.31                         |
+| COMPILER:    XC-DSC v4.00+ (C++)                         |
 | CLOCK:       8 MHz FRC (default) or 100 MHz PLL          |
 | FLASH:       32 KB        RAM: 4 KB                      |
 +---------------------------------------------------------+

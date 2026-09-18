@@ -42,6 +42,14 @@
 
 <h1>How To Use Arduino_dsPIC33CK</h1>
 <h2 style="border:none;padding:0;margin-top:5px;color:#666;font-size:1.1em;">Part 4: Upload to Hardware</h2>
+<!-- BOARDS-MANAGER-BANNER -->
+<div style="border:2px solid #2e7d32;background:#e8f5e9;padding:14px 16px;margin:18px 0;border-radius:6px;">
+<strong style="color:#1b5e20;font-size:1.05em;">Installing? Use the Boards Manager &mdash; no scripts, no path editing.</strong>
+<p style="margin:8px 0 6px;">In Arduino IDE open <b>File &rarr; Preferences &rarr; Additional Boards Manager URLs</b> and add:</p>
+<code style="display:block;padding:8px;background:#fff;border:1px solid #c8e6c9;word-break:break-all;">https://github.com/9Nicotin/Arduino_dsPIC33CK/releases/latest/download/package_microchip_dspic33ck_index.json</code>
+<p style="margin:8px 0 0;">Then <b>Tools &rarr; Board &rarr; Boards Manager</b>, search for <b>dsPIC33CK</b>, and click <b>Install</b>. You still need the <a href="https://www.microchip.com/xc-dsc">XC-DSC compiler v4.00+</a>, plus MPLAB X if you upload with a PICkit&nbsp;4 / SNAP / nEDBG: their licences forbid redistribution, so they cannot ship inside the platform and are located automatically when a build or upload runs. The Device Family Packs <i>are</i> redistributable and are installed for you.</p>
+<p style="margin:10px 0 0;font-size:0.92em;color:#33691e;">Anything below that uses <code>install_arduino_ide.bat</code> or <code>platform.local.txt</code> is the <b>developer</b> path &mdash; it installs an edited working copy of this repo. A normal install needs neither. <b>Windows only.</b></p>
+</div>
 
 <h2>4.1 Hardware Connections</h2>
 
@@ -153,7 +161,7 @@ Verify...<br>
     <tr>
         <td><code>ipecmd: not found</code></td>
         <td>MPLAB X not installed or wrong path</td>
-        <td>Edit <code>platform.local.txt</code>, set <code>tools.pickit4.path</code> to your actual MPLAB X bin folder</td>
+        <td>Install MPLAB X &mdash; it is located automatically, newest version first. Only if it lives outside <code>C:\Program Files\Microchip\</code>, set <code>build.tools.mplab.path</code> in <code>platform.local.txt</code>. (<code>tools.pickit4.path</code> no longer exists.)</td>
     </tr>
     <tr>
         <td><code>Target device not found</code></td>
