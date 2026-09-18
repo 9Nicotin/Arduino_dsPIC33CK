@@ -419,19 +419,35 @@ available" instead of a half-working install.
       since that ordering is arduino-cli's internal business and not a contract.
 
 **Still open:**
-- [ ] **Cut the GitHub release** `v1.0.0` with the three zips + the index as assets.
-      Blocked on two things and needs the user's go-ahead, being outward-facing: **`gh` is
-      not installed**, and **nothing is pushed** — HEAD is `phase10-platform-cleanup` at
-      `37f0b52`, but `origin/main` is still at `0a24860` and has none of `b585acb`,
-      `7553e21`, `78fe2fd`, `37f0b52`, let alone this phase's uncommitted work. A release
-      cut from GitHub today would ship the pre-Phase-10 tree.
+- [x] **Branch pushed September 18, 2026** — `origin/phase10-platform-cleanup` is at
+      `6abb2ff`, so Phases 10, 13 and 14 now exist off this machine. `origin/main` is
+      deliberately left at `0a24860`; merging it is part of the release step, not a
+      backup. Nine commits ahead.
+- [ ] **THE REPOSITORY IS PRIVATE, and that blocks the whole design — discovered
+      September 18, 2026.** Unauthenticated `GET https://github.com/9Nicotin/Arduino_dsPIC33CK`
+      returns **404**, as do `raw.githubusercontent.com/.../main/README.md` and the
+      releases API, while a known-public repo returns 200 through the same curl. GitHub
+      returns 404 rather than 403 for private repos, and `git push` succeeds with our
+      credentials, so the repo exists and is **private**. Arduino IDE fetches the
+      Additional Boards Manager URL **unauthenticated and with no way to supply a
+      credential**, so cutting the release is *not sufficient*: until the repo is public
+      (or the three archives plus the index are hosted somewhere public), every end user
+      gets a download failure, and the URL printed in nine documents cannot work for
+      anyone but this machine. This was never in the plan — the plan assumed the URL
+      resolves once the release exists. **Make the repo public, or pick a public host,
+      before cutting `v1.0.0`.**
+- [ ] **Cut the GitHub release** `v1.0.0` with the three zips + the index as assets, from
+      a ref that carries this work (`origin/main` still has none of `b585acb`, `7553e21`,
+      `78fe2fd`, `37f0b52` or this phase — a release cut from `main` today would ship the
+      pre-Phase-10 tree). Needs the user's go-ahead, being outward-facing, and note
+      **`gh` is not installed**.
 - [ ] Clean-machine acceptance test **on hardware**: wipe
       `%LOCALAPPDATA%\Arduino15\packages\microchip`, add the URL, install, compile
       `NanoBlink`, upload to the EV08P02A, confirm the Serial Monitor is live afterwards
       (the nEDBG program-then-reboot path must survive the refactor).
 
-**So the only two things left in this phase both need something this bench cannot supply
-on its own: your go-ahead to publish, and the board on the desk.**
+**So what is left in this phase needs things this bench cannot supply on its own: the
+board on the desk, a decision to make the repo public, and your go-ahead to publish.**
 
 **Flagged, deliberately not changed here:** `compiler.ld.flags` passes
 `-ffunction-sections -fdata-sections` at compile time but never `-Wl,--gc-sections` at
@@ -439,11 +455,11 @@ link, unlike `_build/allboards.sh:60` — worth ~2.4 KB per sketch. Left alone b
 changes the firmware on silicon and MC005's hardware verification was done through the
 un-collected path; it needs its own bench check.
 
-**Still uncommitted as of September 18, 2026:** `PLAN.md`, both `README.md`s, nine HTML
-docs, `install_arduino_ide.bat`, `platform.txt`, the index JSON, the three wrapper `.bat`s,
-the staged deletions of `tools/nedbg-upload.bat` and `tools/pre_build.py`, and untracked
-`tools/bin/`, `tools/xc-dsc-find.bat`, `tools/ipecmd-upload.bat`, `tools/release/`. The
-whole phase is one unstaged changeset; nothing has been committed or pushed.
+**Committed September 18, 2026** as five commits on `phase10-platform-cleanup`, working
+tree clean: `6486b91` the resolver layer, `435f0b2` the index + release builder,
+`bc51179` the developer installer, `059921e` the docs, `6abb2ff` this PLAN.md section.
+**Deliberately not pushed** — the release is on hold until the hardware test, so
+`origin/main` is still at `0a24860` and has none of Phase 10, 13 or 14.
 
 ---
 
