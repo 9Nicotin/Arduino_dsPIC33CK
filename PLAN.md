@@ -448,14 +448,52 @@ available" instead of a half-working install.
       the three published archives' SHA-256s match the published index.
 
 **Still open — and this now needs only the board on the desk:**
-- [ ] Clean-machine acceptance test **on hardware**: install from the URL (now genuinely
-      possible), compile `NanoBlink`, **upload** to the EV08P02A, confirm the Serial
-      Monitor is live afterwards (the nEDBG program-then-reboot path must survive the
-      refactor). **Upload is the one part of this phase with no verification anywhere** —
-      every gate, `live_check.sh` included, stops at compile, and the nEDBG sequence moved
-      out of the deleted `nedbg-upload.bat` into `ipecmd-upload.bat` without touching
-      silicon since. The release notes say so explicitly, so a co-worker cross-checking it
-      knows that is the part to try.
+- [ ] Clean-machine acceptance test **on hardware**. **Upload is the one part of this phase
+      with no verification anywhere** — every gate, `live_check.sh` included, stops at
+      compile, and the nEDBG sequence moved out of the deleted `nedbg-upload.bat` into
+      `ipecmd-upload.bat` without touching silicon since. The release notes say so
+      explicitly, so a co-worker cross-checking it knows that is the part to try.
+
+      **The procedure, so it does not have to be re-derived:**
+
+      *Do not clone the repo or run `install_arduino_ide.bat` on the test machine* — that
+      is the developer path and would contaminate the test with the overrides this phase
+      exists to remove.
+
+      1. Install Arduino IDE 2.x and **XC-DSC v4.00+** (free, microchip.com/mplab/compilers).
+         **MPLAB X** only if uploading — it is a ~2 GB install and compile-only tests do
+         not need it.
+      2. Preferences → Additional Boards Manager URLs →
+         `https://github.com/9Nicotin/Arduino_dsPIC33CK/releases/latest/download/package_microchip_dspic33ck_index.json`
+      3. Boards Manager → search `dsPIC33CK` → expect `Arduino_dsPIC33CK (Windows only)`
+         1.0.0 → Install (~1.5 MB including both DFP packs).
+      4. Tools → Board → **Arduino_dsPIC33CK (dsPIC33CK256MC005 Curiosity Nano)**.
+      5. Examples → `04.CuriosityNano` → `NanoBlink` → Verify, then Upload to the EV08P02A.
+      6. `NanoSerialHello` for the Serial Monitor; `NanoSelfTest` is the broadest single
+         sketch if only one run is possible.
+
+      **What a fresh machine tests that this bench cannot:** the resolver's version-sorted
+      glob against *whatever* XC-DSC and MPLAB X versions are installed there. This machine
+      has XC-DSC v4.00; a new install will likely be newer, which is the case the glob was
+      written for and has never actually exercised.
+
+      **Two expected behaviours that look like bugs — do not chase either:**
+      - The Serial Monitor is **silent for ~10 s after an upload**. `ipecmd` wedges the
+        nEDBG CDC bridge, the recipe reboots the debugger, USB re-enumerates. See
+        `nedbg-flash-then-reboot-debugger`. This is the most likely false alarm.
+      - A macOS/Linux co-worker **sees the platform but cannot install it** — `systems[]`
+        names `i686-mingw32` only, deliberately, so they get a clean "not available".
+
+      If XC-DSC is missing or installed outside `%ProgramFiles%\Microchip\xc-dsc\v*\bin`,
+      the resolver prints an explicit error naming the download page and the two escape
+      hatches (`%XCDSC_PATH%`, or a `platform.local.txt` override). Seeing that error with
+      a *normal* XC-DSC install is a real finding — capture the version and install path.
+
+      Before reporting any failure, turn on Preferences → **Show verbose output during:
+      compile + upload**; that is what reveals which paths the resolver actually picked.
+
+- [ ] *Offered, not built (awaiting the user's yes):* a short `TESTING.md` in the repo
+      carrying the procedure above, so co-workers can be sent a link instead of a relay.
 
 **Flagged, deliberately not changed here:** `compiler.ld.flags` passes
 `-ffunction-sections -fdata-sections` at compile time but never `-Wl,--gc-sections` at
