@@ -11,6 +11,10 @@
 > upload recipe, `Serial.println(someInt)` compiles, and the six declared-but-missing
 > functions (`tone`, `noTone`, `attachInterrupt`, `detachInterrupt`, `interrupts`,
 > `noInterrupts`) are implemented; all builds green, hardware checks still owed.
+> **Phase 14 (install from a Boards Manager URL) opened September 17, 2026 and is
+> IN PROGRESS** — parts 1–4 are done and `_build/install_check.sh` passes end to end,
+> but the GitHub release is not cut and the clean-machine hardware test is not run.
+> See that section; it is the only phase currently open besides 9.
 > Some later-phase items were delivered ahead of the plan — see "Delivered Ahead
 > of Plan" below.
 >
@@ -22,11 +26,19 @@
 > install at `%LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\1.0.0` was
 > refreshed from this tree on September 17, 2026, so it is current — but it is a *copy*,
 > and `install_arduino_ide.bat` must be re-run after any change to the platform tree or
-> the IDE will silently build the old core.
+> the IDE will silently build the old core. That installer is now the **developer** path
+> only (Phase 14): end users install from the Boards Manager URL and never get a
+> `platform.local.txt`, so a bug that only a `platform.local.txt` hides will not show up
+> on this bench. **Branch state, checked September 17, 2026:** HEAD is
+> `phase10-platform-cleanup` at `37f0b52`, which carries all four commits
+> (`b585acb`, `7553e21`, `78fe2fd`, `37f0b52`). Local `main` and `origin/main` are both
+> still at `0a24860` and have **none** of them. So a release cut from `latest` on GitHub
+> today would ship the pre-Phase-10 tree — push before tagging.
 >
 > **Known inconsistency, not yet fixed:** the Phase 6 documentation still teaches the
 > superseded suffixed `Serial` API and does not mention the MC005 board, `tone()` or
-> `attachInterrupt()`. See "Documentation is behind the code" under Phase 12.
+> `attachInterrupt()`. See "Documentation is behind the code" under Phase 12. (Its
+> *installation and toolchain* half was corrected in Phase 14; the API half was not.)
 >
 > ### PRIORITY, set September 17, 2026: dsPIC33CK256MC005 only
 >
@@ -307,6 +319,131 @@ verifying on its own terms, and does not need this phase. It is a different meas
 (FCY = 100 MHz)**, whereas the default on every board is `f_cpu=8000000UL` → **FCY = 4 MHz**,
 where the same prescaler gives ~19.6 Hz. Re-derive against whichever clock entry is actually
 selected. Filed under Phase 12.
+
+---
+
+## Phase 14: Install from a Boards Manager URL (IN PROGRESS — Sep 17, 2026)
+
+Goal, in the user's words: *"the way just to add the github link to the arduino when click
+add board and let it download our platform into their arduino ide, as same as STM mcu
+(Instead of using \*.bat to install)"*. Plan approved from
+`~/.claude/plans/expressive-wishing-lynx.md`; three design questions were answered
+Recommended-option: resolve paths at build time in wrappers, Windows-only stated plainly,
+keep the old installer as the developer path.
+
+**The constraint that shaped everything:** Board Manager only downloads and unzips — it
+runs *no* post-install script, by design. And a prebuild hook cannot substitute, because
+`platform.txt` properties expand *before* `recipe.hooks.*` run, so a hook can never supply
+`{build.dfp.path}` to the same build. So the four machine-specific paths had to split by
+*why* they are machine-specific:
+
+| path | why | where it went |
+|---|---|---|
+| `build.dfp.path`, `build.dfp.path.mc` | per-user profile + upstream pack version — **undefaultable** | Board Manager tool packs, reached via `{runtime.tools.<pack>.path}`. The DFPs are **Apache-2.0**, so they can be pruned and redistributed (notices kept, modification stated in `PRUNED.txt`). |
+| `build.compiler.path`, `build.tools.mplab.path` | licence-gated, drift only by *version* | resolved at build/upload time by `tools/xc-dsc-find.bat`, called from the `tools/bin/*.bat` shims |
+
+XC-DSC's licence §2 is "non-transferable" and §6(a) forbids distribution, so the STM32
+model (ST ships its own GCC as a tool) is closed to us; same for MPLAB X IPE. Both stay
+user-installed prerequisites. **This is why Windows-only is a published claim** — the
+`systems[]` list names `i686-mingw32` only, so a Linux/macOS user gets a clear "not
+available" instead of a half-working install.
+
+**Done and verified:**
+- [x] Two pruned DFP tool packs (`1.16.521-pruned.1`, `1.11.412-pruned.1`) — 792 KB and
+      637 KB, down from 672 MB of upstream packs
+- [x] `tools/xc-dsc-find.bat` resolver (override key → env var → cache → version-sorted
+      glob → actionable error), plus seven byte-identical `tools/bin/*.bat` shims that
+      derive the tool name from `%~n0`, so `%*` forwards compiler arguments untouched
+- [x] `tools/ipecmd-upload.bat` for all five ipecmd programmers
+- [x] `package_microchip_dspic33ck_index.json` rewritten: real urls, sizes, SHA-256s,
+      all four boards, both tool dependencies
+- [x] `tools/release/make-release.sh` — deterministic zips (sorted entries, fixed
+      `date_time`), so a rebuild is byte-identical and checksums are stable
+- [x] `install_arduino_ide.bat` rewritten (196 lines) as the **developer** path: it now
+      calls the platform's own resolver instead of duplicating detection, checks the
+      `tools\bin\` shims, writes only two DFP keys and only when the tool packs are
+      absent, and *removes* the stale data-folder index copy it used to create. The old
+      C++-fallback block was deleted — it wrote `compiler.c.cmd=xc-dsc-gcc` with no
+      `.bat` suffix, which is broken against the shim layer.
+- [x] **`_build/install_check.sh` — the gate this phase needed.** Serves the real release
+      archives over local HTTP and runs `arduino-cli core install microchip:dspic33ck`, so
+      checksums, archive roots, tool placement and `toolsDependencies` are all actually
+      exercised. Result: both packs + platform installed, **no `platform.local.txt`
+      anywhere**, and all four boards compiled at the exact `_build` baselines —
+      **11904 / 13992 / 11916 / 12876 bytes**. Compressed release total under 1.5 MB.
+- [x] Developer path re-verified as a genuinely different configuration (no tool packs,
+      DFPs via a 2-line override): MC005 12876 B and MP102 11904 B, zero warnings —
+      byte-identical to the Boards Manager path, which independently confirms the pruned
+      packs match the full ones.
+- [x] Docs: `README.md` and `arduino-platform/README.md` rewritten to lead with the URL;
+      six HTML docs bannered; the whole `v3.31` / `xc16-gcc` / "no C++ support" /
+      "install the DFP from MPLAB X" family corrected across nine files. Two doc
+      instructions were **actively harmful**, not just stale, and are now fixed:
+      `part4_upload_hardware.html:164` told users to set `tools.pickit4.path`, a key that
+      no longer exists; `part3_build_verify.html:242` told them to put
+      `compiler.c.extra_flags=-O2` in `platform.local.txt`, which would replace
+      `platform.txt`'s `-x c++ -fno-exceptions -fno-rtti -fno-threadsafe-statics
+      -fno-use-cxa-atexit` and silently compile the C++ core as C.
+
+- [x] **`platform.txt`'s own comments corrected September 18, 2026** — lines 6, 82 and
+      111 promised a v3.x C-mode fallback that the shim layer makes impossible
+      (`compiler.c.cmd` and `compiler.cpp.cmd` are both `xc-dsc-g++.bat`; the core is C++
+      throughout). All three now say v4.00+ is required and name the real failure mode.
+      The `c.extra_flags` one was the same harmful class as the two doc lines above: it
+      told the reader to blank a key that carries `-x c++`. `package_check.sh` re-run
+      after the edit — four boards, baseline sizes, zero warnings.
+- [x] **`tools/pre_build.py` deleted September 18, 2026** (`git rm`) — nothing in the
+      tree referenced it, and a prebuild hook could not have worked anyway for the
+      expansion-order reason above.
+- [x] **Parallel-build race cleared — `_build/parallel_check.sh`, new.** The resolver
+      caches its glob hit at `%LOCALAPPDATA%\Microchip\Arduino_dsPIC33CK\xcdsc.path`,
+      written to a temp name and `move`d into place; a serial build never exercises that.
+      Five cold-cache builds at `-j16` (cache deleted before each) all produced a
+      byte-identical hex, zero warnings, a single-line cache file and **no orphan `.tmp`**
+      — the signature a lost race would leave. `-j16` 7.1–7.5 s vs `-j1` 11.8 s.
+- [x] **Shim spawn cost measured, as the plan required rather than assumed: ≈44 ms per
+      invocation.** 30 calls, bare `.exe` 1420 ms vs 2740 ms through
+      `tools/bin/xc-dsc-g++.bat`, timed from inside `cmd.exe` (`_build/spawn_cost.bat`) so
+      the measurement does not include a bash→cmd hop the real build never pays. Blink
+      links ~11 objects, so this is well under a second per sketch and it parallelises.
+- [x] **Upgrade path 1.0.0 → 1.0.1 — `_build/upgrade_check.sh`, new.** Serves an index
+      carrying both versions (1.0.1 synthesised from the 1.0.0 zip with `version=` bumped,
+      repacked with make-release's deterministic settings), installs 1.0.0, clears the
+      download cache, upgrades. Both DFP packs reused with **no second HTTP GET** (counted
+      from the server's own access log, not arduino-cli's console text), 1.0.0's directory
+      removed, no `platform.local.txt` at either version, four boards at baseline sizes.
+      **Worth knowing:** arduino-cli 1.5.1 prints `Uninstalling <pack>, tool is no more
+      required...` mid-upgrade, in the window after 1.0.0 is dropped and before 1.0.1 is
+      installed. It does not act on it — the packs stay on disk with `xc16/` intact, which
+      the gate now asserts directly rather than inferring from the absent re-download,
+      since that ordering is arduino-cli's internal business and not a contract.
+
+**Still open:**
+- [ ] **Cut the GitHub release** `v1.0.0` with the three zips + the index as assets.
+      Blocked on two things and needs the user's go-ahead, being outward-facing: **`gh` is
+      not installed**, and **nothing is pushed** — HEAD is `phase10-platform-cleanup` at
+      `37f0b52`, but `origin/main` is still at `0a24860` and has none of `b585acb`,
+      `7553e21`, `78fe2fd`, `37f0b52`, let alone this phase's uncommitted work. A release
+      cut from GitHub today would ship the pre-Phase-10 tree.
+- [ ] Clean-machine acceptance test **on hardware**: wipe
+      `%LOCALAPPDATA%\Arduino15\packages\microchip`, add the URL, install, compile
+      `NanoBlink`, upload to the EV08P02A, confirm the Serial Monitor is live afterwards
+      (the nEDBG program-then-reboot path must survive the refactor).
+
+**So the only two things left in this phase both need something this bench cannot supply
+on its own: your go-ahead to publish, and the board on the desk.**
+
+**Flagged, deliberately not changed here:** `compiler.ld.flags` passes
+`-ffunction-sections -fdata-sections` at compile time but never `-Wl,--gc-sections` at
+link, unlike `_build/allboards.sh:60` — worth ~2.4 KB per sketch. Left alone because it
+changes the firmware on silicon and MC005's hardware verification was done through the
+un-collected path; it needs its own bench check.
+
+**Still uncommitted as of September 18, 2026:** `PLAN.md`, both `README.md`s, nine HTML
+docs, `install_arduino_ide.bat`, `platform.txt`, the index JSON, the three wrapper `.bat`s,
+the staged deletions of `tools/nedbg-upload.bat` and `tools/pre_build.py`, and untracked
+`tools/bin/`, `tools/xc-dsc-find.bat`, `tools/ipecmd-upload.bat`, `tools/release/`. The
+whole phase is one unstaged changeset; nothing has been committed or pushed.
 
 ---
 
@@ -1040,12 +1177,21 @@ Arduino_dsPIC33CK/
 │   │   │   └── HRPWM/src/HRPWM.h + HRPWM.c   (PG1-PG8, 250ps)
 │   │   │       └── examples/BoostMPPT/
 │   │   ├── tools/
-│   │   │   ├── suppress-stderr.bat       (stderr -> silence for Arduino IDE)
+│   │   │   ├── bin/                      (Phase 14: 7 byte-identical shims;
+│   │   │   │                            each derives its tool from %~n0)
+│   │   │   ├── xc-dsc-find.bat           (Phase 14: resolves XC-DSC + MPLAB X
+│   │   │   │                            at build time; override > env >
+│   │   │   │                            cache > newest-version glob > error)
+│   │   │   ├── ipecmd-upload.bat         (Phase 14: all 5 ipecmd programmers)
+│   │   │   ├── suppress-stderr.bat       (stderr -> silence; STILL USED by the
+│   │   │   │                            ar and objcopy recipes)
 │   │   │   ├── xc-dsc-size-wrapper.bat   (size reporting)
 │   │   │   ├── xc-dsc-link.bat           (linker CWD workaround)
-│   │   │   ├── nedbg-upload.bat          (flash + reboot the wedged CDC bridge)
-│   │   │   ├── upload_uart.py            (UART bootloader upload)
-│   │   │   └── pre_build.py              (ORPHANED - not in platform.txt)
+│   │   │   │                            (nedbg-upload.bat is GONE - its flash-then-
+│   │   │   │                             reboot logic moved into ipecmd-upload.bat)
+│   │   │   └── upload_uart.py            (UART bootloader upload)
+│   │   │                            (pre_build.py DELETED Sep 18 2026 - a prebuild
+│   │   │                             hook cannot work: properties expand first)
 │   │   ├── examples/
 │   │   │   ├── 01.Basics/        Blink, AnalogReadSerial   (all 4 boards)
 │   │   │   ├── 02.CppFeatures/   CppDemo                   (MP508 only: LED1/A22)
@@ -1055,12 +1201,25 @@ Arduino_dsPIC33CK/
 │   │   ├── bootloaders/
 │   │   ├── boards.txt
 │   │   ├── platform.txt
-│   │   ├── platform.local.txt.template
+│   │   ├── platform.local.txt.template  <- DEVELOPER path only. A Boards
+│   │   │                                   Manager install has no such file.
 │   │   └── programmers.txt
+│   ├── package_microchip_dspic33ck_index.json  <- Phase 14: the Boards Manager
+│   │                                             index; in-repo copy is the
+│   │                                             source of truth
 │   ├── docs/                   <- 5-part guide + how-to-use/ (5 more)
-│   │                              STALE: teaches the pre-Phase-10 Serial API
-│   ├── install_arduino_ide.bat  <- RE-RUN after any platform change
+│   │                              Install/toolchain/DFP instructions were
+│   │                              corrected in Phase 14. Still STALE on the
+│   │                              pre-Phase-10 Serial API, pin maps and MPLAB X
+│   ├── install_arduino_ide.bat  <- DEVELOPER install (uncommitted working tree).
+│   │                              RE-RUN after any platform change. End users
+│   │                              install from the Boards Manager URL instead.
 │   └── README.md
+├── tools/release/              <- Phase 14: make-release.sh builds the three
+│                                  deterministic zips (sorted entries, fixed
+│                                  date_time, so checksums are reproducible) and
+│                                  rewrites the 9 url/size/checksum fields in the
+│                                  index. Never hand-edit those nine fields.
 ├── docs/                       <- Flash CRC integrity check note (standalone)
 ├── config.mcc/                 <- MCC-generated reference code
 ├── test_led/                   <- Hardware test builds & objects
@@ -1085,4 +1244,8 @@ clone — recreate or copy them before trusting a "builds clean" claim:
 | `allboards.sh` | all 4 devices compile + link + emit hex; `sketch.cpp` is a synthetic sketch calling the whole API, including all six Phase 10 functions plus `analogWrite(PWM4_PIN, …)` in one translation unit, which is what proves the `wiring_private.h` link contract closes |
 | `examples_mc005.sh` | the six `04.CuriosityNano` sketches, warning count per sketch |
 | `examples_all.sh` | `01.Basics` on all 4 devices, `02.CppFeatures` + `03.PWM` on MP508 only (they use `LED1`/`LED2`/`A22`, which only that variant defines) |
+| `package_check.sh` | **Phase 14.** `arduino-cli` compiles one sketch per board against the *installed* platform — the only gate that exercises `platform.txt`, `boards.txt`, the recipes and the wrappers at all. Baselines: **11904 / 13992 / 11916 / 12876 bytes** |
+| `install_check.sh` | **Phase 14, the acceptance gate.** Serves the real release archives over local HTTP and runs `arduino-cli core install microchip:dspic33ck`, so checksums, archive roots, tool placement and `toolsDependencies` are all really exercised. Asserts **no `platform.local.txt` anywhere** and the same four sizes |
+| `upgrade_check.sh` | **Phase 14.** Installs 1.0.0 then upgrades to a synthesised 1.0.1 off a two-version index: asserts the DFP packs are reused with no second HTTP GET *and* are still on disk afterwards, the old version's directory is gone, and no `platform.local.txt` appears at either version |
+| `parallel_check.sh` | **Phase 14.** Five cold-cache `-j16` builds — the only gate that exercises the resolver's cache race, which a serial build cannot reach. Fails on output drift, any warning, or an orphan `.tmp` left by a lost race |
 | plain-C check | every core `.c` + `variant.c` built with `xc-dsc-gcc -Wall -Wextra` in C mode on all 4 devices — the same guard the `cmake/` projects give, run from the shell |
