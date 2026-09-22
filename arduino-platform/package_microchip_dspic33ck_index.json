@@ -19,8 +19,8 @@
           },
           "url": "https://github.com/9Nicotin/Arduino_dsPIC33CK/releases/download/v1.0.1/dspic33ck-arduino-core-1.0.1.zip",
           "archiveFileName": "dspic33ck-arduino-core-1.0.1.zip",
-          "checksum": "SHA-256:8d4db23ad4ea1c5ca19698394f12406d9a9f03f38187da4a5f129482429dcf5b",
-          "size": "93094",
+          "checksum": "SHA-256:48d0806f9e9a693811997a806c17efb419e0db25db8225f0449adcbbaceb75ce",
+          "size": "94717",
           "boards": [
             {
               "name": "Arduino_dsPIC33CK (dsPIC33CK32MP102)"

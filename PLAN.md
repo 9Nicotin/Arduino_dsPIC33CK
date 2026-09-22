@@ -1,6 +1,6 @@
 # Arduino_dsPIC33CK Platform — Project Plan
 
-> **Last reconciled against the tree: September 17, 2026.** Phases 1–8 complete.
+> **Last reconciled against the tree: September 22, 2026.** Phases 1–8 complete.
 > Phase 9 is IN PROGRESS (test sketches written, hardware measurement pending).
 > **Phase 13 (EV08P02A / dsPIC33CK256MC005 board support) added September 8, 2026,
 > code-complete the same day, and CLOSED on hardware September 17, 2026** — the
@@ -21,6 +21,10 @@
 > `program.pattern` recipes existed, so all six programmers failed) and the missing
 > `-Wl,--gc-sections`, worth ~9 KB per sketch. Both are verified on silicon, `install_check`
 > and `live_check` are green at the new baselines, and the 1.0.0→1.0.1 upgrade was tested.
+> `v1.0.1` was then **re-published in place on September 22, 2026**: `File > Examples` had
+> never shown a single board sketch, because Arduino builds that menu from libraries only
+> and all eleven lived in a platform-level `examples/`. They now ship inside
+> `libraries/Arduino_dsPIC33CK/`, and `install_check.sh` asserts the menu offers every one.
 > **One item remains open:** the fresh-install/resolver-glob test still wants a machine with
 > a different XC-DSC version. See that section.
 > Some later-phase items were delivered ahead of the plan — see "Delivered Ahead
@@ -186,7 +190,8 @@ Build a portable Arduino-compatible platform for Microchip dsPIC33CK family usin
   - Removed ~80 lines of manual UART/ADC code
   - `AnalogReadSerial.ino` updated to dot-notation
   - NOTE: `DM330030_RGB_POT` lives in `test_led/` (bench build dir, with .elf/.hex/.o),
-    NOT in the shipped `examples/` tree. Promote it to `examples/` if it should ship.
+    NOT in the shipped examples tree. Promote it to
+    `libraries/Arduino_dsPIC33CK/examples/` if it should ship.
 - [x] **Platform re-installed** via `install_arduino_ide.bat`
   - Installer uses `xcopy /E /I /Q "microchip\dspic33ck\*"`, so it deploys the whole
     subtree recursively — new libraries/examples are picked up with no installer edit
@@ -287,7 +292,7 @@ Found during the August 25, 2026 reconciliation.
 - [ ] **Hardware-verify** — no record this was ever run against a real bootloader
 
 ### C++ Feature Example — belongs to Phase 8
-- [x] `examples/02.CppFeatures/CppDemo/CppDemo.ino` — exercises the native C++
+- [x] `libraries/Arduino_dsPIC33CK/examples/02.CppFeatures/CppDemo/CppDemo.ino` — exercises the native C++
       support that XC-DSC v4.00 unlocked
 
 ### Orphaned: `tools/pre_build.py`
@@ -311,10 +316,10 @@ target does not work as written and the sketch needs re-pointing at a real PWM p
 Resuming this phase without reading that will waste a bench session.
 
 - [x] Test sketches written:
-  - `examples/03.PWM/PWMTest/PWMTest.ino` — 4 tests on LED2 (RE5 = D58 = RP181 → SCCP5):
+  - `libraries/Arduino_dsPIC33CK/examples/03.PWM/PWMTest/PWMTest.ino` — 4 tests on LED2 (RE5 = D58 = RP181 → SCCP5):
     50%; 25/50/75/full; smooth fade; PWM→digital→PWM transition. Serial 115200 via PKOB4 CDC.
     Expected ~490 Hz (at FCY=100 MHz: prescaler 1:64, period=3187 → 490.5 Hz)
-  - `examples/03.PWM/Fade/Fade.ino`
+  - `libraries/Arduino_dsPIC33CK/examples/03.PWM/Fade/Fade.ino`
 - [ ] ON HOLD — Run PWMTest on DM330030 and confirm frequency + duty accuracy (scope or LED)
 - [ ] ON HOLD — Test `analogWrite()` output on D5-D8
 - [ ] ON HOLD — Test on MP102 board (not just DM330030)
@@ -617,7 +622,7 @@ Two commits on `main`, pushed, tagged `v1.0.1`:
 
 | | |
 |---|---|
-| `dspic33ck-arduino-core-1.0.1.zip` | 93094 B · `8d4db23ad4ea1c5ca19698394f12406d9a9f03f38187da4a5f129482429dcf5b` |
+| `dspic33ck-arduino-core-1.0.1.zip` | 94717 B · `48d0806f9e9a693811997a806c17efb419e0db25db8225f0449adcbbaceb75ce` (re-published — see below; was 93094 B · `8d4db23a…`) |
 | `dsPIC33CK-MP_DFP-1.16.521-pruned.1.zip` | 810615 B · `6cee9c30b3027b2dd14ccd64483440a5432613e3945a7d4a820795cfd0476899` |
 | `dsPIC33CK-MC_DFP-1.11.412-pruned.1.zip` | 652421 B · `5533d058359bd7482401c8c2011a5dbd05fd4396271cad93bd4c8cc54a076651` |
 
@@ -652,6 +657,50 @@ Fixing it means normalising those 17 files or adding a `.gitattributes`, which c
 archive, so it belongs in its own change rather than inside a bug-fix release. Watch for it
 if releases ever move to CI. Beware `sed -i` on `platform.txt` for the same reason: it
 rewrote all 255 line endings to LF as a side effect of a one-line version bump.
+
+#### Re-published under the same tag — the examples were invisible in the IDE
+
+`File > Examples` offered nothing but `HRPWM > BoostMPPT`. All eleven board sketches
+were in the archive, all eleven compiled, and the menu was still empty, because
+**Arduino assembles that menu from installed *libraries* only — a platform-level
+`examples/` directory is never scanned.** They had been there from the first commit, so
+v1.0.0 and v1.0.1 both shipped them unreachable.
+
+Fix: the tree moved to `libraries/Arduino_dsPIC33CK/examples/`, with a
+`library.properties` and a header that just re-includes `Arduino.h` (a 1.5-format
+library needs a header to be valid; the sketches do not include it). This is the
+arrangement arduino-esp32 uses for its `libraries/ESP32` examples. The `01.`–`04.`
+grouping survives as submenus — the bundled TFT library's `examples/Arduino/` proves
+nesting works — so the menu now reads
+`File > Examples > Arduino_dsPIC33CK > 04.CuriosityNano > NanoButtonLED`.
+
+**Why no gate caught it:** every gate compiles sketches by absolute path, which works
+whether or not the IDE can find them. `install_check.sh` now asks `arduino-cli` for the
+menu it would hand the IDE (`lib examples --fqbn … --format json`) and requires every
+shipped `.ino` to come back under `container_platform microchip:dspic33ck@<version>`.
+12/12 offered — the eleven board sketches plus `HRPWM`'s `BoostMPPT`, which was always
+visible and is now covered too. A gate that proves code compiles cannot prove it is
+reachable.
+
+**`make-release.sh` also stopped shipping untracked files.** It stages with `cp -r`, so
+anything gitignored rode along: `tools/MPLABXLog.xml`, a 103-byte skeleton `ipecmd` drops
+beside itself, was in both the 1.0.0 and 1.0.1 archives. Rather than blacklist strays one
+at a time, the stage must now equal `git ls-files` exactly — an untracked file there is
+either junk or something the author forgot to commit, and both should stop a release.
+Uncommitted *modifications* are still allowed, which is what makes a release testable
+before the commit that carries it.
+
+Published **over the existing `v1.0.1` release rather than as 1.0.2**, per the request to
+keep the version and overwrite it. Two consequences worth remembering:
+
+- **Boards Manager keys on the version string**, so it will not re-fetch an archive whose
+  version it already has. Anyone already on 1.0.1 must delete
+  `%LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\1.0.1\` and
+  reinstall. A version bump is the mechanism that exists for this; overwriting is a
+  deliberate exception, not a pattern to repeat once other people are installing.
+- **The `v1.0.1` tag still points at `ddd6035`**, which does not contain this content.
+  Moving it means force-pushing a tag on a public repo; leaving it means the tag names the
+  release's provenance loosely rather than exactly.
 
 ---
 
@@ -1384,8 +1433,17 @@ Arduino_dsPIC33CK/
 │   │   ├── libraries/
 │   │   │   ├── SPI/src/SPI.h + SPI.c
 │   │   │   ├── Wire/src/Wire.h + Wire.c
-│   │   │   └── HRPWM/src/HRPWM.h + HRPWM.c   (PG1-PG8, 250ps)
-│   │   │       └── examples/BoostMPPT/
+│   │   │   ├── HRPWM/src/HRPWM.h + HRPWM.c   (PG1-PG8, 250ps)
+│   │   │   │   └── examples/BoostMPPT/
+│   │   │   └── Arduino_dsPIC33CK/            (carries the board examples: File >
+│   │   │       └── examples/                 Examples is built from libraries ONLY,
+│   │   │           ├── 01.Basics/        never from a platform-level examples/)
+│   │   │           │                     Blink, AnalogReadSerial   (all 4 boards)
+│   │   │           ├── 02.CppFeatures/   CppDemo         (MP508 only: LED1/A22)
+│   │   │           ├── 03.PWM/           Fade, PWMTest   (MP508 only: LED2)
+│   │   │           └── 04.CuriosityNano/ NanoBlink, NanoSerialHello,
+│   │   │                                 NanoButtonLED, NanoAnalogRead,
+│   │   │                                 NanoPWMFade, NanoSelfTest
 │   │   ├── tools/
 │   │   │   ├── bin/                      (Phase 14: 7 byte-identical shims;
 │   │   │   │                            each derives its tool from %~n0)
@@ -1402,12 +1460,6 @@ Arduino_dsPIC33CK/
 │   │   │   └── upload_uart.py            (UART bootloader upload)
 │   │   │                            (pre_build.py DELETED Sep 18 2026 - a prebuild
 │   │   │                             hook cannot work: properties expand first)
-│   │   ├── examples/
-│   │   │   ├── 01.Basics/        Blink, AnalogReadSerial   (all 4 boards)
-│   │   │   ├── 02.CppFeatures/   CppDemo                   (MP508 only: LED1/A22)
-│   │   │   ├── 03.PWM/           Fade, PWMTest    (MP508 only: LED2; Phase 9)
-│   │   │   └── 04.CuriosityNano/ NanoBlink, NanoSerialHello, NanoButtonLED,
-│   │   │                         NanoAnalogRead, NanoPWMFade, NanoSelfTest
 │   │   ├── bootloaders/
 │   │   ├── boards.txt
 │   │   ├── platform.txt
@@ -1455,7 +1507,7 @@ clone — recreate or copy them before trusting a "builds clean" claim:
 | `examples_mc005.sh` | the six `04.CuriosityNano` sketches, warning count per sketch |
 | `examples_all.sh` | `01.Basics` on all 4 devices, `02.CppFeatures` + `03.PWM` on MP508 only (they use `LED1`/`LED2`/`A22`, which only that variant defines) |
 | `package_check.sh` | **Phase 14.** `arduino-cli` compiles one sketch per board against the *installed* platform — the only gate that exercises `platform.txt`, `boards.txt`, the recipes and the wrappers at all. Baselines: **2564 / 3928 / 2564 / 3196 bytes** (was 11904 / 13992 / 11916 / 12876 before `--gc-sections` landed in 1.0.1) |
-| `install_check.sh` | **Phase 14, the acceptance gate.** Serves the real release archives over local HTTP and runs `arduino-cli core install microchip:dspic33ck`, so checksums, archive roots, tool placement and `toolsDependencies` are all really exercised. Asserts **no `platform.local.txt` anywhere** and the same four sizes. Takes its expected version from `platform.txt` rather than a pinned constant -- the pinned `1.0.0` made it report a phantom `FAIL no platform.txt` the moment 1.0.1 was cut |
+| `install_check.sh` | **Phase 14, the acceptance gate.** Serves the real release archives over local HTTP and runs `arduino-cli core install microchip:dspic33ck`, so checksums, archive roots, tool placement and `toolsDependencies` are all really exercised. Asserts **no `platform.local.txt` anywhere** and the same four sizes. Takes its expected version from `platform.txt` rather than a pinned constant -- the pinned `1.0.0` made it report a phantom `FAIL no platform.txt` the moment 1.0.1 was cut. Also asserts that **`File > Examples` offers every shipped `.ino`** (`lib examples --format json`, filtered to this platform's `container_platform`) — the gap that let eleven invisible examples ship twice, since compiling by absolute path works whether or not the IDE can find them |
 | `upgrade_check.sh` | **Phase 14.** Installs 1.0.0 then upgrades to a synthesised 1.0.1 off a two-version index: asserts the DFP packs are reused with no second HTTP GET *and* are still on disk afterwards, the old version's directory is gone, and no `platform.local.txt` appears at either version. Re-run for real against the two **live** releases on Sep 22 2026, not a synthesised index: DFP packs reused with no second download, only the 93 KB core archive fetched |
 | `parallel_check.sh` | **Phase 14.** Five cold-cache `-j16` builds — the only gate that exercises the resolver's cache race, which a serial build cannot reach. Fails on output drift, any warning, or an orphan `.tmp` left by a lost race |
 | `live_check.sh` | **Phase 14, post-publication.** Installs from the **real published GitHub URL** into a fresh data directory and compiles all four boards at the baselines. The only gate that covers GitHub itself — a wrong tag in the index's asset URLs, a pre-release flag hiding the release from `/latest`, an asset that failed to upload, or a CDN redirect problem all fail here and nowhere else. Run it after any release |
