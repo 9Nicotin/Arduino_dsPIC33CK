@@ -149,17 +149,24 @@ static void _spi_setDataMode(uint8_t mode)
     SPI1CON1Lbits.SPIEN = 1;
 }
 
-/* Global SPI object */
+/*
+ * Global SPI object.
+ *
+ * Positional, not designated: platform.txt sets compiler.c.cmd to the g++ driver,
+ * and g++ compiles a .c file as C++, where designated initializers are a GNU
+ * extension that -Wpedantic reports. The order below must stay in step with
+ * SPIClass_t in SPI.h -- hence the trailing names.
+ */
 SPIClass_t SPI = {
-    .begin            = _spi_begin,
-    .end              = _spi_end,
-    .beginTransaction = _spi_beginTransaction,
-    .endTransaction   = _spi_endTransaction,
-    .transfer         = _spi_transfer,
-    .transfer16       = _spi_transfer16,
-    .setBitOrder      = _spi_setBitOrder,
-    .setClockDivider  = _spi_setClockDivider,
-    .setDataMode      = _spi_setDataMode,
+    _spi_begin,             /* begin            */
+    _spi_end,               /* end              */
+    _spi_beginTransaction,  /* beginTransaction */
+    _spi_endTransaction,    /* endTransaction   */
+    _spi_transfer,          /* transfer         */
+    _spi_transfer16,        /* transfer16       */
+    _spi_setBitOrder,       /* setBitOrder      */
+    _spi_setClockDivider,   /* setClockDivider  */
+    _spi_setDataMode        /* setDataMode      */
 };
 
 #ifdef __cplusplus

@@ -30,7 +30,7 @@
 # platform.local.txt is still honoured as an override and always wins.
 
 name=Arduino_dsPIC33CK
-version=1.0.1
+version=1.0.2
 
 # ============================================================
 # Compiler Configuration

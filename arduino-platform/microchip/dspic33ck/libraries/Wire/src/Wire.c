@@ -218,21 +218,28 @@ static int _wire_peek(void)
     return (int)_rx_buffer[_rx_index];
 }
 
-/* Global Wire object */
+/*
+ * Global Wire object.
+ *
+ * Positional, not designated: platform.txt sets compiler.c.cmd to the g++ driver,
+ * and g++ compiles a .c file as C++, where designated initializers are a GNU
+ * extension that -Wpedantic reports. The order below must stay in step with
+ * WireClass_t in Wire.h -- hence the trailing names.
+ */
 WireClass_t Wire = {
-    .begin              = _wire_begin,
-    .end                = _wire_end,
-    .setClock           = _wire_setClock,
-    .beginTransmission  = _wire_beginTransmission,
-    .endTransmission    = _wire_endTransmission,
-    .endTransmissionStop = _wire_endTransmissionStop,
-    .requestFrom        = _wire_requestFrom,
-    .requestFromStop    = _wire_requestFromStop,
-    .write              = _wire_write,
-    .writeBytes         = _wire_writeBytes,
-    .available          = _wire_available,
-    .read               = _wire_read,
-    .peek               = _wire_peek,
+    _wire_begin,              /* begin               */
+    _wire_end,                /* end                 */
+    _wire_setClock,           /* setClock            */
+    _wire_beginTransmission,  /* beginTransmission   */
+    _wire_endTransmission,    /* endTransmission     */
+    _wire_endTransmissionStop,/* endTransmissionStop */
+    _wire_requestFrom,        /* requestFrom         */
+    _wire_requestFromStop,    /* requestFromStop     */
+    _wire_write,              /* write               */
+    _wire_writeBytes,         /* writeBytes          */
+    _wire_available,          /* available           */
+    _wire_read,               /* read                */
+    _wire_peek                /* peek                */
 };
 
 #ifdef __cplusplus

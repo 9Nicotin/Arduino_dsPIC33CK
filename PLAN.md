@@ -25,6 +25,13 @@
 > never shown a single board sketch, because Arduino builds that menu from libraries only
 > and all eleven lived in a platform-level `examples/`. They now ship inside
 > `libraries/Arduino_dsPIC33CK/`, and `install_check.sh` asserts the menu offers every one.
+> **`v1.0.2` is COMMITTED but NOT YET PUBLISHED (September 22, 2026)** — a content release:
+> 15 new `04.CuriosityNano` sketches (27 examples shipped in total), a generated pin-map
+> diagram on the GitHub page, and the `-Wpedantic` cleanup in `SPI.c`/`Wire.c`. No core API
+> changed. All seven gates green, including `install_check.sh` end-to-end at 1.0.2. The
+> archives are built in `_build/release/`; publishing is the only step left. See that
+> section — it also records that `package_check.sh` had been reporting false drift against
+> baselines two releases stale, and that `upgrade_check.sh` is now stale.
 > **One item remains open:** the fresh-install/resolver-glob test still wants a machine with
 > a different XC-DSC version. See that section.
 > Some later-phase items were delivered ahead of the plan — see "Delivered Ahead
@@ -720,6 +727,66 @@ stayed up and every install would have failed verification. It now compares cont
 also only wrote release notes when *creating* a release, leaving notes that described the
 superseded assets; it now `PATCH`es them, which matters here because the notes are the only
 place a user is told to delete the installed directory and reinstall.
+
+### Release v1.0.2 — September 22, 2026 — COMMITTED, NOT YET PUBLISHED
+
+Content release: **15 new `04.CuriosityNano` example sketches** (11 → 21 there, 27 shipped
+in total), a **generated pin-map diagram** on the GitHub page, and the `-Wpedantic`
+cleanup in `SPI.c` / `Wire.c`. No core API changed, so nothing here can regress a sketch
+that worked on 1.0.1.
+
+Archives built locally by `make-release.sh`; the index carries their real checksums:
+
+| | |
+|---|---|
+| `dspic33ck-arduino-core-1.0.2.zip` | 173203 B · `218eab3e1d07a2bbfc20016c60af1a0ea1a1eb4c2bc5023cdff55d72fabe7189` (94717 B in 1.0.1 — the examples nearly doubled it) |
+| `dsPIC33CK-MP_DFP-1.16.521-pruned.1.zip` | 810615 B · `6cee9c30…` — **byte-identical to v1.0.0 and v1.0.1** |
+| `dsPIC33CK-MC_DFP-1.11.412-pruned.1.zip` | 652421 B · `5533d058…` — **byte-identical to v1.0.0 and v1.0.1** |
+
+Both DFP URLs were moved to the `v1.0.2` tag, as in 1.0.1 and for the same reason
+(`make-release.sh` asserts every URL ends with `/releases/download/v<VERSION>/…`). The
+1.4 MB of duplicated bytes is deliberate: **this project has already re-published a
+release in place once**, so a fresh 1.0.2 install must not depend on v1.0.1's assets
+still being what they were. Upgraders re-download nothing — arduino-cli keys tools on
+name+version, both unchanged.
+
+**The version lives in six places** and `make-release.sh` refuses to build if the index
+disagrees with `platform.txt`, which is what caught the two DFP URLs. The set:
+`platform.txt:33`, the index's `version` / `url` / `archiveFileName`, both DFP `url`s,
+`install_arduino_ide.bat:40`, and the four `library.properties`. The libraries were still
+on `1.0.0` two releases after the platform left it; they now track the platform version,
+which is what arduino-esp32 does with its bundled libraries.
+
+Gates, all green: `allboards.sh` (4 devices); `examples_all.sh` (9); `examples_mc005.sh`
+(21); `examples_new_mc005.sh` **21 × 2 clock options = 42 builds** through the real
+arduino-cli path at `--warnings all`, zero warnings, and the two independent gates agree
+byte-for-byte on all 21 hex sizes; `package_check.sh` (4 boards); and `install_check.sh`,
+which served the archives over local HTTP, ran a real `core install`, verified the
+checksums, placed both tool packs, found **no `platform.local.txt`**, compiled all four
+boards at baseline, and confirmed **all 27 shipped examples are offered** by
+`File > Examples`.
+
+**`package_check.sh`'s baselines were two releases stale and the gate was reporting false
+drift.** It still held the 1.0.0 flash column (11904 / 13992 / 11916 / 12876) that
+`--gc-sections` retired in 1.0.1; the table in this file at "Release v1.0.1" had the
+current numbers all along. Updated to the observed 2564 / 3928 / 2564 / 3196. Worth noting
+*why* it was safe to update rather than investigate: the comment above the table explained
+the baselines were deliberately larger than the core-source gates' because `platform.txt`
+lacked `-Wl,--gc-sections` — 1.0.1 added that flag, which closed the divergence, and
+`examples_all.sh` and `package_check.sh` now agree exactly (Blink/32MP102 = 15353 B hex on
+both). That agreement is the invariant the gate exists to protect, and it holds. **A gate
+whose baseline outlives the change it was measuring reports drift that is not there**,
+which is how a real regression gets waved through next time.
+
+`_build/upgrade_check.sh` is now **stale and will fail if run**: it selects the index entry
+with `version == "1.0.0"` to synthesise an upgrade from, and the index no longer carries
+one. It was superseded on Sep 22 2026 by the real 1.0.0 → 1.0.1 upgrade against two live
+releases, so this is not urgent; either re-point it at the two newest index versions or
+retire it, but do not leave it looking like a gate that passes.
+
+Still to do to publish: `gh release create v1.0.2` with the three archives plus the index,
+then `live_check.sh` against the real `/releases/latest/download/…` URL. Because the URLs
+are new, the stale-CDN trap that bit the in-place 1.0.1 re-publish cannot apply here.
 
 ---
 

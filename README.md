@@ -46,6 +46,41 @@ installs them for you, pruned to the supported devices.
 | dsPIC33CK256MC002 | 28-pin SDIP | Custom | |
 | dsPIC33CK32MP102 | 28-pin SDIP | Custom | |
 
+## Pin map — dsPIC33CK256MC005 Curiosity Nano (EV08P02A)
+
+Arduino pin numbers next to the pad labels silkscreened on the board, so you can
+go from a header pad to the number `digitalWrite()` wants without a datasheet.
+
+[![dsPIC33CK256MC005 Curiosity Nano pin map](docs/img/pinmap-dspic33ck256mc005.svg)](docs/img/pinmap-dspic33ck256mc005.svg)
+
+`Dn` is the digital pin number, `An` the `analogRead()` name, and `ANn` the chip's
+own ADC channel — printed because the two do **not** line up (`A9` is `AN17`).
+The diagram is generated from
+[variant.c](arduino-platform/microchip/dspic33ck/variants/dspic33ck256mc005/variant.c)
+by [tools/pinmap/gen_pinmap.py](tools/pinmap/gen_pinmap.py), so it cannot drift
+from the pin table the core actually compiles against. Pad order is from Figure
+1-1 of the [board user guide](https://www.microchip.com/en-us/development-tool/EV08P02A)
+(DS70005656).
+
+Six things the board will not tell you, all of which will cost you an evening:
+
+- **D10 and D11 belong to the debugger.** `RB5`/`PGD3` and `RB6`/`PGC3` are the
+  nEDBG programming lines. Driving them kills programming *and* the serial bridge
+  until you power-cycle. Treat them as unavailable.
+- **`analogWrite()` reaches four pins: D5, D6, D7, D8** (SCCP1–4, ~490 Hz).
+  `RB10`–`RB15` and `RD1` are motor-control PWM outputs in silicon, but no Arduino
+  API reaches them on this device — `HRPWM.h` is a hard error on MC parts, which
+  have no auxiliary PLL.
+- **`tone()` borrows SCCP4, which is D8's PWM channel.** `tone()` stops PWM on D8;
+  `analogWrite(8, x)` stops the tone. Neither warns. D5–D7 are unaffected.
+- **The CDC pad labels are from the debugger's side.** D31/D32 (`RC10`/`RC11`) are
+  the USB serial bridge that `Serial` talks to, so the pad marked *CDC RX* is the
+  MCU's **TX**.
+- **`Serial` has 63 usable RX bytes** and the ISR drops the *newest* byte on
+  overflow, so a long burst loses its terminating newline rather than its head.
+- **Peripheral Pin Select cannot reach PORTA.** No device in this family has an
+  `RPn` on PORTA, so D0–D4 can never host a remappable peripheral.
+
 ## Features
 
 - Arduino API: `pinMode`, `digitalWrite`, `analogRead`/`analogWrite`, `Serial`,
@@ -55,10 +90,13 @@ installs them for you, pruned to the supported devices.
   `Serial.println()` dot notation
 - Libraries: SPI, Wire, HRPWM (500 MHz high-resolution PWM, 250 ps edge placement)
 - PWM: ~490 Hz via SCCP modules, with automatic prescaler selection
-- 11 examples, under **File → Examples → Arduino_dsPIC33CK**: Blink,
-  AnalogReadSerial, CppDemo, Fade, PWMTest, and a `04.CuriosityNano/` set for the
-  EV08P02A (NanoBlink, NanoSelfTest, NanoSerialHello, NanoButtonLED, NanoPWMFade,
-  NanoAnalogRead)
+- 27 examples. 26 under **File → Examples → Arduino_dsPIC33CK**: `01.Basics`
+  (Blink, AnalogReadSerial), `02.CppFeatures` (CppDemo), `03.PWM` (Fade, PWMTest),
+  and 21 sketches in `04.CuriosityNano` written for the EV08P02A — covering GPIO,
+  ADC, DAC, comparator, PWM, tone, interrupts, `millis`, watchdog, shift
+  registers, stepper drive, sine synthesis, I2C, SPI and serial commands. The
+  27th, BoostMPPT, is under **File → Examples → HRPWM** because it ships with
+  that library, and needs an MP-series part (see [Pin map](#pin-map--dspic33ck256mc005-curiosity-nano-ev08p02a)).
 
 ## Platform support
 
@@ -95,6 +133,8 @@ which builds the three archives, computes their checksums, and fills them into
 | arduino-platform/package_microchip_dspic33ck_index.json | Boards Manager package index (source of truth) |
 | arduino-platform/install_arduino_ide.bat | Developer install of the working tree |
 | tools/release/ | Release archive + checksum + index generator |
+| tools/pinmap/ | Generates the pin-map SVG from `variant.c` |
 | cmake/ | CMake build files (for MPLAB X compatibility) |
 | docs/ | HTML documentation |
+| docs/img/ | Generated diagrams used by this README |
 | test_led/ | Early hardware test sketches |
