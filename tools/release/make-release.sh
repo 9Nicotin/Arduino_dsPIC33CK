@@ -139,6 +139,29 @@ rm -f "$STAGE/platform.local.txt"
 find "$STAGE" -name '*.o' -o -name '*.elf' -o -name '.DS_Store' -o -name 'Thumbs.db' \
   -o -name '__pycache__' -prune | while IFS= read -r junk; do rm -rf "$junk"; done
 [ ! -e "$STAGE/platform.local.txt" ] || { echo "platform.local.txt leaked into the archive" >&2; exit 1; }
+
+# `cp -r` copies the working tree, which means anything gitignored rides along --
+# that is how tools/MPLABXLog.xml (a 103-byte skeleton ipecmd drops next to itself)
+# ended up in both the 1.0.0 and 1.0.1 archives. Rather than blacklist each stray
+# as it appears, require the stage to be exactly the tracked tree: an untracked file
+# here is either junk or something the author forgot to commit, and both should stop
+# the release. Uncommitted *modifications* are still allowed on purpose -- that is
+# what makes a release testable before the commit that carries it.
+git -C "$REPO" ls-files "arduino-platform/microchip/dspic33ck" \
+  | sed 's|^arduino-platform/microchip/dspic33ck/||' | LC_ALL=C sort >"$OUT/stage.tracked"
+( cd "$STAGE" && find . -type f | sed 's|^\./||' | LC_ALL=C sort ) >"$OUT/stage.actual"
+if ! extra=$(comm -13 "$OUT/stage.tracked" "$OUT/stage.actual") || [ -n "$extra" ]; then
+  echo "untracked files would ship in the archive:" >&2
+  echo "$extra" | sed 's/^/  /' >&2
+  echo "commit them, or add them to .gitignore AND delete them from $SRC" >&2
+  exit 1
+fi
+if missing=$(comm -23 "$OUT/stage.tracked" "$OUT/stage.actual") && [ -n "$missing" ]; then
+  echo "tracked files are missing from the stage:" >&2
+  echo "$missing" | sed 's/^/  /' >&2
+  exit 1
+fi
+
 zipdir "$STAGE" "$OUT/$PLATFORM_ARCHIVE" "dspic33ck-$VERSION"
 
 # --- 2. the pruned DFP archives ---------------------------------------------
