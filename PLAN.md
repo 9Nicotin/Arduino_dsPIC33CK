@@ -11,15 +11,18 @@
 > upload recipe, `Serial.println(someInt)` compiles, and the six declared-but-missing
 > functions (`tone`, `noTone`, `attachInterrupt`, `detachInterrupt`, `interrupts`,
 > `noInterrupts`) are implemented; all builds green, hardware checks still owed.
-> **Phase 14 (install from a Boards Manager URL) opened September 17, 2026 and is
-> PUBLISHED September 18, 2026.** The repo is public, release `v1.0.0` carries the three
-> archives plus the index, and `_build/live_check.sh` installs from the real URL and builds
-> all four boards at baseline. **Upload was verified on silicon September 22, 2026** through
-> that published install — `Program Succeeded`, the nEDBG bridge reboot intact, and
-> `NanoSerialHello` read back live — so the phase has no unverified seam left. Two items are
-> open and both want a **1.0.1** release: *Upload Using Programmer* is broken for all six
-> programmers (no `program.pattern` recipes exist), and the fresh-install/resolver-glob test
-> still wants a machine with a different XC-DSC version. See that section.
+> **Phase 14 (install from a Boards Manager URL) opened September 17, 2026, PUBLISHED
+> September 18, 2026 as `v1.0.0`, and released **`v1.0.1` on September 22, 2026**.** The
+> repo is public, each release carries the three archives plus the index, and
+> `_build/live_check.sh` installs from the real URL and builds all four boards at baseline.
+> **Upload was verified on silicon September 22, 2026** through the published install —
+> `Program Succeeded`, the nEDBG bridge reboot intact, and `NanoSerialHello` read back live.
+> `v1.0.1` then fixed the two items that release opened: *Upload Using Programmer* (no
+> `program.pattern` recipes existed, so all six programmers failed) and the missing
+> `-Wl,--gc-sections`, worth ~9 KB per sketch. Both are verified on silicon, `install_check`
+> and `live_check` are green at the new baselines, and the 1.0.0→1.0.1 upgrade was tested.
+> **One item remains open:** the fresh-install/resolver-glob test still wants a machine with
+> a different XC-DSC version. See that section.
 > Some later-phase items were delivered ahead of the plan — see "Delivered Ahead
 > of Plan" below.
 >
@@ -536,42 +539,119 @@ available" instead of a half-working install.
       Before reporting any failure, turn on Preferences → **Show verbose output during:
       compile + upload**; that is what reveals which paths the resolver actually picked.
 
-- [ ] **BUG in the published v1.0.0 — *Sketch → Upload Using Programmer* fails for all six
-      programmers.** Found by accident during the Sep 22 upload test: invoking
-      `arduino-cli upload -P nedbg` dies with `Failed programming: recipe not found
-      'program.pattern'`. `programmers.txt` wires every programmer to a `program.tool`
-      (`pickit5`, `pickit4`, `snap`, `pkob4`, `nedbg`, `uart_bootloader`), but `platform.txt`
-      defines **6 `upload.pattern` keys and 0 `program.pattern` keys**. So the menu entry is
-      offered by the IDE and cannot work.
+- [x] **BUG in the published v1.0.0 — *Sketch → Upload Using Programmer* fails for all six
+      programmers. FIXED in v1.0.1, verified on silicon Sep 22 2026.** Found by accident
+      during the Sep 22 upload test: invoking `arduino-cli upload -P nedbg` died with
+      `Failed programming: recipe not found 'program.pattern'`. `programmers.txt` wires every
+      programmer to a `program.tool` (`pickit5`, `pickit4`, `snap`, `pkob4`, `nedbg`,
+      `uart_bootloader`), but `platform.txt` defined **6 `upload.pattern` keys and 0
+      `program.pattern` keys**. So the menu entry was offered by the IDE and could not work.
 
-      **Not urgent:** the normal Upload button uses `boards.txt`'s
-      `<board>.upload.tool=nedbg` → `tools.nedbg.upload.pattern`, which is the path just
-      verified on silicon. Only the *Upload Using Programmer* menu item is affected. The fix
-      is mechanical — mirror each `upload.pattern` to a `program.pattern` — but it changes
-      the published `platform.txt`, so it needs a **1.0.1 release**, which is a decision for
-      the user, not a quiet edit. Bundle it with `-Wl,--gc-sections` if that also goes in.
+      The normal Upload button was never affected — it uses `boards.txt`'s
+      `<board>.upload.tool=nedbg` → `tools.nedbg.upload.pattern`.
+
+      **Fix:** each of the six tools now defines `program.pattern` (plus
+      `program.params.verbose`/`.quiet`) mirroring its `upload.pattern` verbatim, with a
+      header comment in `platform.txt` explaining that the two are reached by different menu
+      items and must be edited in pairs. They are deliberately identical: ipecmd does a full
+      erase-and-program either way, so there is no distinct "program" operation to express.
+
+      **Verified** through the installed 1.0.1 platform: 6 `upload.pattern` / 6
+      `program.pattern` / 6 programmers declaring `program.tool`, and
+      `arduino-cli upload -P nedbg` reached the recipe and reported `Program Succeeded` /
+      `Operation Succeeded`, after which the board was read back live on COM63. The run also
+      hit the known intermittent nEDBG `Error code -121` USB lockup and recovered from it by
+      itself — unrelated to this fix, see the Phase 13 nEDBG notes.
 
 - [ ] *Offered, not built (awaiting the user's yes):* a short `TESTING.md` in the repo
       carrying the procedure above, so co-workers can be sent a link instead of a relay.
 
-**Flagged, deliberately not changed here:** `compiler.ld.flags` passes
-`-ffunction-sections -fdata-sections` at compile time but never `-Wl,--gc-sections` at
-link, unlike `_build/allboards.sh:60` — worth ~2.4 KB per sketch. Left alone because it
-changes the firmware on silicon and MC005's hardware verification was done through the
-un-collected path; it needs its own bench check.
+**`-Wl,--gc-sections` — added in v1.0.1, bench check PASSED Sep 22 2026.** `compiler.ld.flags`
+passed `-ffunction-sections -fdata-sections` at compile time but never `-Wl,--gc-sections`
+at link, unlike `_build/allboards.sh:60` — so the two split flags created sections that
+nothing ever collected. The sequencing rule that gated the change ("do not add it until the
+hardware upload test passes, or a failure won't be attributable") was satisfied once upload
+was verified on silicon, giving a known-good reference point.
 
-**The sequencing rule that gated this is now satisfied** (Sep 22 2026): the rule was "do
-not add `-Wl,--gc-sections` until the hardware upload test passes, or a failure won't be
-attributable." Upload now passes on silicon through the published install, so there is a
-known-good reference point and the flag can be attempted whenever the user wants. It still
-needs its own bench check, and it still means a **1.0.1 release** — so bundle it with the
-`program.pattern` fix above rather than cutting two releases.
+**It is worth far more than the ~2.4 KB previously estimated — about 9 KB on Blink:**
+
+| Board | 1.0.0 | 1.0.1 | saved |
+|---|---|---|---|
+| `dspic33ck32mp102` | 11904 B | 2564 B | 9340 B |
+| `dspic33ck256mp508` | 13992 B | 3928 B | 10064 B |
+| `dspic33ck256mc002` | 11916 B | 2564 B | 9352 B |
+| `dspic33ck256mc005` | 12876 B | 3196 B | 9680 B |
+
+The size of the drop is not a red flag, it is the expected consequence of
+`recipe.c.combine.pattern` already using `-Wl,--whole-archive`: the entire core is pulled
+into the link and collection then discards everything Blink never calls. Nothing about
+`--whole-archive` changed.
+
+**The bench check, because a 9 KB drop is exactly when you stop trusting the analysis.**
+The risk was the Timer1 `millis()` ISR being collected, which would deadlock `delay()`.
+PLAN.md's existing analysis (see "the ISRs are reachable from the interrupt vector table"
+below) says it survives as a GC root, and `allboards.sh` has always linked this way — but
+that is why it was *expected* to work, not why it is *known* to. On an EV08P02A, flashed
+from the installed 1.0.1 platform:
+
+- `NanoSerialHello` boots and its `setup()` banner prints (captured by opening the port
+  first, then power-cycling the target only: `pymcuprog setsupplyvoltage -l 0` then `-l 3.3`)
+- `tick=0  uptime_ms=111`, then ticks advance at **1001–1002 ms** per 1000 ms `delay()`
+
+So the T1 ISR fires, `millis()` advances and `delay()` does not deadlock. The flag is safe.
+
+Guard against regression: both `_build/install_check.sh` and `_build/live_check.sh` now
+*assert* the four sizes rather than printing them, so a recipe that silently stops
+collecting fails the gate instead of passing quietly.
 
 **Committed September 18, 2026** as five commits on `phase10-platform-cleanup`, working
 tree clean: `6486b91` the resolver layer, `435f0b2` the index + release builder,
 `bc51179` the developer installer, `059921e` the docs, `6abb2ff` this PLAN.md section.
 **Deliberately not pushed** — the release is on hold until the hardware test, so
 `origin/main` is still at `0a24860` and has none of Phase 10, 13 or 14.
+
+### Release v1.0.1 — September 22, 2026
+
+Two commits on `main`, pushed, tagged `v1.0.1`:
+`496d238` the two fixes, `159f2d1` the version bump + index + installer path.
+
+| | |
+|---|---|
+| `dspic33ck-arduino-core-1.0.1.zip` | 93094 B · `8d4db23ad4ea1c5ca19698394f12406d9a9f03f38187da4a5f129482429dcf5b` |
+| `dsPIC33CK-MP_DFP-1.16.521-pruned.1.zip` | 810615 B · `6cee9c30b3027b2dd14ccd64483440a5432613e3945a7d4a820795cfd0476899` |
+| `dsPIC33CK-MC_DFP-1.11.412-pruned.1.zip` | 652421 B · `5533d058359bd7482401c8c2011a5dbd05fd4396271cad93bd4c8cc54a076651` |
+
+**Both DFP packs are byte-identical to v1.0.0** — same sizes, same SHA-256s. That is
+`make-release.sh`'s deterministic zipping (sorted entries, fixed 1980-01-01 timestamps,
+forward slashes) working as designed, and it is why upgrading re-downloads only the 93 KB
+core archive. Their **URLs** still had to move to the new tag, because `make-release.sh`
+asserts every archive URL ends with `/releases/download/v<VERSION>/<archiveFileName>`, so
+the unchanged bytes are attached to both releases.
+
+Gates, all green: `allboards.sh`; `install_check.sh` (archives downloaded, checksums
+verified, both tool packs unzipped, four boards at the new baselines); `live_check.sh`
+against the real `/releases/latest/download/...` URL; and the **1.0.0 → 1.0.1 upgrade**
+against the two live releases — the DFP packs were reused with no second download (only
+`dspic33ck-arduino-core-1.0.1.zip` came down), 1.0.0's versioned directory was removed,
+and no `platform.local.txt` appeared.
+
+**Both gate scripts now derive the version from `platform.txt`** instead of pinning it.
+The pinned `1.0.0` in `install_check.sh` reported a phantom `FAIL no platform.txt` the
+moment the version was bumped, which is a gate lying about the thing it exists to check.
+
+`_build/publish_release.py` derives its `TAG` and core-archive name the same way, for the
+same reason: a stale constant there would attach the right bytes under a tag the index
+does not point at.
+
+**Known, pre-existing, not fixed here:** 17 of the 59 files in the shipped platform tree
+are LF on disk where a fresh clone would check them out as CRLF (no `.gitattributes`,
+`core.autocrlf=true`). `make-release.sh` zips the working tree, so **the archive is not
+byte-reproducible from a clean clone** — a release cut elsewhere would produce a different
+core checksum. Harmless to users (both endings parse), and v1.0.0 shipped the same way.
+Fixing it means normalising those 17 files or adding a `.gitattributes`, which changes the
+archive, so it belongs in its own change rather than inside a bug-fix release. Watch for it
+if releases ever move to CI. Beware `sed -i` on `platform.txt` for the same reason: it
+rewrote all 255 line endings to LF as a side effect of a one-line version bump.
 
 ---
 
@@ -1085,8 +1165,10 @@ Phase 10 needs it; it encodes the rule once for the hardware-PWM tone path below
 **Cost.** Two figures matter, because `platform.txt:97` links `core.a` with
 `-Wl,--whole-archive`: the new objects land in every sketch whether called or not, and
 while `--gc-sections` still drops unreferenced functions, **the ISRs are reachable from
-the interrupt vector table and so are never collected**. The floor is what a sketch that
-calls none of this pays anyway:
+the interrupt vector table and so are never collected**. (That claim stopped being an
+argument and became a measurement on Sep 22 2026, when `--gc-sections` shipped in v1.0.1:
+the Timer1 `millis()` ISR survives collection on silicon — see the Phase 14 bench check.)
+The floor is what a sketch that calls none of this pays anyway:
 
 | device | flash before | floor (unused) | all six called | RAM before | RAM after |
 |---|---|---|---|---|---|
@@ -1372,9 +1454,9 @@ clone — recreate or copy them before trusting a "builds clean" claim:
 | `allboards.sh` | all 4 devices compile + link + emit hex; `sketch.cpp` is a synthetic sketch calling the whole API, including all six Phase 10 functions plus `analogWrite(PWM4_PIN, …)` in one translation unit, which is what proves the `wiring_private.h` link contract closes |
 | `examples_mc005.sh` | the six `04.CuriosityNano` sketches, warning count per sketch |
 | `examples_all.sh` | `01.Basics` on all 4 devices, `02.CppFeatures` + `03.PWM` on MP508 only (they use `LED1`/`LED2`/`A22`, which only that variant defines) |
-| `package_check.sh` | **Phase 14.** `arduino-cli` compiles one sketch per board against the *installed* platform — the only gate that exercises `platform.txt`, `boards.txt`, the recipes and the wrappers at all. Baselines: **11904 / 13992 / 11916 / 12876 bytes** |
-| `install_check.sh` | **Phase 14, the acceptance gate.** Serves the real release archives over local HTTP and runs `arduino-cli core install microchip:dspic33ck`, so checksums, archive roots, tool placement and `toolsDependencies` are all really exercised. Asserts **no `platform.local.txt` anywhere** and the same four sizes |
-| `upgrade_check.sh` | **Phase 14.** Installs 1.0.0 then upgrades to a synthesised 1.0.1 off a two-version index: asserts the DFP packs are reused with no second HTTP GET *and* are still on disk afterwards, the old version's directory is gone, and no `platform.local.txt` appears at either version |
+| `package_check.sh` | **Phase 14.** `arduino-cli` compiles one sketch per board against the *installed* platform — the only gate that exercises `platform.txt`, `boards.txt`, the recipes and the wrappers at all. Baselines: **2564 / 3928 / 2564 / 3196 bytes** (was 11904 / 13992 / 11916 / 12876 before `--gc-sections` landed in 1.0.1) |
+| `install_check.sh` | **Phase 14, the acceptance gate.** Serves the real release archives over local HTTP and runs `arduino-cli core install microchip:dspic33ck`, so checksums, archive roots, tool placement and `toolsDependencies` are all really exercised. Asserts **no `platform.local.txt` anywhere** and the same four sizes. Takes its expected version from `platform.txt` rather than a pinned constant -- the pinned `1.0.0` made it report a phantom `FAIL no platform.txt` the moment 1.0.1 was cut |
+| `upgrade_check.sh` | **Phase 14.** Installs 1.0.0 then upgrades to a synthesised 1.0.1 off a two-version index: asserts the DFP packs are reused with no second HTTP GET *and* are still on disk afterwards, the old version's directory is gone, and no `platform.local.txt` appears at either version. Re-run for real against the two **live** releases on Sep 22 2026, not a synthesised index: DFP packs reused with no second download, only the 93 KB core archive fetched |
 | `parallel_check.sh` | **Phase 14.** Five cold-cache `-j16` builds — the only gate that exercises the resolver's cache race, which a serial build cannot reach. Fails on output drift, any warning, or an orphan `.tmp` left by a lost race |
 | `live_check.sh` | **Phase 14, post-publication.** Installs from the **real published GitHub URL** into a fresh data directory and compiles all four boards at the baselines. The only gate that covers GitHub itself — a wrong tag in the index's asset URLs, a pre-release flag hiding the release from `/latest`, an asset that failed to upload, or a CDN redirect problem all fail here and nowhere else. Run it after any release |
 | plain-C check | every core `.c` + `variant.c` built with `xc-dsc-gcc -Wall -Wextra` in C mode on all 4 devices — the same guard the `cmake/` projects give, run from the shell |
