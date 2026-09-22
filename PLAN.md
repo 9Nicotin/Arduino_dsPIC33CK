@@ -701,6 +701,25 @@ keep the version and overwrite it. Two consequences worth remembering:
 - **The `v1.0.1` tag still points at `ddd6035`**, which does not contain this content.
   Moving it means force-pushing a tag on a public repo; leaving it means the tag names the
   release's provenance loosely rather than exactly.
+- **`/releases/latest/download/…` served the *old* bytes for a few minutes** after the
+  assets were replaced. The first `live_check.sh` run right after publishing passed — it
+  installed 1.0.1, found the four boards, and hit every size baseline — while quietly
+  installing the **previous** archive: 93094 B, platform-root `examples/`, no
+  `Arduino_dsPIC33CK` library. The checksum did not catch it because the index it had
+  fetched was stale in the same way, so stale index and stale archive agreed. A second run
+  a few minutes later got 94717 B and the full menu. **A version bump cannot do this** —
+  its URLs are new, so there is nothing cached to serve. Two lessons: never trust a
+  post-publish gate that ran immediately after an in-place asset replacement, and prefer a
+  bump whenever anyone else might be installing.
+
+Two things needed fixing in `_build/publish_release.py` (which is gitignored, so this is
+its only record). It skipped re-uploading an asset whose **size** matched — and
+`package_microchip_dspic33ck_index.json` is exactly 2850 B carrying either checksum, since
+SHA-256 hex is fixed-width and both sizes are five digits, so the stale index would have
+stayed up and every install would have failed verification. It now compares content. It
+also only wrote release notes when *creating* a release, leaving notes that described the
+superseded assets; it now `PATCH`es them, which matters here because the notes are the only
+place a user is told to delete the installed directory and reinstall.
 
 ---
 
