@@ -479,10 +479,16 @@ available" instead of a half-working install.
 
       **Also learned:** `setup()` output is **always lost on upload** and that is inherent —
       the target is released from reset *before* the CDC bridge finishes rebooting, so the
-      banner is printed into a dead bridge. To see it, press the board's reset button with
-      the Serial Monitor already open. Software reset cannot substitute: `pymcuprog reset`
-      **does not support this device** (its list has `dspic33ck64mc105`, not `...mc005`),
-      which is exactly why the recipe uses `reboot-debugger`, which needs no `-d`.
+      banner is printed into a dead bridge. **To capture it, open the port first and then
+      power-cycle the target only**, which leaves the bridge alive:
+      `pymcuprog setsupplyvoltage -l 0` then `-l 3.3`. Verified Sep 22 2026 — the full
+      banner arrived followed by `tick=0  uptime_ms=111`, a genuine reset:
+      `=== dsPIC33CK256MC005 Curiosity Nano === / FCY : 4000 kHz / LED_BUILTIN: D37 / ready`.
+      (`FCY = 4000 kHz` is the expected default — `f_cpu=8000000UL`, with `200mhz_pll` on the
+      Tools → Clock menu.) The two alternatives do **not** work: `pymcuprog reset` does not
+      support this device (its list has `dspic33ck64mc105`, not `...mc005`), and
+      `reboot-debugger` drops the port — which is also why the upload recipe uses
+      `reboot-debugger`, since it needs no `-d`.
 
 **Still open — this is the part that wants a machine that is not this one:**
 - [ ] Fresh-install acceptance test. Everything *functional* is now verified on this bench;
