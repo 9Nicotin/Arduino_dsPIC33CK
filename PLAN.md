@@ -12,10 +12,14 @@
 > functions (`tone`, `noTone`, `attachInterrupt`, `detachInterrupt`, `interrupts`,
 > `noInterrupts`) are implemented; all builds green, hardware checks still owed.
 > **Phase 14 (install from a Boards Manager URL) opened September 17, 2026 and is
-> PUBLISHED September 18, 2026.** The repo is public, `main` is at `9fd77f7`, release
-> `v1.0.0` carries the three archives plus the index, and `_build/live_check.sh` installs
-> from the real URL and builds all four boards at baseline. **One item remains: the
-> upload path on hardware**, which every gate stops short of. See that section.
+> PUBLISHED September 18, 2026.** The repo is public, release `v1.0.0` carries the three
+> archives plus the index, and `_build/live_check.sh` installs from the real URL and builds
+> all four boards at baseline. **Upload was verified on silicon September 22, 2026** through
+> that published install — `Program Succeeded`, the nEDBG bridge reboot intact, and
+> `NanoSerialHello` read back live — so the phase has no unverified seam left. Two items are
+> open and both want a **1.0.1** release: *Upload Using Programmer* is broken for all six
+> programmers (no `program.pattern` recipes exist), and the fresh-install/resolver-glob test
+> still wants a machine with a different XC-DSC version. See that section.
 > Some later-phase items were delivered ahead of the plan — see "Delivered Ahead
 > of Plan" below.
 >
@@ -447,12 +451,48 @@ available" instead of a half-working install.
       warnings and no `platform.local.txt`. Also verified independently of arduino-cli:
       the three published archives' SHA-256s match the published index.
 
-**Still open — and this now needs only the board on the desk:**
-- [ ] Clean-machine acceptance test **on hardware**. **Upload is the one part of this phase
-      with no verification anywhere** — every gate, `live_check.sh` included, stops at
-      compile, and the nEDBG sequence moved out of the deleted `nedbg-upload.bat` into
-      `ipecmd-upload.bat` without touching silicon since. The release notes say so
-      explicitly, so a co-worker cross-checking it knows that is the part to try.
+- [x] **UPLOAD VERIFIED ON SILICON, September 22 2026 — the untested seam is closed.** Done
+      from the **published install** (`_build/cli-live`, installed off the real GitHub URL),
+      not the developer tree, so it exercises exactly what a user gets. EV08P02A, serial
+      `MC020162801RYN000004`, CDC on COM63:
+      - `NanoBlink` compiled at **12876 bytes** (the MC005 baseline) and programmed:
+        `Target device dsPIC33CK256MC005 found` → `Program Succeeded` → `Operation Succeeded`.
+      - **The nEDBG program-then-reboot sequence survived the refactor** out of the deleted
+        `nedbg-upload.bat` into `ipecmd-upload.bat`: `Rebooting nEDBG to restore the serial
+        bridge... / Serial bridge ready. / New upload port: COM63`.
+      - `NanoSerialHello` (13372 B) uploaded and its output read back live: ticks ~1002 ms
+        apart, `millis()` tracking, and the board ran **200 s continuously** without reset.
+
+      **This did not need a fresh machine, and the item used to imply it did.** The two
+      things were independent and are now separated:
+      - *Upload on hardware* needed **the board**, which is on this bench. **Done.**
+      - *A genuinely fresh install* is the only part wanting another machine — see the
+        remaining item below.
+
+      **Correction to the note that used to live here:** the "Serial Monitor silent after
+      upload" symptom has **two** causes, and only one is the nEDBG wedge. The second bit
+      during this test: a terminal that does **not assert DTR** reads nothing at all, while
+      the board is running perfectly. 12 s of silence, then the same port with
+      `DtrEnable=$true` produced output immediately. Arduino IDE's Serial Monitor and PuTTY
+      assert DTR by default; hand-rolled `System.IO.Ports` / pyserial readers do not. Check
+      DTR before believing a silent port.
+
+      **Also learned:** `setup()` output is **always lost on upload** and that is inherent —
+      the target is released from reset *before* the CDC bridge finishes rebooting, so the
+      banner is printed into a dead bridge. To see it, press the board's reset button with
+      the Serial Monitor already open. Software reset cannot substitute: `pymcuprog reset`
+      **does not support this device** (its list has `dspic33ck64mc105`, not `...mc005`),
+      which is exactly why the recipe uses `reboot-debugger`, which needs no `-d`.
+
+**Still open — this is the part that wants a machine that is not this one:**
+- [ ] Fresh-install acceptance test. Everything *functional* is now verified on this bench;
+      what remains is the **no-prior-install state** and the resolver glob against a
+      different toolchain version. **Does not need a new computer** — a second Windows user
+      account gives a clean `%LOCALAPPDATA%\Arduino15`, a clean resolver cache and no
+      `.mchp_packs`, and Windows Sandbox (available on this Enterprise SKU) gives a clean OS
+      where a *newer* XC-DSC can be installed, which is the case the version-sorted glob was
+      written for and has still never exercised. Neither proxy covers USB upload well, but
+      upload is no longer the unknown.
 
       **The procedure, so it does not have to be re-derived:**
 
@@ -472,15 +512,13 @@ available" instead of a half-working install.
       6. `NanoSerialHello` for the Serial Monitor; `NanoSelfTest` is the broadest single
          sketch if only one run is possible.
 
-      **What a fresh machine tests that this bench cannot:** the resolver's version-sorted
-      glob against *whatever* XC-DSC and MPLAB X versions are installed there. This machine
-      has XC-DSC v4.00; a new install will likely be newer, which is the case the glob was
-      written for and has never actually exercised.
-
-      **Two expected behaviours that look like bugs — do not chase either:**
+      **Three expected behaviours that look like bugs — do not chase any of them:**
       - The Serial Monitor is **silent for ~10 s after an upload**. `ipecmd` wedges the
         nEDBG CDC bridge, the recipe reboots the debugger, USB re-enumerates. See
-        `nedbg-flash-then-reboot-debugger`. This is the most likely false alarm.
+        `nedbg-flash-then-reboot-debugger`.
+      - A **terminal that does not assert DTR reads nothing, ever**, from a perfectly
+        healthy board — confirmed on this bench Sep 22 2026. The IDE and PuTTY assert it;
+        scripted readers usually do not.
       - A macOS/Linux co-worker **sees the platform but cannot install it** — `systems[]`
         names `i686-mingw32` only, deliberately, so they get a clean "not available".
 
@@ -492,6 +530,21 @@ available" instead of a half-working install.
       Before reporting any failure, turn on Preferences → **Show verbose output during:
       compile + upload**; that is what reveals which paths the resolver actually picked.
 
+- [ ] **BUG in the published v1.0.0 — *Sketch → Upload Using Programmer* fails for all six
+      programmers.** Found by accident during the Sep 22 upload test: invoking
+      `arduino-cli upload -P nedbg` dies with `Failed programming: recipe not found
+      'program.pattern'`. `programmers.txt` wires every programmer to a `program.tool`
+      (`pickit5`, `pickit4`, `snap`, `pkob4`, `nedbg`, `uart_bootloader`), but `platform.txt`
+      defines **6 `upload.pattern` keys and 0 `program.pattern` keys**. So the menu entry is
+      offered by the IDE and cannot work.
+
+      **Not urgent:** the normal Upload button uses `boards.txt`'s
+      `<board>.upload.tool=nedbg` → `tools.nedbg.upload.pattern`, which is the path just
+      verified on silicon. Only the *Upload Using Programmer* menu item is affected. The fix
+      is mechanical — mirror each `upload.pattern` to a `program.pattern` — but it changes
+      the published `platform.txt`, so it needs a **1.0.1 release**, which is a decision for
+      the user, not a quiet edit. Bundle it with `-Wl,--gc-sections` if that also goes in.
+
 - [ ] *Offered, not built (awaiting the user's yes):* a short `TESTING.md` in the repo
       carrying the procedure above, so co-workers can be sent a link instead of a relay.
 
@@ -500,6 +553,13 @@ available" instead of a half-working install.
 link, unlike `_build/allboards.sh:60` — worth ~2.4 KB per sketch. Left alone because it
 changes the firmware on silicon and MC005's hardware verification was done through the
 un-collected path; it needs its own bench check.
+
+**The sequencing rule that gated this is now satisfied** (Sep 22 2026): the rule was "do
+not add `-Wl,--gc-sections` until the hardware upload test passes, or a failure won't be
+attributable." Upload now passes on silicon through the published install, so there is a
+known-good reference point and the flag can be attempted whenever the user wants. It still
+needs its own bench check, and it still means a **1.0.1 release** — so bundle it with the
+`program.pattern` fix above rather than cutting two releases.
 
 **Committed September 18, 2026** as five commits on `phase10-platform-cleanup`, working
 tree clean: `6486b91` the resolver layer, `435f0b2` the index + release builder,
