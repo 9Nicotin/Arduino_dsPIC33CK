@@ -138,13 +138,16 @@ arduino-platform/
         │   └── uart/                   # UART bootloader hex (future)
         ├── tools/
         │   └── upload_uart.py          # Python upload script
-        ├── libraries/
-        │   ├── Wire/src/               # I2C library (future)
-        │   └── SPI/src/                # SPI library (future)
-        └── examples/
-            └── 01.Basics/
-                ├── Blink/Blink.ino
-                └── AnalogReadSerial/AnalogReadSerial.ino
+        └── libraries/
+            ├── Wire/src/               # I2C
+            ├── SPI/src/                # SPI
+            ├── HRPWM/                  # high-resolution PWM, + BoostMPPT example
+            └── Arduino_dsPIC33CK/      # exists to carry the board examples:
+                └── examples/           #   Arduino builds File > Examples from
+                    ├── 01.Basics/      #   libraries only, never from a
+                    ├── 02.CppFeatures/ #   platform-level examples/ directory
+                    ├── 03.PWM/
+                    └── 04.CuriosityNano/
 ```
 
 ---

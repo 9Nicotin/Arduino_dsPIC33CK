@@ -55,9 +55,10 @@ installs them for you, pruned to the supported devices.
   `Serial.println()` dot notation
 - Libraries: SPI, Wire, HRPWM (500 MHz high-resolution PWM, 250 ps edge placement)
 - PWM: ~490 Hz via SCCP modules, with automatic prescaler selection
-- 11 examples: Blink, AnalogReadSerial, CppDemo, Fade, PWMTest, and a
-  `04.CuriosityNano/` set for the EV08P02A (NanoBlink, NanoSelfTest,
-  NanoSerialHello, NanoButtonLED, NanoPWMFade, NanoAnalogRead)
+- 11 examples, under **File → Examples → Arduino_dsPIC33CK**: Blink,
+  AnalogReadSerial, CppDemo, Fade, PWMTest, and a `04.CuriosityNano/` set for the
+  EV08P02A (NanoBlink, NanoSelfTest, NanoSerialHello, NanoButtonLED, NanoPWMFade,
+  NanoAnalogRead)
 
 ## Platform support
 
