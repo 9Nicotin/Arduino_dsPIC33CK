@@ -25,13 +25,16 @@
 > never shown a single board sketch, because Arduino builds that menu from libraries only
 > and all eleven lived in a platform-level `examples/`. They now ship inside
 > `libraries/Arduino_dsPIC33CK/`, and `install_check.sh` asserts the menu offers every one.
-> **`v1.0.2` is COMMITTED but NOT YET PUBLISHED (September 22, 2026)** — a content release:
-> 15 new `04.CuriosityNano` sketches (27 examples shipped in total), a generated pin-map
-> diagram on the GitHub page, and the `-Wpedantic` cleanup in `SPI.c`/`Wire.c`. No core API
-> changed. All seven gates green, including `install_check.sh` end-to-end at 1.0.2. The
-> archives are built in `_build/release/`; publishing is the only step left. See that
-> section — it also records that `package_check.sh` had been reporting false drift against
-> baselines two releases stale, and that `upgrade_check.sh` is now stale.
+> **`v1.0.2` is PUBLISHED (September 22, 2026)** — a content release: 15 new
+> `04.CuriosityNano` sketches (27 examples shipped in total), a generated pin-map diagram on
+> the GitHub page, and the `-Wpedantic` cleanup in `SPI.c`/`Wire.c`. No core API changed.
+> Commit `97c3718`, tag `v1.0.2`, all four assets attached, and `/releases/latest` resolves
+> to it. **All nine gates green**, including `live_check.sh` against the published URL and
+> `upgrade_check.sh` — and a live install proves `File > Examples` offers all 27. Unlike the
+> 1.0.1 re-publish, Boards Manager will offer this one unprompted, because the version
+> string changed. See that section — it also records that `package_check.sh` had been
+> reporting false drift against baselines two releases stale, and that `upgrade_check.sh`
+> was stale and is now version-agnostic.
 > **One item remains open:** the fresh-install/resolver-glob test still wants a machine with
 > a different XC-DSC version. See that section.
 > Some later-phase items were delivered ahead of the plan — see "Delivered Ahead
@@ -728,7 +731,7 @@ also only wrote release notes when *creating* a release, leaving notes that desc
 superseded assets; it now `PATCH`es them, which matters here because the notes are the only
 place a user is told to delete the installed directory and reinstall.
 
-### Release v1.0.2 — September 22, 2026 — COMMITTED, NOT YET PUBLISHED
+### Release v1.0.2 — September 22, 2026 — PUBLISHED
 
 Content release: **15 new `04.CuriosityNano` example sketches** (11 → 21 there, 27 shipped
 in total), a **generated pin-map diagram** on the GitHub page, and the `-Wpedantic`
@@ -778,15 +781,62 @@ both). That agreement is the invariant the gate exists to protect, and it holds.
 whose baseline outlives the change it was measuring reports drift that is not there**,
 which is how a real regression gets waved through next time.
 
-`_build/upgrade_check.sh` is now **stale and will fail if run**: it selects the index entry
-with `version == "1.0.0"` to synthesise an upgrade from, and the index no longer carries
-one. It was superseded on Sep 22 2026 by the real 1.0.0 → 1.0.1 upgrade against two live
-releases, so this is not urgent; either re-point it at the two newest index versions or
-retire it, but do not leave it looking like a gate that passes.
+**`upgrade_check.sh` was stale and is now version-agnostic.** It selected the index entry
+with `version == "1.0.0"` to synthesise an upgrade from, and the index no longer carried
+one, so it died on an `IndexError` that looked nothing like *"your gate is stale"*. It now
+**derives** `BASE` from the built index (highest version) and synthesises `NEXT` as
+`BASE` with the patch incremented, so it cannot rot at 1.0.3. Every hardcoded version in
+the shell half went with it. **A gate that names a specific version outlives its usefulness
+by exactly one release** — that is now two gates in this release alone.
 
-Still to do to publish: `gh release create v1.0.2` with the three archives plus the index,
-then `live_check.sh` against the real `/releases/latest/download/…` URL. Because the URLs
-are new, the stale-CDN trap that bit the in-place 1.0.1 re-publish cannot apply here.
+De-staling it immediately exposed a second bug the old pin had been hiding: the synthesiser
+asserted `(?m)^version=<base>$` against `platform.txt` **inside the archive**, which ships
+CRLF, so `$` sits before the `\n` and cannot match after `version=1.0.2\r`. The pattern now
+captures `(\r?)` and puts it back — normalising that one line would make the synthetic
+archive differ from the released one in a way unrelated to what the gate measures — and the
+assertion is on `re.subn`'s count rather than *"is the new string present"*, which would
+also pass if the string happened to occur elsewhere. **The assertion is why this was a
+two-minute fix and not a mystery**: without it the gate would have served an archive whose
+`platform.txt` still said `1.0.2` under a directory named `1.0.3`, and the failure would
+have surfaced three steps later as an incomprehensible version mismatch.
+
+#### Published — September 22, 2026
+
+Commit `97c3718` pushed to `main` **before** creating the release, which matters: the
+GitHub API creates the tag at the default branch's HEAD, so publishing first would have
+tagged `3d67430` and shipped assets built from a tree the tag did not describe. Verified
+after the fact — `git/ref/tags/v1.0.2` → `97c3718`, and `/releases/latest` → `v1.0.2`,
+`draft=false`, `prerelease=false`.
+
+`publish_release.py` needed its `BODY` and release title rewritten: both still described
+1.0.1's bug fixes (*"Bug-fix release"*, the `--gc-sections` savings table, the re-publish
+notice telling users to delete their installed directory). **The script reads `VERSION`
+from `platform.txt`, so the tag and asset names were right automatically while the notes
+were wrong** — exactly the kind of half-correct release that reads as deliberate. The notes
+now describe the 15 sketches, the pin map, where the examples live in the menu, and are
+explicit that Boards Manager *will* offer this version unprompted, unlike 1.0.1.
+
+Two gates that could not run before publication, both green:
+
+- **`live_check.sh`** — a fresh Arduino data directory, the real
+  `/releases/latest/download/…` URL, `core install` over the wire: index resolved at
+  1.0.2, both tool packs downloaded and placed, no `platform.local.txt`, all four boards
+  at baseline (2564 / 3928 / 2564 / 3196).
+- **`upgrade_check.sh`** — 1.0.2 → synthetic 1.0.3: DFP archive GETs stayed at **1 each**
+  across the upgrade with the download cache cleared, both packs still on disk with
+  `xc16/` afterwards, the old version's directory removed, all four boards recompiled at
+  baseline. This is what makes the release notes' *"click Update, ~173 KB"* claim true
+  rather than assumed.
+
+The example menu was re-verified **from the published bytes**, not the working tree: 27
+`.ino` in the downloaded archive, 27 offered, split 26 `Arduino_dsPIC33CK` + 1 `HRPWM`.
+`live_check.sh` does not assert this itself, which is worth fixing — the invisible-examples
+bug shipped **twice** in 1.0.1, and the gate that catches it (`install_check.sh`) runs
+against locally served archives, so nothing in the published path would catch a regression.
+
+Left alone deliberately: the **`v1.0.1` tag still points at `ddd6035`**, not at the tree
+that was re-published in place under it. Moving a published tag is worse than leaving it
+wrong, and 1.0.2 supersedes it.
 
 ---
 
