@@ -102,7 +102,17 @@ compiler.ar.flags=rcs
 compiler.ar.extra_flags=
 
 # Linker flags
-compiler.ld.flags=-mcpu={build.mcu} -mdfp={build.dfp.path} -T {build.dfp.path}/support/dsPIC33C/gld/p{build.mcu}.gld
+# -Wl,--gc-sections pairs with the -ffunction-sections -fdata-sections above: without
+# it those two flags only split the object into sections and nothing ever collects them.
+# Worth ~9 KB on a Blink-sized sketch as measured in 1.0.1 (11904->2564 on 32MP102,
+# 12876->3196 on 256MC005) -- far more than the ~2.4 KB once estimated, because
+# --whole-archive pulls the entire core in and collection then discards whatever the
+# sketch never called. It is also what _build/allboards.sh:60 has always linked with,
+# so the core has been built this way in the regression gate since the beginning.
+# Safe for interrupts: the ISRs are referenced by the interrupt vector table, so they are
+# GC roots and are never collected. Do not add -Wl,--print-gc-sections here; it is
+# per-build noise. See PLAN.md Phase 10 for the per-device size tables.
+compiler.ld.flags=-mcpu={build.mcu} -mdfp={build.dfp.path} -T {build.dfp.path}/support/dsPIC33C/gld/p{build.mcu}.gld -Wl,--gc-sections
 compiler.ld.extra_flags=
 
 # ============================================================
@@ -159,6 +169,20 @@ recipe.preproc.macros="{compiler.path}xc-dsc-gcc.bat" -E -dM {preproc.includes.f
 # Upload Tools
 # ============================================================
 
+# Every tool below defines BOTH an upload.pattern and a program.pattern, and they are
+# deliberately identical. The two are reached by different menu items and arduino-cli
+# picks between them by which one you invoked, not by the board:
+#
+#   Sketch > Upload                  -> boards.txt <board>.upload.tool -> upload.pattern
+#   Sketch > Upload Using Programmer -> programmers.txt <prog>.program.tool
+#                                       -> program.pattern
+#
+# 1.0.0 shipped the upload half only, so every entry on the Programmer menu failed with
+# "Failed programming: recipe not found 'program.pattern'" even though programmers.txt
+# named a program.tool for all six. Fixed in 1.0.1. There is no separate "program"
+# operation for these devices - ipecmd does a full erase-and-program either way - so the
+# recipes stay mirrored on purpose; if you edit one, edit its twin.
+
 # Tool: UART Bootloader (Python script)
 tools.dspic33ck_upload.cmd=python3
 tools.dspic33ck_upload.cmd.windows=python.exe
@@ -166,6 +190,9 @@ tools.dspic33ck_upload.path={runtime.platform.path}/tools
 tools.dspic33ck_upload.upload.params.verbose=-v
 tools.dspic33ck_upload.upload.params.quiet=
 tools.dspic33ck_upload.upload.pattern="{cmd}" "{path}/upload_uart.py" --port "{serial.port}" --baud {upload.speed} --hex "{build.path}/{build.project_name}.hex"
+tools.dspic33ck_upload.program.params.verbose=-v
+tools.dspic33ck_upload.program.params.quiet=
+tools.dspic33ck_upload.program.pattern="{cmd}" "{path}/upload_uart.py" --port "{serial.port}" --baud {upload.speed} --hex "{build.path}/{build.project_name}.hex"
 
 # --- ipecmd-based programmers ----------------------------------------------
 # All five go through tools/ipecmd-upload.bat, which locates ipecmd.exe inside
@@ -187,21 +214,33 @@ tools.dspic33ck_upload.upload.pattern="{cmd}" "{path}/upload_uart.py" --port "{s
 tools.pickit4.upload.params.verbose=
 tools.pickit4.upload.params.quiet=
 tools.pickit4.upload.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" PK4 {build.mcu} "{build.path}/{build.project_name}.hex"
+tools.pickit4.program.params.verbose=
+tools.pickit4.program.params.quiet=
+tools.pickit4.program.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" PK4 {build.mcu} "{build.path}/{build.project_name}.hex"
 
 # Tool: MPLAB SNAP
 tools.snap.upload.params.verbose=
 tools.snap.upload.params.quiet=
 tools.snap.upload.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" SNAP {build.mcu} "{build.path}/{build.project_name}.hex"
+tools.snap.program.params.verbose=
+tools.snap.program.params.quiet=
+tools.snap.program.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" SNAP {build.mcu} "{build.path}/{build.project_name}.hex"
 
 # Tool: PICkit 5 via MPLAB IPE command line
 tools.pickit5.upload.params.verbose=
 tools.pickit5.upload.params.quiet=
 tools.pickit5.upload.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" PK5 {build.mcu} "{build.path}/{build.project_name}.hex"
+tools.pickit5.program.params.verbose=
+tools.pickit5.program.params.quiet=
+tools.pickit5.program.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" PK5 {build.mcu} "{build.path}/{build.project_name}.hex"
 
 # Tool: PKOB4 (PICkit On Board 4 - built into Curiosity boards)
 tools.pkob4.upload.params.verbose=
 tools.pkob4.upload.params.quiet=
 tools.pkob4.upload.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" PKOB4 {build.mcu} "{build.path}/{build.project_name}.hex"
+tools.pkob4.program.params.verbose=
+tools.pkob4.program.params.quiet=
+tools.pkob4.program.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" PKOB4 {build.mcu} "{build.path}/{build.project_name}.hex"
 
 # Tool: nEDBG (on-board debugger on Curiosity Nano boards, e.g. EV08P02A)
 # Programming through ipecmd wedges the nEDBG's USB-CDC bridge, leaving the
@@ -211,3 +250,6 @@ tools.pkob4.upload.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" PKO
 tools.nedbg.upload.params.verbose=
 tools.nedbg.upload.params.quiet=
 tools.nedbg.upload.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" nEDBG {build.mcu} "{build.path}/{build.project_name}.hex"
+tools.nedbg.program.params.verbose=
+tools.nedbg.program.params.quiet=
+tools.nedbg.program.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" nEDBG {build.mcu} "{build.path}/{build.project_name}.hex"
