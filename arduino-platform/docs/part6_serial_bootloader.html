@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino_dsPIC33CK - Part 6: The Serial Bootloader</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.7; max-width: 900px; margin: 0 auto; padding: 30px; background: #f8f9fa; color: #333; }
+        h1 { color: #1a5276; border-bottom: 3px solid #2e86c1; padding-bottom: 10px; }
+        h2 { color: #2e86c1; margin-top: 40px; border-left: 4px solid #2e86c1; padding-left: 12px; }
+        h3 { color: #1a5276; margin-top: 25px; }
+        h4 { color: #1a5276; margin-bottom: 6px; }
+        .info-box { background: #d4efdf; border-left: 5px solid #27ae60; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .warning-box { background: #fdebd0; border-left: 5px solid #f39c12; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .danger-box { background: #fadbd8; border-left: 5px solid #e74c3c; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        code { background: #ecf0f1; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 0.9em; }
+        pre { background: #2c3e50; color: #ecf0f1; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+        pre code { background: none; padding: 0; color: inherit; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #bdc3c7; padding: 10px 14px; text-align: left; vertical-align: top; }
+        th { background: #2e86c1; color: white; }
+        tr:nth-child(even) { background: #eaf2f8; }
+        .nav-links { background: #eaf2f8; padding: 15px; border-radius: 6px; margin: 20px 0; }
+        .nav-links a { color: #2e86c1; text-decoration: none; margin-right: 15px; }
+        .nav-links a:hover { text-decoration: underline; }
+        .step { background: white; border: 1px solid #d5dbdb; border-radius: 8px; padding: 20px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .solution { color: #27ae60; font-weight: bold; }
+        .menu { background: #eaf2f8; border: 1px solid #aed6f1; border-radius: 3px; padding: 1px 6px; font-weight: 600; white-space: nowrap; }
+    </style>
+</head>
+<body>
+
+<h1>Arduino_dsPIC33CK User Guide</h1>
+<h2 style="border:none; padding:0; margin-top:5px; color:#666; font-size:1em;">Part 6: The Serial Bootloader</h2>
+
+<div class="nav-links">
+    <strong>Navigation:</strong>
+    <a href="part1_introduction_setup.html">Part 1: Setup</a>
+    <a href="part2_pin_mapping_hardware.html">Part 2: Pin Mapping</a>
+    <a href="part3_api_reference.html">Part 3: API Reference</a>
+    <a href="part4_testing_sketches.html">Part 4: Testing Sketches</a>
+    <a href="part5_upload_troubleshooting.html">Part 5: Upload &amp; Troubleshooting</a>
+    <a href="part6_serial_bootloader.html"><b>Part 6: Serial Bootloader</b></a>
+</div>
+
+<div class="info-box">
+    <strong>In short:</strong> burn the bootloader once with a programmer, then set
+    <span class="menu">Tools &rarr; Bootloader &rarr; Serial (UART, 115200)</span> and press
+    <strong>Upload</strong> for the rest of the board's life. No debugger, no MPLAB X, no button
+    to hold. If that is all you need, read <a href="#burn">6.2</a> and <a href="#upload">6.3</a>
+    and stop.
+</div>
+
+<h2>6.1 What this is, and why it exists</h2>
+
+<p>Every other upload path in this platform goes through <code>ipecmd</code>, which lives inside
+MPLAB X. That has two consequences. <strong>MPLAB X becomes a hard prerequisite just to blink an
+LED</strong>, and a dsPIC33CK board that has nothing but a UART cannot be programmed from the
+Arduino IDE at all.</p>
+
+<p>The serial bootloader is a small program that lives permanently in the first 6 KB of flash.
+It listens on the board's UART at reset, and if a host is talking to it, it erases and rewrites
+the rest of flash with whatever sketch it is sent. The Arduino IDE drives it over the same COM
+port the Serial Monitor uses.</p>
+
+<p>The real target is not the Curiosity Nano. On the Curiosity boards the on-board debugger is
+faster and more capable, and it stays the default. <strong>The target is your own hardware</strong>
+&mdash; a dsPIC33CK on a board you designed, with a USB-serial bridge and no debugger on it. For
+that board this is the difference between "programmable from the Arduino IDE" and "not".</p>
+
+<div class="warning-box">
+    <strong>dsPIC33CK256MC005 only, for now.</strong> The other three supported devices have no
+    bootloader and no <span class="menu">Bootloader</span> menu; they upload through a debugger
+    exactly as before. Nothing about your existing sketches or workflow changes unless you opt in.
+    <br><br>
+    Releases 1.0.0&ndash;1.0.2 offered a programmer entry called <em>"UART Bootloader"</em> that
+    could not possibly work, because no bootloader firmware existed yet. If you ever selected it
+    and nothing happened, that is why.
+</div>
+
+<h3>What it costs</h3>
+
+<table>
+    <tr><th>Cost</th><th>Amount</th><th>Notes</th></tr>
+    <tr>
+        <td>Flash reserved for the bootloader</td>
+        <td>6 KB at the bottom, 2 KB at the top</td>
+        <td>Never erased, never rewritten by an upload.</td>
+    </tr>
+    <tr>
+        <td>Flash added to <em>your</em> sketch</td>
+        <td>1608 bytes</td>
+        <td>The interrupt-forwarding table &mdash; see <a href="#vectors">6.4</a>.</td>
+    </tr>
+    <tr>
+        <td>Sketch size limit</td>
+        <td>246784 instead of 262144</td>
+        <td>Both numbers appear in the size line after a compile.</td>
+    </tr>
+    <tr>
+        <td>Interrupt latency</td>
+        <td>2 instruction cycles</td>
+        <td>20&nbsp;ns at 100&nbsp;MHz. Every interrupt goes through one extra
+            <code>GOTO</code>.</td>
+    </tr>
+    <tr>
+        <td>Upload speed</td>
+        <td>115200 baud, fixed</td>
+        <td>A few seconds for a typical sketch. Not configurable &mdash; see
+            <a href="#limits">6.7</a>.</td>
+    </tr>
+    <tr>
+        <td>Host requirement</td>
+        <td>Python on <code>PATH</code></td>
+        <td><strong><code>pyserial</code> is not needed.</strong> The upload tool talks to the
+            COM port through the Windows API directly, so there is nothing to
+            <code>pip install</code>.</td>
+    </tr>
+</table>
+
+<p>What it does <strong>not</strong> cost you is source compatibility. Your sketch keeps writing
+<code>attachInterrupt()</code>, <code>Serial</code>, <code>tone()</code> and hand-written ISRs
+like <code>_T1Interrupt</code> exactly as it does today. Nothing in a sketch or in the core needs
+to know a bootloader is present.</p>
+
+<h2 id="burn">6.2 One-time setup: burning the bootloader</h2>
+
+<p>The bootloader itself cannot be installed over serial &mdash; a program cannot overwrite the
+flash it is running from, and the part that would have to be overwritten is precisely the part
+that must survive a power cut. <strong>Burning it needs a programmer, once.</strong> After that,
+the programmer can go back in the drawer.</p>
+
+<h3>Method A &mdash; from the Arduino IDE (easiest)</h3>
+
+<div class="step">
+    <ol>
+        <li><span class="menu">Tools &rarr; Board</span> &rarr;
+            <em>Arduino_dsPIC33CK (dsPIC33CK256MC005 Curiosity Nano)</em></li>
+        <li><span class="menu">Tools &rarr; Programmer</span> &rarr; whichever one you have
+            plugged in:
+            <ul>
+                <li><em>PICkit 5</em></li>
+                <li><em>PICkit 4</em></li>
+                <li><em>MPLAB SNAP</em></li>
+                <li><em>PKOB4 (Curiosity On-Board)</em></li>
+                <li><em>nEDBG (Curiosity Nano On-Board)</em></li>
+            </ul>
+            All five work. Do <strong>not</strong> pick <em>Serial Bootloader (UART)</em> here
+            &mdash; you cannot burn a bootloader through the bootloader.</li>
+        <li><span class="menu">Tools &rarr; Burn Bootloader</span></li>
+    </ol>
+    <p>This erases the device and programs the bootloader plus the configuration words. It takes
+    a few seconds. Expect output ending in:</p>
+    <pre><code>Erase successful
+program memory: start address = 0x0, end address = 0xfff
+configuration memory
+Program Succeeded
+Operation Succeeded</code></pre>
+    <p>Note the address range: <code>0x0</code> to <code>0xfff</code>. Nothing above the
+    application base is touched.</p>
+</div>
+
+<div class="info-box">
+    <strong>Burn Bootloader erases your sketch.</strong> That is expected &mdash; the board comes
+    up in the bootloader with no application, LED0 blinking about twice a second to say
+    "waiting". Upload a sketch and it stops blinking and runs.
+</div>
+
+<h3>Method B &mdash; from the command line</h3>
+
+<p>The IDE calls a wrapper script; you can call it yourself. It finds MPLAB X on its own, so no
+paths need configuring:</p>
+
+<pre><code>cd %LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\1.0.3
+
+tools\ipecmd-upload.bat PK4 33CK256MC005 ^
+  "bootloaders\dspic33ck256mc005\bootloader-dspic33ck256mc005-115200-v1.hex"</code></pre>
+
+<p>The first argument is <code>ipecmd</code>'s own tool code: <code>PK4</code>, <code>PK5</code>,
+<code>SNAP</code>, <code>PKOB4</code> or <code>nEDBG</code>.</p>
+
+<h3>Method C &mdash; MPLAB IPE, or any other programmer software</h3>
+
+<p>The bootloader is an ordinary Intel HEX file. Load it into MPLAB IPE (or the tool of your
+choice), select device <code>dsPIC33CK256MC005</code>, and program. This is the route to use for
+a custom board, or for programming boards in batches.</p>
+
+<h3 id="hexfile">Where the HEX file is</h3>
+
+<p>Shipped inside the platform package, so if you installed through Boards Manager you already
+have it:</p>
+
+<pre><code>%LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\1.0.3\
+    bootloaders\dspic33ck256mc005\
+        bootloader-dspic33ck256mc005-115200-v1.hex</code></pre>
+
+<p>In the source repository it is at
+<code>arduino-platform/microchip/dspic33ck/bootloaders/dspic33ck256mc005/</code>, next to the C
+sources it was built from (<code>bl_main.c</code>, <code>bl_uart.c</code>, <code>bl_nvm.c</code>,
+<code>bl_crc.c</code>, <code>bl_time.c</code>). The <code>-115200-</code> in the name is the baud
+rate it is fixed at, and <code>-v1</code> is the protocol version it speaks.</p>
+
+<h2 id="upload">6.3 Everyday use: uploading a sketch</h2>
+
+<div class="step">
+    <h3>Settings</h3>
+    <table>
+        <tr><th>Menu</th><th>Set to</th></tr>
+        <tr><td><span class="menu">Tools &rarr; Board</span></td>
+            <td><em>Arduino_dsPIC33CK (dsPIC33CK256MC005 Curiosity Nano)</em></td></tr>
+        <tr><td><span class="menu">Tools &rarr; Port</span></td>
+            <td>the board's COM port</td></tr>
+        <tr><td><span class="menu">Tools &rarr; Bootloader</span></td>
+            <td><strong><em>Serial (UART, 115200)</em></strong> &mdash; the one that matters</td></tr>
+    </table>
+    <p>Then press <strong>Upload</strong>. That is the whole workflow. There is no button to hold,
+    no reset to time, and no baud rate to choose.</p>
+</div>
+
+<div class="warning-box">
+    <strong>Close the Serial Monitor before uploading.</strong> The upload tool needs exclusive
+    use of the COM port; if the Monitor is holding it you get an access-denied error. Reopen it
+    afterwards.
+</div>
+
+<div class="danger-box">
+    <strong>Read this one before your first upload: a sketch that never calls
+    <code>Serial.begin()</code> blocks the next serial upload.</strong>
+    <br><br>
+    Soft entry works by asking the <em>running sketch</em> to reset itself, and the sketch can only
+    hear that request if its serial receive interrupt is running. So if you upload a sketch with no
+    <code>Serial</code> in it &mdash; <code>NanoBlink</code> is the obvious one, and it is the
+    example most people try first &mdash; the upload succeeds, and then the <em>next</em> serial
+    upload fails with <em>"no bootloader answered"</em>. Nothing is broken, but you cannot get back
+    in over serial alone.
+    <br><br>
+    <strong>Getting unstuck.</strong> On a Curiosity Nano, run
+    <span class="menu">Tools &rarr; Burn Bootloader</span>: it erases the sketch and leaves the
+    board in the bootloader, with no hands needed, and the next serial upload works. On a board
+    with no debugger, hold <strong>SW0</strong> through a power cycle instead.
+    <br><br>
+    <strong>Avoiding it.</strong> Put <code>Serial.begin(115200);</code> in
+    <code>setup()</code> of any sketch you intend to keep iterating on over serial. It costs you
+    nothing and it keeps the door open. Every <code>04.CuriosityNANO</code> example except
+    <code>NanoBlink</code> already does.
+</div>
+
+<p>The <span class="menu">Bootloader</span> setting affects the <em>build</em>, not just the
+upload &mdash; the sketch is linked differently. So switching it means a recompile, and a sketch
+built for one setting cannot be uploaded with the other. The uploader detects that case and says
+so rather than corrupting the board.</p>
+
+<h3>What you should see</h3>
+
+<p>With <span class="menu">File &rarr; Preferences &rarr; Show verbose output during: upload</span>
+ticked:</p>
+
+<pre><code>serial_upload: not writing 4 config word(s) at 0x02BF18-0x02BF28: they belong to
+               the bootloader and are the same in every sketch
+serial_upload: looking for the bootloader on COM63
+serial_upload: the sketch reset itself into the bootloader (magic accepted at 115200 baud)
+serial_upload: board: DEVID 0x00A272 rev 0x000000, protocol 1, erase step 0x400
+serial_upload: image 0x001800-0x0021A0, 1232 instruction words, CRC-32 0xB08BE980
+serial_upload: erasing the application region
+serial_upload: writing 10 block(s)
+serial_upload:   1/10 blocks (10%)
+   ...
+serial_upload:   10/10 blocks (100%)
+serial_upload: verifying with the board's own CRC-32
+serial_upload: verified
+serial_upload: 1232 instruction words written and verified on COM63
+serial_upload: running the sketch</code></pre>
+
+<p>Without verbose output ticked you get the <em>"written and verified"</em> line only. That line
+is the confirmation the upload really happened &mdash; if you see nothing at all, the recipe never
+ran.</p>
+
+<p>On a board that has no sketch yet, the third line reads <em>"the bootloader is already
+listening"</em> instead: there was nothing to ask to reset.</p>
+
+<h3>Going back to the debugger</h3>
+
+<div class="danger-box">
+    <strong>Any upload through a debugger erases the bootloader.</strong> <code>ipecmd</code>
+    erases the whole device, so <span class="menu">Bootloader &rarr; None</span> uploads, and
+    <span class="menu">Sketch &rarr; Upload Using Programmer</span>, both wipe it. The board still
+    works perfectly &mdash; it just has no bootloader any more, and serial uploads will stop
+    working until you <span class="menu">Burn Bootloader</span> again.
+    <br><br>
+    This is not a bug that can be fixed. The bootloader lives at address 0, which is exactly what
+    a whole-device erase clears first.
+</div>
+
+<h2>6.4 How it works inside</h2>
+
+<p>You do not need this section to use the bootloader. It is here because the design has
+consequences you can see &mdash; the 1608 bytes, the 2-cycle latency, the fact that a power cut
+mid-upload is survivable &mdash; and because anyone porting this to another dsPIC33CK will need
+to know why it is shaped this way.</p>
+
+<h3>The memory map</h3>
+
+<pre><code>0x000000  reset vector      GOTO bootloader              ] bootloader-owned.
+0x000004  interrupt table   200 slots, constants         ] Programmed ONCE when
+0x000200  bootloader code   up to 0x1600                 ] you burn it, then
+                                                         ] NEVER erased again.
+--------------------------------------------- page boundary
+0x001800  entry + forwarding table (1608 bytes)          ] application region.
+0x001B24  your sketch                                    ] Erased and rewritten
+0x02B700  signature: length / CRC-32 / magic             ] by every upload.
+---------------------------------------------
+0x02B800  unused, 2 KB                                    ] shares an erase page
+0x02BF00  configuration words                             ] with config: never
+                                                          ] touched.</code></pre>
+
+<p>The two "never" regions are the whole safety argument. <strong>Nothing an upload does can
+destroy the reset vector, the interrupt table, the bootloader, or the configuration words.</strong>
+There is no sequence of events &mdash; including yanking the cable at the worst possible moment
+&mdash; in which the board stops being able to accept a new upload over serial.</p>
+
+<p>The 2 KB gap below the configuration words is not waste. The configuration words sit inside an
+erase page that starts at <code>0x2B800</code>, and erasing that page would clear
+<code>FWDTEN</code> &mdash; and an erased <code>FWDTEN</code> reads as <em>watchdog enabled</em>,
+which would put the board into a reset loop. So the application stops short of that page.</p>
+
+<h3 id="vectors">Why your sketch grows by 1608 bytes</h3>
+
+<p>On this device the interrupt vector table is at a fixed address, <code>0x004</code>, and cannot
+be moved. It also shares an erase page with the reset vector and the start of the bootloader. So
+if the application owned the vector table, every upload would have to erase the page containing
+the bootloader's own reset vector &mdash; and a power cut during that erase would leave a brick
+that only a programmer could fix.</p>
+
+<p>Instead, each of the 200 vector slots is programmed once, at burn time, with a
+<em>constant</em> address pointing into a table of <code>GOTO</code> instructions at
+<code>0x1800</code>. Your sketch rebuilds that table on every upload. An interrupt therefore goes
+hardware vector &rarr; <code>GOTO</code> &rarr; your handler, which costs 2 instruction cycles
+and 1608 bytes of flash.</p>
+
+<p>The payoff is that <strong>no source code has to change</strong>. The alternative designs all
+break compatibility: the device's alternate vector table requires renaming every interrupt
+handler in the core <em>and</em> in your sketches (<code>_T1Interrupt</code> becomes
+<code>_AltT1Interrupt</code>), and the dual-partition feature does not exist on this device at
+all. Two instruction cycles is a good price for an unmodified API.</p>
+
+<h3>Getting into the bootloader &mdash; three ways</h3>
+
+<table>
+    <tr><th>Path</th><th>When it is used</th></tr>
+    <tr>
+        <td><strong>Soft entry</strong> &mdash; the host asks the running sketch to reset
+            itself</td>
+        <td>Normal uploads. The host sends a 10-byte magic sequence; the serial receive
+            interrupt in the core recognises it and triggers a software reset. This is why you
+            never touch the board. The host sweeps the common baud rates, because the sketch is
+            listening at whatever rate its own <code>Serial.begin()</code> chose.</td>
+    </tr>
+    <tr>
+        <td><strong>The window at reset</strong> &mdash; ~300&nbsp;ms of listening after every
+            reset</td>
+        <td>Always active. This is what catches the board when there is no valid sketch to run,
+            and what the soft-entry reset lands in.</td>
+    </tr>
+    <tr>
+        <td><strong>Hold SW0</strong> through a power cycle</td>
+        <td>The fallback when the sketch cannot cooperate &mdash; see the troubleshooting table.
+            The bootloader stays put and waits indefinitely.</td>
+    </tr>
+</table>
+
+<h3>The upload sequence, and why an interrupted upload is safe</h3>
+
+<ol>
+    <li>The host gets the board into the bootloader.</li>
+    <li>It asks the board to describe itself: protocol version, device ID, erase granularity,
+        block size, and where the application region begins and ends. <strong>The host assumes no
+        geometry &mdash; it asks.</strong> That is what makes the same tool usable on a future
+        device.</li>
+    <li>The application region is erased.</li>
+    <li>The sketch is written in 128-word blocks. Every block is CRC-checked in transit, and the
+        bootloader refuses any address outside the application region.</li>
+    <li>The host asks the board to checksum what it actually stored, and compares.</li>
+    <li><strong>Only then</strong> is the signature row written &mdash; length, CRC-32 and a magic
+        number.</li>
+    <li>The board is told to jump. It re-validates the signature before branching.</li>
+</ol>
+
+<p>Step 6 is the whole trick. The board only ever considers an application valid if the signature
+is present and its CRC-32 matches, and the signature is written <em>last</em>. Lose power during
+step 3, 4 or 5 and the signature is simply absent, so on the next reset the bootloader refuses to
+jump and waits for a host instead. <strong>Recovery is another serial upload, with no programmer
+involved.</strong></p>
+
+<h2>6.5 Recovering a board</h2>
+
+<table>
+    <tr><th>Situation</th><th>What to do</th></tr>
+    <tr>
+        <td>Upload interrupted; board does nothing but blink LED0</td>
+        <td>Nothing is wrong &mdash; it is in the bootloader, waiting, exactly as designed. Upload
+            again.</td>
+    </tr>
+    <tr>
+        <td>The sketch has no <code>Serial.begin()</code>, locks up, or disables interrupts for
+            long stretches</td>
+        <td><strong>On a Curiosity Nano:</strong> <span class="menu">Burn Bootloader</span>. It
+            erases the sketch and leaves the board in the bootloader, needs no hands, and is
+            verified to restore serial uploads immediately.
+            <br><br>
+            <strong>On a board with no debugger:</strong> hold <strong>SW0</strong>, power-cycle,
+            keep holding for a second, then upload. This is the designed fallback; it follows the
+            same code path as the auto-jump decision that <em>is</em> verified, but the held-button
+            case has not itself been reproduced on a bench, so treat it as expected-to-work rather
+            than proven.</td>
+    </tr>
+    <tr>
+        <td>Serial uploads stopped working after you used the debugger</td>
+        <td>The debugger erased the bootloader. <span class="menu">Burn Bootloader</span> again.
+            The uploader detects this case and tells you so.</td>
+    </tr>
+    <tr>
+        <td>You want the board back to a plain, bootloader-free state</td>
+        <td>Set <span class="menu">Bootloader &rarr; None</span> and upload with a programmer.
+            That erases everything including the bootloader, which is what you asked for.</td>
+    </tr>
+</table>
+
+<div class="info-box">
+    <strong>The bootloader cannot be bricked by anything the bootloader does.</strong> It owns the
+    reset vector and never erases the page holding it. The only ways to remove it are a debugger
+    or a programmer &mdash; which is the same thing as saying the only way to remove it is
+    deliberately.
+</div>
+
+<h2 id="trouble">6.6 Troubleshooting</h2>
+
+<table>
+    <tr><th>Symptom</th><th>Cause and fix</th></tr>
+    <tr>
+        <td><code>could not enter the bootloader on COM<em>n</em></code></td>
+        <td>In order of likelihood: the bootloader was never burned; a debugger upload erased it;
+            the wrong port is selected; or the sketch cannot cooperate with soft entry (next
+            row). Burn it again and retry.</td>
+    </tr>
+    <tr>
+        <td>Uploads work for some sketches but not others</td>
+        <td>Soft entry needs the sketch to be servicing its serial receive interrupt. A sketch
+            that never calls <code>Serial.begin()</code>, or that sits in a long section with
+            interrupts disabled, cannot be asked to reset. Use the SW0 route above. This is a
+            real limitation, not a misconfiguration.</td>
+    </tr>
+    <tr>
+        <td><code>the sketch places code at 0x000000, below the application base</code></td>
+        <td>The sketch was compiled for the debugger. Select
+            <span class="menu">Bootloader &rarr; Serial (UART, 115200)</span> and rebuild &mdash;
+            it has to be <em>compiled</em> for the bootloader, not just uploaded to it. The
+            uploader refuses rather than overwriting the bootloader with the sketch's own vector
+            table.</td>
+    </tr>
+    <tr>
+        <td>Access denied / port busy</td>
+        <td>Close the Serial Monitor. Only one program can hold a COM port.</td>
+    </tr>
+    <tr>
+        <td>Sketch no longer fits after switching to the bootloader</td>
+        <td>Expected: the limit is 246784 rather than 262144, and the forwarding table adds 1608
+            bytes. If you are that close to full, the debugger path gives you the space back.</td>
+    </tr>
+    <tr>
+        <td>Upload succeeds but the Serial Monitor shows nothing</td>
+        <td>On Curiosity Nano boards this is usually the on-board debugger's USB-serial bridge
+            being wedged by an earlier <code>ipecmd</code> run, not a problem with your sketch.
+            Unplug and replug the board. See Part 5.</td>
+    </tr>
+    <tr>
+        <td><code>python</code> not found</td>
+        <td>Install Python and make sure it is on <code>PATH</code>. Nothing else is needed
+            &mdash; do not install <code>pyserial</code>.</td>
+    </tr>
+    <tr>
+        <td>Upload reports success but the board runs the old sketch</td>
+        <td>Should not happen &mdash; the image is verified by checksum before it is marked valid.
+            If you see this, please report it with the verbose upload log.</td>
+    </tr>
+</table>
+
+<h2 id="limits">6.7 Limits, stated plainly</h2>
+
+<table>
+    <tr><th>Limit</th><th>Why</th></tr>
+    <tr>
+        <td>dsPIC33CK256MC005 only</td>
+        <td>The linker scripts and the vector table are generated per device. The generator is
+            device-portable, so adding a device is mechanical work rather than a redesign, but it
+            has not been done or tested yet and nothing is claimed for the other three boards.</td>
+    </tr>
+    <tr>
+        <td>115200 baud, fixed</td>
+        <td>The bootloader runs on the chip's reset-default 8&nbsp;MHz internal oscillator with no
+            PLL, which keeps it small and removes a whole class of start-up failure. At that clock
+            115200 is accurate to &minus;0.7%; other rates are not reachable cleanly.</td>
+    </tr>
+    <tr>
+        <td>The bootloader cannot update itself</td>
+        <td>Owning the reset vector is exactly what makes it impossible to erase &mdash; and
+            therefore impossible to replace over serial. A new bootloader version needs a
+            programmer. This is the correct trade.</td>
+    </tr>
+    <tr>
+        <td>Python required on the host</td>
+        <td>The upload tool is a Python script using only the standard library. A self-contained
+            executable is possible later if this proves to be a barrier.</td>
+    </tr>
+    <tr>
+        <td>Windows only</td>
+        <td>As with the rest of the platform. The upload tool talks to the COM port through the
+            Windows API.</td>
+    </tr>
+    <tr>
+        <td>Soft entry depends on a cooperating sketch</td>
+        <td>See the troubleshooting table. On a board with no reset button this is genuinely
+            awkward, and it is the main reason to put a reset button on your own hardware.</td>
+    </tr>
+</table>
+
+<div class="warning-box">
+    <strong>One case is reasoned about rather than measured.</strong> Interrupting a transfer and
+    recovering from it is verified on hardware: the board refuses to jump into a half-written
+    image and still answers the host. What has <em>not</em> been reproduced on a bench is a power
+    cut landing inside a single flash row write, which is a window of about one millisecond. The
+    design says the outcome is the same &mdash; the signature is still absent, so the image is
+    still invalid &mdash; and the worst case either way is that you upload again. It is listed
+    here because it is honest to distinguish what was tested from what was designed.
+</div>
+
+<h2>6.8 For your own hardware</h2>
+
+<p>If you are putting a dsPIC33CK256MC005 on your own board and want this to work, you need:</p>
+
+<ul>
+    <li><strong>U1RX and U1TX brought out</strong> to a USB-serial bridge (CP2102, FT232, CH340,
+        or another MCU). On the Curiosity Nano these are the pins the on-board debugger's CDC
+        bridge uses.</li>
+    <li><strong>An ICSP header</strong> &mdash; MCLR, VDD, GND, PGD, PGC. Needed once, to burn
+        the bootloader. Five pads and a 0.1" header are enough.</li>
+    <li><strong>A reset button</strong>, and ideally a button on the SW0 pin. Strongly
+        recommended: it turns the one awkward recovery case into pressing a button.</li>
+    <li>Nothing else. No debugger, no crystal &mdash; the bootloader uses the internal
+        oscillator.</li>
+</ul>
+
+<p>The configuration words are programmed along with the bootloader, so a blank chip needs one
+ICSP session and nothing more.</p>
+
+<div class="nav-links">
+    <strong>Navigation:</strong>
+    <a href="part1_introduction_setup.html">Part 1: Setup</a>
+    <a href="part2_pin_mapping_hardware.html">Part 2: Pin Mapping</a>
+    <a href="part3_api_reference.html">Part 3: API Reference</a>
+    <a href="part4_testing_sketches.html">Part 4: Testing Sketches</a>
+    <a href="part5_upload_troubleshooting.html">Part 5: Upload &amp; Troubleshooting</a>
+    <a href="part6_serial_bootloader.html"><b>Part 6: Serial Bootloader</b></a>
+</div>
+
+</body>
+</html>

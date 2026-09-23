@@ -144,6 +144,7 @@
     <a href="part3_api_reference.html">Part 3: API Reference</a>
     <a href="part4_testing_sketches.html">Part 4: Testing Sketches</a>
     <a href="part5_upload_troubleshooting.html">Part 5: Upload & Troubleshooting</a>
+    <a href="part6_serial_bootloader.html">Part 6: Serial Bootloader</a>
 </div>
 
 <h2>1.1 What is Arduino_dsPIC33CK?</h2>
@@ -305,8 +306,9 @@ delay(1000);
 │   ├── platform.txt          (compiler config)
 │   ├── cores/arduino/        (Arduino API source files)
 │   ├── variants/dspic33ck32mp102/  (pin mapping)
-│   ├── tools/upload_uart.py  (upload script)
-│   └── examples/             (Blink, AnalogRead)
+│   ├── bootloaders/          (serial bootloader, MC005)
+│   ├── tools/serial_upload.py  (serial upload script)
+│   └── libraries/Arduino_dsPIC33CK/examples/  (Blink, AnalogRead, ...)
 ├── package_...index.json     (board manager)
 └── README.md
 </code></pre>

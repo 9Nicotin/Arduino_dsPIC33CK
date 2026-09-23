@@ -37,7 +37,7 @@ if not exist "%ARDUINO_DATA%" (
 
 REM Target installation path. Must match the version in platform.txt, so that
 REM this overwrites the Boards Manager install rather than sitting beside it.
-set "INSTALL_PATH=%ARDUINO_DATA%\packages\microchip\hardware\dspic33ck\1.0.2"
+set "INSTALL_PATH=%ARDUINO_DATA%\packages\microchip\hardware\dspic33ck\1.0.3"
 set "TOOLS_PATH=%ARDUINO_DATA%\packages\microchip\tools"
 
 echo [1/4] Creating installation directory...

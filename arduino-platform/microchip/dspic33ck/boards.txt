@@ -5,6 +5,10 @@
 
 # Menu declarations (MUST be before board definitions)
 menu.clock=Clock
+# Only dspic33ck256mc005 offers options under this menu. A board that declares no
+# options for a declared menu simply does not show it, so the other three are
+# unaffected -- and they must be, because no bootloader has been built for them.
+menu.bootloader=Bootloader
 
 # Board identifier
 dspic33ck32mp102.name=Arduino_dsPIC33CK (dsPIC33CK32MP102)
@@ -24,7 +28,10 @@ dspic33ck32mp102.build.fcy=4000000UL
 dspic33ck32mp102.build.board=DSPIC33CK32MP102
 dspic33ck32mp102.build.core=arduino
 dspic33ck32mp102.build.variant=dspic33ck32mp102
+# The stock DFP script, i.e. exactly the path platform.txt used to hardcode.
+# Split into a directory and a filename so the bootloader menu can redirect it.
 dspic33ck32mp102.build.ldscript=p33CK32MP102.gld
+dspic33ck32mp102.build.ldscript.dir={build.dfp.path}/support/dsPIC33C/gld
 
 # ============================================================
 # Menu: Clock Speed Selection
@@ -61,7 +68,10 @@ dspic33ck256mc002.build.fcy=4000000UL
 dspic33ck256mc002.build.board=DSPIC33CK256MC002
 dspic33ck256mc002.build.core=arduino
 dspic33ck256mc002.build.variant=dspic33ck256mc002
+# The stock DFP script, i.e. exactly the path platform.txt used to hardcode.
+# Split into a directory and a filename so the bootloader menu can redirect it.
 dspic33ck256mc002.build.ldscript=p33CK256MC002.gld
+dspic33ck256mc002.build.ldscript.dir={build.dfp.path}/support/dsPIC33C/gld
 
 # Clock Speed Selection
 dspic33ck256mc002.menu.clock.8mhz_internal=8 MHz Internal FRC (Default)
@@ -94,7 +104,10 @@ dspic33ck256mp508.build.fcy=4000000UL
 dspic33ck256mp508.build.board=DSPIC33CK256MP508
 dspic33ck256mp508.build.core=arduino
 dspic33ck256mp508.build.variant=dspic33ck256mp508
+# The stock DFP script, i.e. exactly the path platform.txt used to hardcode.
+# Split into a directory and a filename so the bootloader menu can redirect it.
 dspic33ck256mp508.build.ldscript=p33CK256MP508.gld
+dspic33ck256mp508.build.ldscript.dir={build.dfp.path}/support/dsPIC33C/gld
 
 # Clock Speed Selection
 dspic33ck256mp508.menu.clock.8mhz_internal=8 MHz Internal FRC (Default)
@@ -133,7 +146,10 @@ dspic33ck256mc005.build.fcy=4000000UL
 dspic33ck256mc005.build.board=DSPIC33CK256MC005
 dspic33ck256mc005.build.core=arduino
 dspic33ck256mc005.build.variant=dspic33ck256mc005
+# The stock DFP script, i.e. exactly the path platform.txt used to hardcode.
+# Split into a directory and a filename so the bootloader menu can redirect it.
 dspic33ck256mc005.build.ldscript=p33CK256MC005.gld
+dspic33ck256mc005.build.ldscript.dir={build.dfp.path}/support/dsPIC33C/gld
 
 # Clock Speed Selection
 dspic33ck256mc005.menu.clock.8mhz_internal=8 MHz Internal FRC (Default)
@@ -143,4 +159,68 @@ dspic33ck256mc005.menu.clock.8mhz_internal.build.fcy=4000000UL
 dspic33ck256mc005.menu.clock.200mhz_pll=200 MHz PLL
 dspic33ck256mc005.menu.clock.200mhz_pll.build.f_cpu=200000000UL
 dspic33ck256mc005.menu.clock.200mhz_pll.build.fcy=100000000UL
+
+# ============================================================
+# Tools > Burn Bootloader
+#
+# The HEX is prebuilt and shipped, because it is linked against
+# ldscripts/p33CK256MC005-boot.gld with -Wl,--no-ivt and there is no way to ask
+# the Arduino build system for that. It is burned with the debugger; after that,
+# uploads need no debugger at all.
+#
+# This is available whichever way the Bootloader menu is set - you burn it first
+# and switch the menu afterwards. Note that it erases the whole device, sketch
+# included, and that the reverse also holds: uploading a sketch with the debugger
+# erases the bootloader and serial upload stops working until it is burned again.
+# ============================================================
+
+dspic33ck256mc005.bootloader.tool=nedbg
+dspic33ck256mc005.bootloader.file=dspic33ck256mc005/bootloader-dspic33ck256mc005-115200-v1.hex
+
+# ============================================================
+# Menu: Bootloader
+#
+# "None" is the default and changes nothing: the board links against the stock
+# DFP script and uploads through the on-board debugger, exactly as in 1.0.2.
+#
+# "Serial (UART)" relinks the sketch to start at 0x1800, above the bootloader,
+# and uploads it over the CDC COM port. Four things change together and all four
+# are necessary:
+#
+#   build.ldscript*        the generated application script: entry point and
+#                          200-slot GOTO trampoline at 0x1800, code above it
+#   compiler.ld.extra_flags  -Wl,--no-ivt, because the bootloader owns the real
+#                          vector table at 0x004 and it must never be relinked;
+#                          the trampoline is what the sketch provides instead
+#   upload.tool            serial_upload.py rather than ipecmd
+#   upload.maximum_size    see below
+#
+# upload.maximum_size: the size bar counts 4 bytes per instruction word (measured
+# - NanoBlink reports 3196 for 799 words), so the reserve is subtracted in those
+# same units: 0x1600 address units of bootloader below 0x1800 plus 0x800 above
+# the signature row = 7680 address units = 15360 of these bytes. 262144 - 15360
+# = 246784. The 262144 the other options use is itself understated for a 256 KB
+# dsPIC in this accounting (the real program region is nearer 358912); that is
+# pre-existing and is left alone here so that picking the bootloader can only
+# ever lower the limit, never raise it. PLAN.md records it as debt.
+# ============================================================
+
+dspic33ck256mc005.menu.bootloader.none=None (upload with the debugger)
+
+dspic33ck256mc005.menu.bootloader.serial=Serial (UART, 115200)
+dspic33ck256mc005.menu.bootloader.serial.build.ldscript=p33CK256MC005-app.gld
+dspic33ck256mc005.menu.bootloader.serial.build.ldscript.dir={runtime.platform.path}/ldscripts
+dspic33ck256mc005.menu.bootloader.serial.compiler.ld.extra_flags=-Wl,--no-ivt
+#
+# BOTH upload.tool keys have to be overridden. The board declares upload.tool AND
+# upload.tool.default (lines 134-135), and arduino-cli 1.5.x prefers the .default
+# form; overriding only the legacy key leaves the board-level "nedbg" winning, so
+# selecting the serial bootloader still uploads through the debugger - which erases
+# the bootloader it was supposed to use. Found on hardware, Sep 23 2026: the upload
+# appeared to succeed, at the right address, and left the board unable to upload
+# again. Silent and destructive, so keep the two lines adjacent.
+dspic33ck256mc005.menu.bootloader.serial.upload.tool=dspic33ck_serial
+dspic33ck256mc005.menu.bootloader.serial.upload.tool.default=dspic33ck_serial
+dspic33ck256mc005.menu.bootloader.serial.upload.protocol=serial
+dspic33ck256mc005.menu.bootloader.serial.upload.maximum_size=246784
 

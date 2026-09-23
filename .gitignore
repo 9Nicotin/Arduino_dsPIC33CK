@@ -4,6 +4,13 @@ _build/
 *.elf
 *.hex
 *.map
+
+# ...except the bootloader binary, which is SHIPPED, not built: users cannot build
+# it themselves, so Tools > Burn Bootloader flashes this committed file. It is
+# reproducible from the C sources beside it via _build/build_bootloader.sh.
+# make-release.sh refuses to package an untracked file, so without this negation a
+# release would fail rather than silently ship a bootloader-less platform.
+!arduino-platform/microchip/dspic33ck/bootloaders/**/*.hex
 *.lst
 *.d
 
@@ -45,4 +52,12 @@ test_led/*.hex
 
 # Copyrighted PDFs (don't redistribute)
 *.pdf
+
+# Python bytecode. This lands INSIDE the shipped platform tree -- importing
+# tools/serial_upload.py, which _build/bootloader_check.sh does to read its
+# constants, creates tools/__pycache__/ next to it. make-release.sh refuses to
+# ship untracked files, so it would not reach a release, but it should not be
+# committed and should not clutter a test install either.
+__pycache__/
+*.pyc
 

@@ -1,6 +1,6 @@
 # Arduino_dsPIC33CK Platform — Project Plan
 
-> **Last reconciled against the tree: September 22, 2026.** Phases 1–8 complete.
+> **Last reconciled against the tree: September 23, 2026.** Phases 1–8 complete.
 > Phase 9 is IN PROGRESS (test sketches written, hardware measurement pending).
 > **Phase 13 (EV08P02A / dsPIC33CK256MC005 board support) added September 8, 2026,
 > code-complete the same day, and CLOSED on hardware September 17, 2026** — the
@@ -35,6 +35,35 @@
 > string changed. See that section — it also records that `package_check.sh` had been
 > reporting false drift against baselines two releases stale, and that `upgrade_check.sh`
 > was stale and is now version-agnostic.
+> **Phase 15 (serial bootloader for dsPIC33CK256MC005) opened and became CODE-COMPLETE on
+> September 23, 2026.** A sketch can now be uploaded from the IDE over the CDC COM port with
+> no debugger and no MPLAB X — which is what finally makes the platform usable on a
+> dsPIC33CK board that has nothing but a UART. The bootloader owns page 0 permanently and
+> forwards all 200 interrupt vectors through a GOTO trampoline in the application, so **no
+> sketch and no file in `cores/` changes the way it names an ISR**; the one core change is a
+> 33-word soft-entry sniffer in the UART RX interrupt. Two gates
+> (`_build/build_bootloader.sh`, `_build/bootloader_check.sh` sections 1–10) hold the
+> linker scripts, the firmware and the host tool to the same memory map, and the whole
+> plumbing chain is verified through `arduino-cli` against an install — including that
+> `-Wl,--gc-sections` does **not** collect the ISRs, which was the single most likely thing
+> to be wrong. **Verified on silicon the same day:** six of the seven hardware checks pass,
+> and the seventh — surviving a power cut part-way through a flash row write — is documented
+> as a known limit rather than claimed. Getting there cost **five defects the offline gates
+> could not see** — a `boards.txt` key that silently routed serial uploads through the debugger
+> and erased the bootloader, an uncleared ANSEL bit that stopped the bootloader ever
+> auto-jumping to a valid sketch, a `bin2hex` call missing `-mdfp=` that scattered config words
+> into the application region, a host knock timeout longer than the firmware's own entry
+> window, and `Burn Bootloader` working with the nEDBG only — i.e. with every programmer except
+> the ones the feature exists for. All five are fixed, each with a comment recording the
+> symptom, and the gate went from 84 checks to 105. `Bootloader: "none"` is the default and is
+> bit-for-bit unchanged.
+> **Phase 15 SHIPPED as `v1.0.3` on September 23, 2026**, with
+> `docs/part6_serial_bootloader.html` as its user guide. Writing that guide found a sixth
+> defect the bench session had missed, because it only shows up across two consecutive uploads:
+> **a sketch with no `Serial.begin()` — `NanoBlink`, the first example anyone opens — blocks the
+> next serial upload**, since soft entry asks the *running* sketch to reset itself. Recovery is
+> verified (`Burn Bootloader`, no hands on the board) and documented; the real fix, a host-side
+> replug catch, is the top candidate for the next version.
 > **One item remains open:** the fresh-install/resolver-glob test still wants a machine with
 > a different XC-DSC version. See that section.
 > Some later-phase items were delivered ahead of the plan — see "Delivered Ahead
@@ -296,10 +325,14 @@ Found during the August 25, 2026 reconciliation.
 - [ ] **Hardware-verify HRPWM** — no record that any PG channel was scoped
 - [ ] Document HRPWM in `docs/how-to-use/` (Phase 6 docs predate it)
 
-### UART Bootloader Upload — belongs to Phase 11
+### UART Bootloader Upload — SUPERSEDED by Phase 15 (Sep 23, 2026)
 - [x] `tools/upload_uart.py` — sends .hex over UART, Microchip 16-bit bootloader
       protocol (0x55 sync → erase → chunked hex records)
-- [ ] **Hardware-verify** — no record this was ever run against a real bootloader
+- [x] **DELETED Sep 23, 2026.** It was never hardware-verified because it never could
+      be: it implemented a protocol no firmware in this project spoke, hardcoded
+      32 KB-device flash constants wrong for MC005, and indexed Intel HEX bytewise,
+      ignoring phantom-byte encoding. Replaced by `tools/serial_upload.py` plus real
+      bootloader firmware — see Phase 15.
 
 ### C++ Feature Example — belongs to Phase 8
 - [x] `libraries/Arduino_dsPIC33CK/examples/02.CppFeatures/CppDemo/CppDemo.ino` — exercises the native C++
@@ -837,6 +870,607 @@ against locally served archives, so nothing in the published path would catch a 
 Left alone deliberately: the **`v1.0.1` tag still points at `ddd6035`**, not at the tree
 that was re-published in place under it. Moving a published tag is worse than leaving it
 wrong, and 1.0.2 supersedes it.
+
+---
+
+### Release v1.0.3 — September 23, 2026 — PUBLISHED
+
+**The serial bootloader release.** Phase 15 in full (below), plus
+`docs/part6_serial_bootloader.html`. This is the first release in which
+**MPLAB X stops being a day-to-day prerequisite** on dsPIC33CK256MC005: burn the bootloader
+once with any debugger, and every upload after that goes over the CDC COM port. It is also the
+first release that can program a dsPIC33CK board that has **no debugger at all**.
+
+What a 1.0.2 user gets:
+
+- `Tools > Bootloader` menu on MC005 — `None (upload with the debugger)` stays the default, so
+  **nothing about an existing workflow changes unless the menu is touched**.
+- `Tools > Burn Bootloader`, working with all five programmers (this was broken for four of
+  them until defect 5 — see Phase 15).
+- `tools/serial_upload.py`, stdlib-only: no `pyserial`, no `intelhex`, nothing to `pip install`.
+- The bootloader's own C sources shipped alongside its `.hex`, so nothing that runs on the
+  board is opaque.
+- The dead `tools/upload_uart.py` and the unusable `UART Bootloader` programmer entry are
+  **gone** — 1.0.0–1.0.2 let a user select an upload path that could not possibly work.
+
+Archives built locally by `make-release.sh`; the index carries their real checksums:
+
+| | |
+|---|---|
+| `dspic33ck-arduino-core-1.0.3.zip` | 255032 B · `51b3e8519fd4ffbd1e0d20b24b3bdc7d3e6d8b741a26d4094e8eec68fcc8d91c` (173203 B in 1.0.2 — the bootloader sources, the `.hex`, two gld scripts and the host tool) |
+| `dsPIC33CK-MP_DFP-1.16.521-pruned.1.zip` | 810615 B · `6cee9c30…` — **byte-identical to v1.0.0 through v1.0.2** |
+| `dsPIC33CK-MC_DFP-1.11.412-pruned.1.zip` | 652421 B · `5533d058…` — **byte-identical to v1.0.0 through v1.0.2** |
+
+Both DFP URLs moved to the `v1.0.3` tag again, for the reason recorded under 1.0.2: a fresh
+install must not depend on an older tag's assets still being what they were, and this project
+has re-published a release in place once already. Upgraders re-download nothing —
+arduino-cli keys tools on name+version, both unchanged.
+
+All six version sites were bumped together, and `make-release.sh` refuses to build when the
+index disagrees with `platform.txt`: `platform.txt:33`, the index's `version` / `url` /
+`archiveFileName`, both DFP `url`s, `install_arduino_ide.bat:40`, and the four
+`library.properties`.
+
+Gates before shipping: `bootloader_check.sh` **105 OK / 0 FAIL**, `allboards.sh` **4/4**,
+`examples_all.sh` **11/11**, and the hardware session recorded in Phase 15 — six of seven
+checks on silicon. **`install_check.sh` was not re-run for this release**, unlike 1.0.2: the
+archive-serving and fresh-`core install` path is unchanged from 1.0.2 and the new files are
+plain additions to the same tree, but this is a real gap and is stated rather than glossed.
+
+---
+
+## Phase 15: Serial bootloader for dsPIC33CK256MC005 (SHIPPED in v1.0.3 — Sep 23, 2026; 1 check owed)
+
+**Goal:** upload a sketch from the Arduino IDE over the CDC COM port, with no debugger and
+no MPLAB X. Until now every upload on every board routed through `ipecmd`, so **MPLAB X IPE
+was a hard prerequisite just to blink an LED**, and a custom dsPIC33CK board with nothing
+but a UART could not be programmed from the IDE at all. On the four Curiosity boards the
+debugger path is better and stays the default; the point is the boards that have no
+debugger.
+
+Scope is **MC005 only**, per the standing priority. The generator and both gld templates are
+device-portable, so the other three are a mechanical follow-up — but they get no bootloader
+menu option and no claim of support.
+
+Status: everything below is written and **verified on the attached board on Sep 23, 2026** —
+six of the seven checks pass, and **one remains that needs a hand on the USB cable**. Five
+defects were found in the process, every one of them invisible to a gate that had 84 passing
+checks at the time. See "Hardware verification" at the end of this section, which is the part
+of this document worth reading if you are about to trust the offline gates.
+
+**Committed and published as v1.0.3 on Sep 23, 2026** — see "Release v1.0.3" below. The one
+owed check does not block the release: it is about surviving a power cut mid-row-write, which
+is documented as a known limit rather than claimed as passing.
+
+### The memory map, and why it is shaped like this
+
+```
+0x000000  reset vector   GOTO bootloader                  ] bootloader-owned,
+0x000004  IVT, 254 slots (MC005 defines 200)              ] pages 0-2, written
+0x000200  bootloader code, capped at 0x1600               ] ONCE, never erased
+--------------------------------------------------------- page boundary
+0x001800  app entry GOTO + 200-GOTO trampoline (0x324)    ] app region,
+0x001B24  application code, contiguous, no gap            ] 0x1800-0x2B800,
+0x02B700  signature row: length / CRC-32 / magic          ] erased and rewritten
+0x02B800  UNUSED, 0x700 - shares an erase page with cfg   ] never erased
+0x02BF00  config words FOSCSEL/FOSC/FWDT/FICD             ] never written
+```
+
+**The IVT is at a fixed 0x004–0x1FF and cannot be moved.** The reset vector, the whole IVT
+*and* program 0x200–0x7FF all sit in erase page 0. So any design where the application owns
+the IVT must erase the page holding the bootloader's own reset vector — a power-loss brick
+window. That single constraint shapes everything else.
+
+The answer is **vector forwarding**: each IVT slot is programmed once, at burn time, with
+the *constant* address `0x1800 + 4n`, pointing at entry `n` of a `goto` trampoline the
+application rebuilds on every upload. This buys three things:
+
+- **No brick window** — nothing the bootloader writes can destroy the reset vector.
+- **No source changes** — sketches and `cores/` keep writing `_T1Interrupt`,
+  `_U1RXInterrupt`, `attachInterrupt()`. This is exactly what ruled out the AIVT, which
+  would have required renaming every ISR in `cores/` *and* in every user sketch
+  (`_Alt`-prefixed names, compiler guide §15.3).
+- **Device-portable** — no config-word games, no `BSEN`/`FBSLIM`, no dual partition.
+  (Dual partition is **MP508-only**: `FBOOT` appears in no other device's EDC, which is also
+  why `p33CK256MP508.gld` uniquely carries two `MEMORY` blocks. It could never have been the
+  uniform answer, and MC005 cannot use it at all.)
+
+Cost: 0x324 words (1608 bytes on the size bar) of application flash, and **two instruction
+cycles of extra interrupt latency** — 20 ns at FCY 100 MHz.
+
+**Why the app stops at 0x2B800 and not at the config words.** The config words at 0x2BF00
+sit *inside* the erase page starting at 0x2B800. Erasing that page would clear `FWDTEN`, and
+an erased `FWDTEN` reads as watchdog-**on**, which resets the application in a loop. So
+0x2B800–0x2BEFF — 0x700, 1792 bytes — is permanently unused. That is the price of never
+touching the config page, and it is worth paying.
+
+**The signature row is at 0x2B700, inside the erase range, deliberately.** `ERASE_APP`
+therefore destroys it, so an interrupted upload cannot leave a stale signature describing an
+image that is no longer there. `COMMIT` writes it last, after `READ_CRC` has verified every
+row. Lose power mid-transfer and the signature is simply absent, the bootloader refuses to
+jump, and the board waits for the host again — **recoverable over serial alone, with no
+debugger**. The gate asserts the erase sweep covers the row.
+
+### The erase-page-size ambiguity — unresolvable offline, designed around
+
+The EDC says `erasepagesize="1024" sizeunits="words"`, which reads as **either 0x800 or
+0x400 address units**. Both readings are defensible from the file alone. Two independent
+sources point at 0x400 on this family: the bench-validated `lu_config.h` in the local
+live-update demo, and Microchip's own EZBL demos.
+
+Rather than guess, the design is correct under **both** readings:
+
+- **align and reserve with 0x800** — safe under either, because 0x800 is a whole number of
+  pages in both readings;
+- **erase with a 0x400 step across the whole region** — correct under either, because if the
+  true page is 0x800 then every second erase is a redundant re-erase of a page already
+  erased, and that is harmless **because all erases precede all programming**.
+
+84 pages at 0x800, i.e. 168 steps at 0x400. The gate asserts the step divides the
+reservation granularity. **If the true page size is ever established, nothing needs to
+change** — only the step count would be halved, as an optimisation.
+
+Programming uses **double-word writes, not row writes**: the row-write op code is not
+sourceable offline and guessing an NVM op code is not a risk worth taking for a speed
+improvement on a one-off operation. `WRITE_ROW` survives as a 128-word *wire* chunk only.
+
+### Two generated linker scripts, one generator
+
+`tools/gld/gen_bootloader_gld.py` reads the DFP's stock `p33CK256MC005.gld` and emits both
+scripts. It extracts the **ordered vector symbol list** from the stock gld's `.ivt` block —
+which is dead code under XC-DSC v4.00 (`#if __XC16_VERSION < 1026`; the modern linker builds
+the table itself) but is still the authoritative, device-correct, correctly *ordered* list of
+names. Hand-transcribing that list is precisely how this kind of file goes silently wrong.
+
+**The count is 200, not 254.** The plan said 254 from the stock gld's slot count; MC005
+actually *defines* 200. The trampoline is 201 entries: one entry point plus 200 vectors.
+
+Both scripts are built with `-Wl,--no-ivt` (documented by `xc-dsc-ld --help`, alongside
+`--ivt ADDR`, `--civt`, `--boot LIST`, `--partition`).
+
+**Four linker traps worth carrying forward** — every one of these cost real time:
+
+1. **Orphan sections.** With `-ffunction-sections`, a stock `.text` output section that
+   matches only `.init/.user_init/.handle/.isr*/.lib*` leaves ordinary code as *orphans*,
+   and `ld` drops orphans into the first region with room. They silently filled the reserved
+   signature gap. Match `.text*` explicitly.
+2. **A symbol assigned *inside* an output section is relative to that section's base**, not
+   absolute. This biased every fallback `GOTO` by 0x1800.
+3. **VMA is not where a section lands.** PSV `.const` has VMA 0x00A3BC and LMA 0x0023BC.
+4. **Data and program addresses are the same numbers**, so a section filter must go by
+   `CONTENTS+ALLOC+LOAD` and not-`NEVER_LOAD`, never by address range.
+
+### Protocol
+
+Request `SOH(0x01) CMD LEN16 payload… CRC16`, response `ACK(0x06)|NAK(0x15) payload… CRC16`.
+CRC-16/CCITT-FALSE per frame, CRC-32 for the image. Three retries, 2 s timeout. **A NAK ends
+the exchange rather than triggering a retry** — a NAK is the board's considered answer, not a
+lost byte.
+
+| CMD | | |
+|---|---|---|
+| `0x10` | `SYNC` | returns `"33CK"`, protocol version, DEVID, page/row size, app base and length — **the host never assumes geometry, it asks, and refuses outright on a mismatch** |
+| `0x20` | `ERASE_APP` | 0x1800 upward, 0x400 step |
+| `0x30` | `WRITE_ROW` | 3-byte address + up to 128 words; refuses anything below 0x1800 or at/above the signature row |
+| `0x40` | `READ_CRC` | CRC-32 over a range — verify without reading flash back over the wire |
+| `0x50` | `COMMIT` | write length + CRC-32 + magic into the signature row |
+| `0x60` | `JUMP` | validate the signature, then jump |
+
+**The bootloader needs no PLL.** The fractional baud generator (`BCLKMOD=1`, `BRG=35`)
+reaches 115200 at **−0.7 %** from the bare 8 MHz FRC (FCY 4 MHz). The classic prescaled
+divisor would have been 8.5 % off and forced PLL init into the bootloader. Running on the
+reset-default clock keeps it small and removes a whole failure mode. 115200 is the *only*
+rate the bootloader speaks, which is why the upload tool has no `--baud`.
+
+### Entry — three ways in, and the one that was redesigned
+
+1. **Bootloader-first, ~300 ms window at every reset.** The only path that works when no
+   valid application exists.
+2. **Soft entry from a running sketch**, so an ordinary upload needs no button press.
+3. **Fallback: hold SW0 through a power cycle.** Documented because the Nano has **no reset
+   button** and the only power cycle available is unplugging USB.
+
+**SW0 is RD13, not RB5.** The plan said RB5; RB5 is PGD3. Corrected against the board facts.
+
+**No host-triggered reset exists.** User guide Table 4-2: `DBG3` → `MCLR`, driven by the
+debugger only. No DTR reset, no 1200-baud touch. Entry can never depend on the host resetting
+the target — which is the whole reason soft entry has to exist.
+
+**The `persistent` shared-RAM flag from the plan was dropped.** Two independently linked
+images cannot agree on the address of a `persistent` variable without reserving the same RAM
+in both linker scripts, and that reservation would have to be maintained in two places
+forever. Instead the sketch's RX interrupt simply executes `reset`, and the host floods SYNC
+frames into the reset window until one is answered. Equivalent effect, one fewer cross-image
+invariant.
+
+**Soft entry does not require the sketch to use 115200** — an addition beyond the plan, and a
+real bug avoided. The magic has to be understood by the **running sketch**, which is at
+whatever rate its own `Serial.begin()` chose. So the host sweeps
+`115200, 9600, 57600, 38400, 19200, 250000`, then returns to 115200 to talk to the
+bootloader.
+
+The magic is **ten bytes: eight arbitrary plus the CRC-16 of those eight.** The CRC adds
+nothing an attacker would care about, but it does mean a garbled or truncated prefix cannot
+reset a running sketch — which is the accident that actually happens. The RX sniffer
+re-tests a mismatched byte against position 0, so a repeated prefix can resynchronise.
+
+**Measured cost of the sniffer: 33 instruction words, 132 bytes** — `NanoBlink` went 3196 →
+3328 bytes and `appcore.hex` 3881 → 3914 words, two independent measurements that agree. Per
+received byte it is one compare and one branch. It can be compiled out with
+`SERIAL_NO_BOOTLOADER_ENTRY`, at the cost of leaving SW0-through-a-power-cycle as the only
+way in.
+
+Two deliberate orderings inside the ISR, both worth keeping: the byte reaches the ring buffer
+**before** the sniffer sees it, so a sketch that has stopped calling `read()` — exactly the
+sketch you most need to replace — can still be reset; and `U1RXREG` is read **once**, which
+the gate asserts, because reading it twice would drop every byte the sniffer inspected.
+
+### Board menu, not a second board entry
+
+`menu.bootloader` on MC005 only: `none` (default, unchanged) and `serial`. The `serial`
+option overrides `build.ldscript`, `build.ldscript.dir`, `compiler.ld.extra_flags`,
+`upload.tool`, `upload.protocol` and `upload.maximum_size`.
+
+**`compiler.ld.flags` used to ignore `build.ldscript` entirely** — it hardcoded
+`-T {build.dfp.path}/support/dsPIC33C/gld/p{build.mcu}.gld`, which means the four
+`*.build.ldscript=` keys in `boards.txt` had been **decorative since the day they were
+written**. They now mean something. The default `build.ldscript.dir` is set **per board in
+`boards.txt`**, not as a `platform.txt` default: defining `build.*` defaults in
+`platform.txt` has ambiguous merge order against `boards.txt`, and this way the
+`Bootloader: none` path is bit-for-bit what it always was.
+
+**Four things must change together** for a fifth board to get a bootloader: the generated
+gld pair, the committed HEX, the `bootloader.file` key, and the `menu.bootloader.serial.*`
+block. The comment in `boards.txt` names all four.
+
+**`upload.maximum_size = 246784` is measured, not derived.** The size bar's unit is **4 bytes
+per instruction word** — ELF PROGBITS sizes are 2× address units, which
+`xc-dsc-size-wrapper.bat` totals. Proved by `.trampoline` measuring 0x648 for 0x324 address
+units, and confirmed end to end by a real `arduino-cli compile`. 246784 = 262144 − 15360,
+where 15360 = (0x1600 + 0x800) × 2.
+
+**A pre-existing understatement, left alone deliberately.** The existing `262144` is too
+*small* for a 256 KB dsPIC in this accounting — the real program region is nearer 358912. It
+is not corrected here, so that selecting the bootloader can only ever *lower* the limit,
+never raise it. Filed as debt, not fixed inside a bootloader change. Note also that the
+linker script is the real backstop: `program` is `ORIGIN 0x1800, LENGTH 0x29F00`, so an
+oversize sketch is a **link error**, which is a stronger guarantee than a size-bar check.
+
+**`xc-dsc-size-wrapper.bat` had to be taught about `.trampoline`.** Its allowlist was
+`.text* .dinit .reset .const*`, so 1608 bytes of real, sketch-unusable flash was invisible
+and `bootloader=serial` reported *less* than `bootloader=none`. Fixed; `.config_*` stays
+excluded on purpose, being outside the program region.
+
+A **Tools > Burn Bootloader** recipe on the `nedbg` tool flashes the committed HEX through
+the existing `ipecmd` path. Users cannot build the bootloader themselves, so the binary
+ships in the package — along with its C sources, so it is auditable.
+
+### Host tool
+
+**`tools/serial_upload.py`, pure standard library**, ~700 lines. COM access through Win32
+`CreateFileW`/`SetCommState`/`SetCommTimeouts`/`ReadFile`/`WriteFile` via `ctypes`. The
+platform is Windows-only already, so nothing is lost and the first-run experience stops
+depending on `pip install pyserial`.
+
+Reads are sliced at 40 ms rather than pushing the whole timeout into `COMMTIMEOUTS`, because
+`ReadIntervalTimeout` would make a read of N bytes wait the full time for the **last** byte.
+
+Two things this file gets right that its predecessor got wrong, spelled out in its docstring
+because both are silent failures:
+
+- **HEX encoding.** 4 bytes per 24-bit instruction word, record address = **2 ×** program
+  address, byte 3 is the phantom byte and is *asserted* to be 0x00. A tool that walks the
+  records bytewise — as the deleted `tools/upload_uart.py` did — silently programs a quarter
+  of the image as padding.
+- **The CRC-32 definition.** 3 bytes per word, little-endian, phantom byte *excluded*, gaps
+  filled with 0xFFFFFF. Host and device must agree exactly or every upload fails
+  verification.
+
+It refuses a sketch linked below 0x1800 with an actionable message naming the menu option —
+**verified**: a `bootloader=none` HEX is rejected, exit 1.
+
+### Scaffolding removed
+
+- **`tools/upload_uart.py` (227 lines) deleted.** It invented a protocol no firmware
+  implemented, hardcoded 32 KB-device constants (`FLASH_START 0x1000`,
+  `FLASH_PAGE_SIZE 1024`, `FLASH_ROW_SIZE 128`) wrong for MC005, and indexed Intel HEX
+  bytewise, ignoring phantom-byte encoding. It was a second `pre_build.py`.
+- **`programmers.txt`'s `uart_bootloader` entry** was user-selectable in 1.0.0–1.0.2 and
+  could not possibly work. It now points at the real tool.
+- The upload tool is named **`dspic33ck_serial`, deliberately not a reuse of
+  `dspic33ck_upload`**, so an old `boards.txt` cannot reach the old behaviour.
+
+### What the two gates assert — `_build/` is gitignored, so this is the only record
+
+**`_build/build_bootloader.sh`** builds the firmware against the boot gld and asserts: 5
+translation units link; footprint 0x000000–0x000A9E (**1359 instruction words, 0xD62 / 1713
+words of room left** under the 0x1600 cap); nothing at or above 0x1800; the 4 config words
+are identical to the core's; and — because the jump is inline asm and therefore not
+type-checked — that the disassembly **contains `goto 0x001800` and that no GOTO reaches past
+it**. Publishes `bootloader-dspic33ck256mc005-115200-v1.hex`.
+
+**`_build/bootloader_check.sh`**, sections 1–10, `RESULT: PASS`:
+
+- **1–8** (pre-existing): the generator's vector list against the stock gld; the boot and app
+  scripts' geometry; the trampoline decoded from a real ELF — **201 GOTOs, entry 0 is
+  `GOTO __reset`, every defined handler reached from its own slot, no handler reachable from
+  a slot that is not its own, 193 falling back to `__DefaultInterrupt`, no GOTO outside the
+  application**; both app HEXes writing only where allowed with every phantom byte 0x00; and
+  that overflowing the bootloader region is a **link error, not a silent overlap**.
+- **9 — the firmware's own map against the generated linker script.** `BL_APP_BASE`,
+  `BL_SIG_BASE` and `BL_APP_END` are parsed out of `bl_config.h` and compared to the app
+  gld's own numbers; `BL_APP_END` is on a page boundary; the erase sweep covers the signature
+  row; the erase step divides the reservation granularity. This closes a drift gap that
+  `bl_config.h`'s header comment *promised* and nothing enforced.
+- **10 — the host tool against the firmware, offline.** Both checksums against their
+  published check values (0x29B1, 0xCBF43926); **the 16-entry nibble table parsed out of
+  `bl_crc.c` produces the host's CRC-32 over 6 seeded-random vectors** — a single mistyped
+  entry there would produce a checksum self-consistent on the device and wrong everywhere
+  else; 14 protocol constants match `bl_config.h`; every `BL_ERR_*` the firmware can send is
+  named by the host; the soft-entry magic matches and its trailing CRC-16 checks out; **the
+  core's third copy of the magic is byte-identical** and its array bound matches its
+  initialiser, a full match executes `reset`, a mismatched byte is re-tested as a first byte,
+  `SERIAL_NO_BOOTLOADER_ENTRY` guards all three sites, matched bytes still reach the ring
+  buffer, and `U1RXREG` is read exactly once; and for two real HEX files,
+  `parse_hex` → `build_image` → `blocks` yields only 4-aligned addresses ≥ 0x1800, none
+  reaching the signature row, none over 128 words, with everything skipped at or above the
+  config words.
+
+Nothing in the three-way agreement — **linker scripts ↔ firmware ↔ host** — is held together
+by a comment any more. The gate sets `sys.dont_write_bytecode = True` before importing the
+host tool, because the import would otherwise drop `__pycache__/` into a git-tracked
+directory and `make-release.sh` refuses untracked files.
+
+### Verified through `arduino-cli`, on the real installed platform
+
+Installed as `1.0.3-dev` **alongside** 1.0.2 rather than over it, so the working install
+stays intact and rollback is deleting one directory.
+
+- The `Bootloader` menu appears with `None (upload with the debugger)` as the default.
+- `bootloader=serial` links with `-T <platform>/ldscripts/p33CK256MC005-app.gld` **and**
+  `-Wl,--no-ivt` — the `build.ldscript.dir` indirection resolves correctly through
+  `{runtime.platform.path}`.
+- Size bar: `none` → 3328 bytes / max 262144 (**unchanged**); `serial` → 4928 bytes / max
+  **246784**.
+- **`--gc-sections` does not collect the ISRs.** This was flagged as *the most likely thing
+  to be wrong*, because nothing in the application references an ISR except the trampoline's
+  `DEFINED()` test, and `DEFINED()` may well not count as a reference. On the real IDE-built
+  `NanoBlink`: vector 9 → `__T1Interrupt`, **vector 19 → `__U1RXInterrupt`**, 10/11/27/83 →
+  the four `_CN?Interrupt`, 49 → `__CCT4Interrupt`, 193 → `__DefaultInterrupt`. **No `KEEP()`
+  needed.**
+- **`__DefaultInterrupt` is still synthesised under `--no-ivt`** (0x001D8E), so the core does
+  not have to provide one.
+- The app ELF has **no `.reset` and no `.ivt`** — it structurally cannot overwrite page 0.
+- `serial_upload.py --dry-run` accepts the IDE-built HEX (1232 words = 4928/4, 10 blocks) and
+  **rejects** the `bootloader=none` HEX with the menu-option hint, exit 1.
+- `_build/allboards.sh` and `_build/examples_all.sh` **green on all four boards, zero
+  warnings**, after the core change.
+
+**Baseline change to record: `NanoBlink` on MC005 is now 3328, not 3196.** The other three
+baselines are untouched by the sniffer only insofar as they do not use `Serial`; the
+`examples_all.sh` numbers all moved and are green at the new values.
+
+### Hardware verification — Sep 23, 2026, on the attached board (COM63)
+
+The prediction in the previous revision of this section was **"nothing here is a code gap;
+these are the checks that need the board."** That was wrong, and expensively so: the board
+found **four defects**, three of them in shipped files, and every one of them was invisible
+to a gate that had 84 passing checks. The gate is now at 94, and the four additions exist
+because these four bugs got past it.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Burn Bootloader via nEDBG | **PASS** — `program memory 0x0-0xfff` + `configuration memory` as its own region |
+| 2 | Serial upload, Serial Monitor afterwards | **PASS** — 18 blocks, verified, committed, running; CDC prints and echoes |
+| 3 | Soft entry from a running sketch | **PASS** — magic accepted at 115200, no debugger, no button, no unplug |
+| 4 | Interrupted transfer does not brick the board | **PASS** — see below |
+| 5 | `attachInterrupt()` + Serial RX + `tone()` | **PASS** — all four vectors forward: T1, U1RX, the tone timer, and CN on SW0 (`sw0_presses` increments on a real press, confirmed by the user) |
+| 6 | `RCON` tells POR from software reset | **PASS** — `RCON=0x40`, i.e. `SWR` alone: `POR=0 BOR=0 WDTO=0` |
+| 7 | The debugger path wipes the bootloader | **PASS** — confirmed deliberately, not inferred |
+
+**Check 4, precisely.** A true power-loss test needs a hand on the USB cable, so what was
+run is the property that makes the unplug survivable: `ERASE_APP`, three of eighteen rows
+written, then stop dead with no `COMMIT`. `JUMP` was then **refused** —
+*"no valid application: signature missing or CRC mismatch (error 7)"* — and `SYNC` still
+answered, so the board was recoverable, and a full serial upload recovered it. The refusal
+is meaningful because the `JUMP` handler and the reset path call the **same** `app_valid()`
+(`bl_main.c:436` and `bl_main.c:497`), so a board that refuses here is a board that stays in
+the bootloader after a power cut. The remaining gap is the physical unplug alone.
+
+**Check 7, and the recovery message.** A debugger upload with `Bootloader: none` left the
+sketch running and no bootloader answering `SYNC` at all. A serial upload attempted against
+that state prints the right first step — *"use Tools > Burn Bootloader with the debugger
+attached first"*. Both halves matter: the wipe is real, and the tool says what to do.
+
+### The five defects the board found
+
+1. **`boards.txt` sent "Bootloader: Serial" through the debugger — silent and destructive.**
+   The board declares both `upload.tool` and `upload.tool.default`; arduino-cli 1.5.x prefers
+   the `.default` form, and the menu overrode only the legacy key. So selecting the serial
+   bootloader uploaded via `ipecmd`, which **erased the bootloader it was supposed to use**.
+   The upload reported success, at the correct address, and the board could not be uploaded
+   to again. Fixed by shadowing both keys; the gate now asserts that *every* board-level
+   `upload.tool*` key is shadowed, not just the two that exist today.
+
+2. **`sw0_init()` never cleared ANSEL, so the bootloader never auto-jumped.** SW0 is RD13,
+   which is **ANN0** — it has an ANSEL bit and that bit resets to analog. An analog-enabled
+   pin has its digital input buffer switched off and reads 0 whatever the voltage, so SW0
+   read as **permanently held**, `stay` was always 1, and the bootloader waited forever
+   instead of running a perfectly good sketch. **A board on a USB charger would never run.**
+   `cores/arduino/system_config.c` clears all of `ANSELD` for exactly this reason; the
+   bootloader runs before any of it and has to do its own. Fixed with `BL_SW0_ANSEL`, cleared
+   in `sw0_init()` and restored in `sw0_release()`.
+
+3. **`build_bootloader.sh` called `bin2hex` without `-mdfp=`, and threw away the error.**
+   Without the pack, `bin2hex` does not know where this device's config words live and emits
+   their records at the *program* address instead of doubling it: `FOSCSEL` landed at HEX
+   `0x2BF18` rather than `0x57E30`, so `ipecmd` programmed **0x15F8C — the middle of the
+   application region** — and left the real config words erased. An erased `FWDTEN` reads as
+   watchdog-on, so the board reset in a loop and the bootloader never answered. The only
+   visible symptom was a silent COM port. `>/dev/null 2>&1 || true` is what let it through.
+   Fixed, made fatal, and the build now asserts placement **in the HEX** — the ELF is not
+   what gets programmed. This is the project's known `-mdfp` trap biting a manual invocation
+   again.
+
+4. **Soft entry was a coin flip: a 500 ms knock against a 300 ms window.** `sync()` waited
+   500 ms for silence, so one `SYNC` frame lost to the target still being in reset threw the
+   *entire* entry window away, and the host's next attempt met the sketch that had already
+   restarted. There was exactly one chance per reset. This was hidden by defect 2 — while
+   SW0 read as held, the window was effectively infinite, so check 3 passed for the wrong
+   reason and the real timing was never exercised. Fixed with `KNOCK_MS = 60` and a genuine
+   flood; the gate now cross-checks that Python constant against the C `BL_WINDOW_MS`.
+
+5. **`Tools > Burn Bootloader` worked with the nEDBG only — i.e. with every programmer except
+   the ones the feature exists for.** Only `tools.nedbg` carried `erase.pattern` and
+   `bootloader.pattern`, and arduino-cli refuses to start the operation at all if either key
+   is missing, so selecting a PICkit or a SNAP failed with `recipe not found 'erase.pattern'`.
+   The bootloader's entire reason to exist is a board with **no on-board debugger**, and that
+   board is burned once over ICSP with a PICkit — so the one audience that needs Burn
+   Bootloader was the one audience it did not serve. Found while answering "where is the
+   bootloader hex for ICSP", not by any gate. Fixed by giving pickit4, pickit5, snap and pkob4
+   both recipes; the gate now derives the programmer list from `programmers.txt` and asserts
+   both keys for each, so adding a programmer without its recipes fails offline.
+
+Two smaller things came out of watching real output: `--quiet`, which is what the IDE passes
+when Verbose is unticked, silenced **every** line, so a normal upload printed nothing at all
+and could not be told from a recipe that never ran; and the block counter used `\r`, which
+the IDE console and any pipe both render as concatenation (`1/18 blocksserial_upload: 17/18
+blocks`). Both replaced with whole lines, at most ten of them regardless of image size.
+
+### An erase guard was built, then deliberately removed — do not re-add it
+
+Fixing defect 5 opened what looked like a sharper hazard. arduino-cli runs `erase.pattern`
+*before* `bootloader.pattern`, and only MC005 defines `bootloader.file`, so on the other three
+boards Burn Bootloader appeared able to erase the chip and only then discover it had nothing
+to program — handing the user a blank device. So `--erase` was given a fourth "this file must
+exist" argument and `ipecmd-upload.bat` refused before touching the board.
+
+Testing it on MC002 showed the premise was wrong: **arduino-cli stops at
+`Property 'bootloader.tool.serial' is undefined` without running either recipe**, so nothing
+can reach the chip in the first place. The guard duplicated a check that already existed
+upstream, and in exchange it made Burn Bootloader conditional on a path expansion matching —
+a new way to fail on a board that is in fact perfectly burnable. Removed at the user's
+direction on Sep 23; all five programmers now erase and program unconditionally. The reason
+is recorded in the wrapper's own header so it does not get reinvented.
+
+### The defect the *documentation* found: `NanoBlink` locks out the next serial upload
+
+Writing the user guide turned up a usability defect no gate and no bench check had caught,
+because it only appears in a sequence of two uploads. **Soft entry asks the *running sketch*
+to reset itself**, so it needs that sketch to have a live UART RX interrupt. `NanoBlink`
+contains no `Serial` usage at all (`grep -c Serial` → 0), and it is the first example almost
+anyone opens. Upload it over serial and it runs perfectly — and then the *next* serial upload
+fails:
+
+```
+serial_upload: error: no bootloader answered on COM63.
+Failed uploading: uploading error: exit status 1
+```
+
+Reproduced deliberately on Sep 23, not inferred. Every other `04.CuriosityNano` example calls
+`Serial.begin()` and is unaffected, which is exactly why the whole bench session missed it.
+
+**Recovery, verified with no hands on the board:** `Tools > Burn Bootloader` erases the sketch
+and leaves the board waiting in the bootloader, and the serial upload that follows succeeds
+(`the bootloader is already listening`, `1568 instruction words written and verified on
+COM63`, `running the sketch`). The SW0-held-through-a-power-cycle fallback takes the same code
+path as the auto-jump decision that *is* verified, but the held-button case has not itself
+been reproduced, and the docs say so rather than implying it was.
+
+**Deliberately not fixed at release time.** The real fix is an always-on RX sniffer in the
+core (entry works regardless of what the sketch does with `Serial`) or a host-side
+"replug catch" that waits for the port to reappear and grabs the reset window. Both need bench
+verification, and neither was going to get it on release day. **The host-side replug catch is
+the top candidate for the next version** — it changes nothing on the target, so it cannot
+regress a board that already works. For now the lockout is documented prominently in three
+places (Part 6 §6.3 and §6.6, Part 5 §5.2, both READMEs) and the recoveries are distinguished
+by whether they were actually observed.
+
+### Documentation — `part6_serial_bootloader.html`
+
+The bootloader gets its own guide rather than a subsection, because the reader who needs it is
+not the reader of Parts 1–5: they have a board with no debugger. Eight sections — what it
+costs (§6.1), three ways to burn it, IDE / command line / MPLAB IPE (§6.2), everyday use
+(§6.3), internals with the memory map and the vector trampoline (§6.4), recovery (§6.5),
+troubleshooting (§6.6), limits (§6.7), and what porting it to your own hardware requires
+(§6.8). Parts 1–5 all gained a Part 6 nav link, and Part 5 §5.2 was corrected: it claimed
+Burn Bootloader needed the nEDBG, which stopped being true when defect 5 was fixed.
+
+Two things in it were wrong when written and were caught by checking against the hardware
+rather than by rereading the prose: the verbose-output sample was **paraphrased from memory
+and contained lines the tool never prints**, replaced with output captured from a real upload;
+and the recovery advice did not distinguish what had been observed from what was merely
+designed. Both are worth remembering as the failure mode of writing docs for code you wrote
+yourself.
+
+### What is still owed — one check, and it needs a hand on the cable
+
+**Unplug USB mid-transfer, replug, and upload again over serial alone.** Check 4's reasoning
+covers the decision the board makes when it reboots — `JUMP` is refused and `SYNC` still
+answers — but only a real power cut covers the NVM controller being interrupted part-way
+through a row write. Everything else in this phase is confirmed on silicon.
+
+The trampoline is now proven for **four unrelated vectors at once** — T1, U1RX, the tone
+timer and change-notification on SW0 — which was the whole point of check 5: a trampoline
+uniformly off by one slot would still have landed somewhere plausible for a single vector.
+
+### Known limits, stated rather than hidden
+
+- **The bootloader cannot update itself.** Owning the reset vector permanently is exactly
+  what makes it unerasable. Re-burning needs a debugger. This is the correct trade.
+- **Soft entry depends on a cooperating sketch.** A sketch that never calls `Serial.begin()`,
+  or that sits with interrupts disabled, cannot be asked to reset. On a Curiosity Nano
+  `Burn Bootloader` recovers it with no hands on the board; on a board with no debugger the
+  only way back is SW0 held through a power cycle, which on a board with no reset button means
+  a USB unplug. See "The defect the documentation found" above — this is a real usability
+  problem, not a footnote, and the host-side replug catch is the fix candidate.
+- **Python remains a prerequisite** for serial upload — pyserial no longer is. If that proves
+  to be a real barrier, the fallback is shipping a PyInstaller binary as a tool pack through
+  the index's `tools[]` array, exactly as the two DFP packs already are.
+- **Not doing:** the other three devices; dual partition on MP508; the AIVT; a `.sh` port of
+  the host tool.
+
+### Worth raising: a validated protocol already exists locally
+
+The live-update demo on the user's OneDrive (`lu_protocol.c/h`, `lu_uart.c`, `lu_image.c`,
+`lu_commit.c`, `tools/lu_host.py`) is a **bench-validated dsPIC33CK UART bootloader**, and it
+is where the 0x400 erase-step evidence came from. **Only public datasheet facts were taken
+from it — no code was copied into this public repo**, since it is Microchip-internal.
+Adopting its MCC-compatible protocol instead of this custom one is a real option and worth a
+deliberate decision rather than drift.
+
+### Where to pick up — state as of Sep 23, 2026, end of the release
+
+**The board is running `NanoSerialHello`, uploaded over serial, with the bootloader intact.**
+It was deliberately left on a sketch that *does* call `Serial.begin()` so that soft entry
+works and the next upload needs no intervention — see the `NanoBlink` lockout above for why
+that matters. `SYNC` on COM63 answers `{version 1, devid 0xA272, erase_step 0x400,
+block_words 128, app_base 0x1800, sig_base 0x2B700, app_end 0x2B800}`.
+
+Gates at this moment: `_build/bootloader_check.sh` **105 OK / 0 FAIL** (it was 110 before the
+5 guard assertions were dropped, and 84 before the bench session), `_build/allboards.sh`
+**4/4**, `_build/examples_all.sh` **11/11** with no warnings.
+
+**Housekeeping owed:** delete the `1.0.3-dev` install directory under
+`%LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\`. It was a hand-made copy of
+the repo tree used for testing before the release existed; once real `1.0.3` is installed from
+the Boards Manager it is a trap, because two installs of the same platform differ only by a
+version string in `platform.txt`.
+
+**The test that is owed, in IDE terms.** Restart the IDE first — `1.0.3-dev` is a copy of the
+repo tree and was re-synced several times, and the IDE caches `platform.txt` at startup. Then
+Tools > Board `Arduino_dsPIC33CK (dsPIC33CK256MC005 Curiosity Nano)`, Port `COM63`,
+**Bootloader `Serial (UART, 115200)`**, Programmer `nEDBG (Curiosity Nano On-Board)`. Open
+`File > Examples > Arduino_dsPIC33CK > 04.CuriosityNANO > NanoBlink` and press Upload, with
+**the Serial Monitor closed** — the upload tool opens the port exclusively. Tick
+`File > Preferences > "Show verbose output during: upload"` to see the block counter. Then
+unplug USB part-way through the transfer, replug, and upload again: the board must still
+answer `SYNC` and must refuse to `JUMP` into the half-written image.
+
+**One decision still owed by the user**, recorded above and not blocking: whether to adopt the
+bench-validated Microchip-internal protocol in place of this custom one. The version question
+is settled — this shipped as **v1.0.3**. The erase-page ambiguity no longer needs a decision
+either; the board reports `erase step 0x400` itself.
 
 ---
 
@@ -1593,10 +2227,13 @@ Arduino_dsPIC33CK/
 │   │   │   ├── xc-dsc-link.bat           (linker CWD workaround)
 │   │   │   │                            (nedbg-upload.bat is GONE - its flash-then-
 │   │   │   │                             reboot logic moved into ipecmd-upload.bat)
-│   │   │   └── upload_uart.py            (UART bootloader upload)
+│   │   │   └── serial_upload.py          (serial bootloader upload, stdlib only)
 │   │   │                            (pre_build.py DELETED Sep 18 2026 - a prebuild
 │   │   │                             hook cannot work: properties expand first)
-│   │   ├── bootloaders/
+│   │   │                            (upload_uart.py DELETED Sep 23 2026 - invented
+│   │   │                             a protocol no firmware spoke; see Phase 15)
+│   │   ├── ldscripts/              (generated: p33CK256MC005-{boot,app}.gld)
+│   │   ├── bootloaders/            (dspic33ck256mc005/: bl_*.c/h + the .hex)
 │   │   ├── boards.txt
 │   │   ├── platform.txt
 │   │   ├── platform.local.txt.template  <- DEVELOPER path only. A Boards

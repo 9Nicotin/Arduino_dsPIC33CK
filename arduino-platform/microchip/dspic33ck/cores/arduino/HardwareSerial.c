@@ -26,17 +26,69 @@ extern "C" {
 static ring_buffer_t _rx_buffer = { {0}, 0, 0 };
 
 /* ============================================================
+ * Serial bootloader soft entry
+ *
+ * The serial bootloader opens a ~300 ms window at every reset, and on the
+ * Curiosity Nano the host has no way to cause a reset: DBG3 drives MCLR and only
+ * the debugger drives DBG3, and the board has no reset button. So the host asks
+ * the RUNNING SKETCH to reset itself, by sending the ten-byte sequence below;
+ * this state machine recognises it in the RX interrupt and executes `reset`.
+ *
+ * The sequence is BL_SOFT_ENTRY_MAGIC from
+ * bootloaders/dspic33ck256mc005/bl_config.h - the last two bytes are the CRC-16
+ * of the first eight, so a garbled or truncated prefix cannot reset a running
+ * sketch. _build/bootloader_check.sh asserts this copy is byte-identical to the
+ * one the host sends. The matched bytes are still delivered to the ring buffer:
+ * if the match never completes they were ordinary data and the sketch is
+ * entitled to them, and if it does complete the reset makes the buffer moot.
+ *
+ * Cost when it never fires: one compare and one branch per received byte. Set
+ * SERIAL_NO_BOOTLOADER_ENTRY to remove it entirely - a sketch built that way can
+ * then only be replaced by holding SW0 through a power cycle, or with the
+ * debugger.
+ * ============================================================ */
+#ifndef SERIAL_NO_BOOTLOADER_ENTRY
+static const uint8_t _soft_entry_magic[10] = {
+    0x1B, 0xF0, 0x33, 0x43, 0x4B, 0x21, 0x9E, 0x57, 0xE8, 0x3B
+};
+static uint8_t _soft_entry_pos = 0;
+
+static void _soft_entry_byte(uint8_t b)
+{
+    if (b == _soft_entry_magic[_soft_entry_pos]) {
+        _soft_entry_pos++;
+        if (_soft_entry_pos >= sizeof(_soft_entry_magic)) {
+            /* A software reset, not a jump: the bootloader expects the
+             * reset-default clock and peripherals, which is exactly what `reset`
+             * restores. Nothing is flushed first - the host is not listening for
+             * anything but the bootloader now. */
+            __asm__ volatile ("reset");
+        }
+    } else {
+        /* Restart the match, but allow this byte to be a first byte: otherwise a
+         * repeated prefix in the magic itself could not be resynchronised. */
+        _soft_entry_pos = (b == _soft_entry_magic[0]) ? 1 : 0;
+    }
+}
+#endif
+
+/* ============================================================
  * UART1 RX Interrupt
  * ============================================================ */
 void __attribute__((interrupt, auto_psv)) _U1RXInterrupt(void)
 {
     uint16_t next_head = (_rx_buffer.head + 1) % SERIAL_BUFFER_SIZE;
+    uint8_t  b = (uint8_t)U1RXREG;
+
     if (next_head != _rx_buffer.tail) {
-        _rx_buffer.buffer[_rx_buffer.head] = U1RXREG;
+        _rx_buffer.buffer[_rx_buffer.head] = b;
         _rx_buffer.head = next_head;
-    } else {
-        (void)U1RXREG;
     }
+#ifndef SERIAL_NO_BOOTLOADER_ENTRY
+    /* After the buffer, so a full buffer cannot stop an upload: a sketch that has
+     * stopped calling read() is exactly the one you need to replace. */
+    _soft_entry_byte(b);
+#endif
     IFS0bits.U1RXIF = 0;
 }
 

@@ -38,8 +38,8 @@ and macOS port is outstanding (see `platform.txt` TODO markers).
 |------------|---------|-------|
 | XC-DSC compiler | **v4.00+** | [Download](https://www.microchip.com/xc-dsc). v4.00 is the first with C++ (`xc-dsc-g++`), which this core requires. Free edition is fine. |
 | Arduino IDE | 2.x | [Download](https://www.arduino.cc/en/software) |
-| MPLAB X IDE | v6.20+ | Only for PICkit 4 / SNAP / nEDBG upload and debugging |
-| Python 3 + pyserial + intelhex | 3.8+ | Only for UART bootloader upload |
+| MPLAB X IDE | v6.20+ | For PICkit / SNAP / PKOB4 / nEDBG upload and debugging. On dsPIC33CK256MC005 it is also needed **once**, to burn the serial bootloader — after that, uploads go over the UART without it. |
+| Python 3 | 3.8+ | Only for serial bootloader upload. Standard library only: **no `pyserial`, no `intelhex`**, nothing to `pip install`. |
 
 You do **not** need to install the Device Family Packs yourself: they are
 Apache-2.0 licensed, so the Boards Manager ships them (pruned to the supported
@@ -135,9 +135,12 @@ arduino-platform/
         │       ├── pins_arduino.h      # Pin mapping definitions
         │       └── variant.c           # Pin-to-register lookup table
         ├── bootloaders/
-        │   └── uart/                   # UART bootloader hex (future)
+        │   └── dspic33ck256mc005/      # serial bootloader: C sources + the .hex
+        │                               #   that Tools > Burn Bootloader flashes
+        ├── ldscripts/                  # generated linker scripts for bootloader
+        │                               #   builds (see tools/gld/)
         ├── tools/
-        │   └── upload_uart.py          # Python upload script
+        │   └── serial_upload.py        # stdlib-only serial upload tool
         └── libraries/
             ├── Wire/src/               # I2C
             ├── SPI/src/                # SPI
@@ -387,23 +390,45 @@ PICkit Pin 5 (PGC)   → PGC1 (RB1 or configured PGC pin)
 ipecmd -TPPK4 -PdsPIC33CK32MP102 -M -Ffirmware.hex
 ```
 
-### Method 2: UART Bootloader
+### Method 2: Serial Bootloader (dsPIC33CK256MC005 only)
 
-Requires a bootloader pre-programmed into the device.
+Uploads over the UART with no debugger. Burn the bootloader once with
+**Tools → Burn Bootloader**, select **Tools → Bootloader → Serial (UART, 115200)**,
+and press Upload — the IDE does the rest. See
+[Uploading over the serial bootloader](../README.md#uploading-over-the-serial-bootloader)
+for the workflow, [part5](docs/part5_upload_troubleshooting.html) for what to do when it
+fails, and **[part6](docs/part6_serial_bootloader.html)** for the full guide — burning it
+three different ways, the memory map, interrupt forwarding, recovery, and porting it to
+your own board.
 
-**Wiring:**
+All five programmers can burn it (*PICkit 5*, *PICkit 4*, *MPLAB SNAP*, *PKOB4*,
+*nEDBG*); the *Serial Bootloader (UART)* programmer entry cannot, since it would have to
+already be installed.
+
+**Wiring** (already wired on the EV08P02A Curiosity Nano, whose nEDBG provides the
+CDC bridge):
 ```
-USB-Serial TX → RB4 (D9, UART1 RX)
-USB-Serial RX → RB5 (D10, UART1 TX)
+USB-Serial TX  → RC11 (D32, UART1 RX)
+USB-Serial RX  → RC10 (D31, UART1 TX)
 USB-Serial GND → GND
 ```
 
-**Upload command:**
+**Invoking the tool directly**, which the IDE does for you:
 ```bash
-python tools/upload_uart.py --port COM3 --baud 115200 --hex firmware.hex
+python tools/serial_upload.py --port COM3 --hex sketch.hex
 ```
+There is no `--baud`: 115200 is the only rate the bootloader speaks. Add
+`--dry-run` to parse and check a HEX without touching the board.
 
-**Note:** You must first program a UART bootloader into the device using a PICkit. The bootloader occupies address 0x000-0xFFF, and your application starts at 0x1000.
+**Note:** the sketch must be *compiled* with the Serial bootloader menu option, not
+merely uploaded through it — a sketch linked for the debugger is refused rather than
+written to the wrong address. The bootloader occupies 0x000000–0x0017FF and the
+application starts at 0x001800. Programming with a debugger erases the bootloader.
+
+**Also note:** entry is negotiated with the *running* sketch, so a sketch that never
+calls `Serial.begin()` — `NanoBlink` is the one to watch for — blocks the next serial
+upload. **Tools → Burn Bootloader** clears it without touching the hardware; on a board
+with no debugger, hold **SW0** through a power cycle.
 
 ---
 

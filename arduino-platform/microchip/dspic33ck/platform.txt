@@ -30,7 +30,7 @@
 # platform.local.txt is still honoured as an override and always wins.
 
 name=Arduino_dsPIC33CK
-version=1.0.2
+version=1.0.3
 
 # ============================================================
 # Compiler Configuration
@@ -112,7 +112,15 @@ compiler.ar.extra_flags=
 # Safe for interrupts: the ISRs are referenced by the interrupt vector table, so they are
 # GC roots and are never collected. Do not add -Wl,--print-gc-sections here; it is
 # per-build noise. See PLAN.md Phase 10 for the per-device size tables.
-compiler.ld.flags=-mcpu={build.mcu} -mdfp={build.dfp.path} -T {build.dfp.path}/support/dsPIC33C/gld/p{build.mcu}.gld -Wl,--gc-sections
+#
+# The linker script is reached through {build.ldscript.dir}/{build.ldscript},
+# both set per board in boards.txt, so the serial bootloader can redirect the
+# link without touching this line. Every board sets them to the DFP's stock
+# script for its own device -- the exact path this line used to hardcode -- so a
+# board built with Bootloader: "none" links byte-for-byte as it did before. This
+# is also what finally gives the four *.build.ldscript= keys a meaning: until
+# now they were decorative, because this line ignored them.
+compiler.ld.flags=-mcpu={build.mcu} -mdfp={build.dfp.path} -T {build.ldscript.dir}/{build.ldscript} -Wl,--gc-sections
 compiler.ld.extra_flags=
 
 # ============================================================
@@ -183,16 +191,29 @@ recipe.preproc.macros="{compiler.path}xc-dsc-gcc.bat" -E -dM {preproc.includes.f
 # operation for these devices - ipecmd does a full erase-and-program either way - so the
 # recipes stay mirrored on purpose; if you edit one, edit its twin.
 
-# Tool: UART Bootloader (Python script)
-tools.dspic33ck_upload.cmd=python3
-tools.dspic33ck_upload.cmd.windows=python.exe
-tools.dspic33ck_upload.path={runtime.platform.path}/tools
-tools.dspic33ck_upload.upload.params.verbose=-v
-tools.dspic33ck_upload.upload.params.quiet=
-tools.dspic33ck_upload.upload.pattern="{cmd}" "{path}/upload_uart.py" --port "{serial.port}" --baud {upload.speed} --hex "{build.path}/{build.project_name}.hex"
-tools.dspic33ck_upload.program.params.verbose=-v
-tools.dspic33ck_upload.program.params.quiet=
-tools.dspic33ck_upload.program.pattern="{cmd}" "{path}/upload_uart.py" --port "{serial.port}" --baud {upload.speed} --hex "{build.path}/{build.project_name}.hex"
+# Tool: serial bootloader (dspic33ck256mc005 only)
+#
+# Replaces the dspic33ck_upload tool that 1.0.0 through 1.0.2 shipped, which
+# invoked tools/upload_uart.py -- a script that implemented a protocol no
+# firmware ever spoke, hardcoded 32 KB-device flash geometry, and indexed the
+# Intel HEX bytewise as if there were no phantom byte. It could not work and has
+# been deleted. This tool talks to the bootloader in
+# bootloaders/dspic33ck256mc005/, and the name is different so an old
+# boards.txt cannot accidentally reach the old behaviour.
+#
+# No --baud: 115200 is the only rate the bootloader can speak (it runs on the
+# reset-default 4 MIPS FRC and reaches 115200 only through the fractional baud
+# generator), so offering the choice would only offer a way to get it wrong.
+# {upload.speed} stays in boards.txt for the Serial Monitor's benefit.
+tools.dspic33ck_serial.cmd=python3
+tools.dspic33ck_serial.cmd.windows=python.exe
+tools.dspic33ck_serial.path={runtime.platform.path}/tools
+tools.dspic33ck_serial.upload.params.verbose=--verbose
+tools.dspic33ck_serial.upload.params.quiet=--quiet
+tools.dspic33ck_serial.upload.pattern="{cmd}" "{path}/serial_upload.py" {upload.verbose} --port "{serial.port}" --hex "{build.path}/{build.project_name}.hex"
+tools.dspic33ck_serial.program.params.verbose=--verbose
+tools.dspic33ck_serial.program.params.quiet=--quiet
+tools.dspic33ck_serial.program.pattern="{cmd}" "{path}/serial_upload.py" {program.verbose} --port "{serial.port}" --hex "{build.path}/{build.project_name}.hex"
 
 # --- ipecmd-based programmers ----------------------------------------------
 # All five go through tools/ipecmd-upload.bat, which locates ipecmd.exe inside
@@ -210,6 +231,14 @@ tools.dspic33ck_upload.program.pattern="{cmd}" "{path}/upload_uart.py" --port "{
 # stated in package_microchip_dspic33ck_index.json), so a single unsuffixed
 # pattern is deliberate - a missing .sh would fail obscurely instead.
 
+# Every programmer below also carries erase+bootloader recipes, so Tools > Burn
+# Bootloader works with whichever one is selected. The nEDBG is NOT the interesting
+# case here: the whole point of the serial bootloader is a board with no on-board
+# debugger, and that board is burned once over ICSP with a PICkit or a SNAP. For a
+# while only nedbg had these keys, which meant Burn Bootloader failed with
+# "recipe not found 'erase.pattern'" for exactly the audience the feature exists
+# for. See the nedbg block below for why erase.pattern is wired to a real -E.
+
 # Tool: PICkit 4 via MPLAB IPE command line
 tools.pickit4.upload.params.verbose=
 tools.pickit4.upload.params.quiet=
@@ -217,6 +246,12 @@ tools.pickit4.upload.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" P
 tools.pickit4.program.params.verbose=
 tools.pickit4.program.params.quiet=
 tools.pickit4.program.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" PK4 {build.mcu} "{build.path}/{build.project_name}.hex"
+tools.pickit4.erase.params.verbose=
+tools.pickit4.erase.params.quiet=
+tools.pickit4.erase.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" PK4 {build.mcu} --erase
+tools.pickit4.bootloader.params.verbose=
+tools.pickit4.bootloader.params.quiet=
+tools.pickit4.bootloader.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" PK4 {build.mcu} "{runtime.platform.path}/bootloaders/{bootloader.file}"
 
 # Tool: MPLAB SNAP
 tools.snap.upload.params.verbose=
@@ -225,6 +260,12 @@ tools.snap.upload.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" SNAP
 tools.snap.program.params.verbose=
 tools.snap.program.params.quiet=
 tools.snap.program.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" SNAP {build.mcu} "{build.path}/{build.project_name}.hex"
+tools.snap.erase.params.verbose=
+tools.snap.erase.params.quiet=
+tools.snap.erase.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" SNAP {build.mcu} --erase
+tools.snap.bootloader.params.verbose=
+tools.snap.bootloader.params.quiet=
+tools.snap.bootloader.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" SNAP {build.mcu} "{runtime.platform.path}/bootloaders/{bootloader.file}"
 
 # Tool: PICkit 5 via MPLAB IPE command line
 tools.pickit5.upload.params.verbose=
@@ -233,6 +274,12 @@ tools.pickit5.upload.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" P
 tools.pickit5.program.params.verbose=
 tools.pickit5.program.params.quiet=
 tools.pickit5.program.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" PK5 {build.mcu} "{build.path}/{build.project_name}.hex"
+tools.pickit5.erase.params.verbose=
+tools.pickit5.erase.params.quiet=
+tools.pickit5.erase.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" PK5 {build.mcu} --erase
+tools.pickit5.bootloader.params.verbose=
+tools.pickit5.bootloader.params.quiet=
+tools.pickit5.bootloader.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" PK5 {build.mcu} "{runtime.platform.path}/bootloaders/{bootloader.file}"
 
 # Tool: PKOB4 (PICkit On Board 4 - built into Curiosity boards)
 tools.pkob4.upload.params.verbose=
@@ -241,6 +288,12 @@ tools.pkob4.upload.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" PKO
 tools.pkob4.program.params.verbose=
 tools.pkob4.program.params.quiet=
 tools.pkob4.program.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" PKOB4 {build.mcu} "{build.path}/{build.project_name}.hex"
+tools.pkob4.erase.params.verbose=
+tools.pkob4.erase.params.quiet=
+tools.pkob4.erase.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" PKOB4 {build.mcu} --erase
+tools.pkob4.bootloader.params.verbose=
+tools.pkob4.bootloader.params.quiet=
+tools.pkob4.bootloader.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" PKOB4 {build.mcu} "{runtime.platform.path}/bootloaders/{bootloader.file}"
 
 # Tool: nEDBG (on-board debugger on Curiosity Nano boards, e.g. EV08P02A)
 # Programming through ipecmd wedges the nEDBG's USB-CDC bridge, leaving the
@@ -253,3 +306,28 @@ tools.nedbg.upload.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" nED
 tools.nedbg.program.params.verbose=
 tools.nedbg.program.params.quiet=
 tools.nedbg.program.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" nEDBG {build.mcu} "{build.path}/{build.project_name}.hex"
+#
+# Tools > Burn Bootloader. The HEX is prebuilt and shipped in the package: it is
+# linked against a generated script (ldscripts/p33CK256MC005-boot.gld) that the
+# Arduino build system has no way to invoke, so users cannot build it themselves.
+# {bootloader.file} comes from boards.txt, which is also the only board that sets
+# it -- on the other three this menu item has nothing to burn.
+#
+# Note what this does to a board that already has the bootloader AND a sketch:
+# ipecmd erases the whole device, so the bootloader is replaced and the sketch is
+# gone. The same is true in reverse -- programming a sketch with the debugger
+# erases the bootloader, and serial upload stops working until it is burned
+# again. That is documented in docs/part5_upload_troubleshooting.html.
+#
+# Burn Bootloader runs TWO recipes, erase.pattern then bootloader.pattern, and
+# refuses to start at all if either key is missing -- "Failed chip erase: recipe
+# not found 'erase.pattern'" before it touches the board. ipecmd's -M erases the
+# whole device anyway, so the erase pass is redundant; it is still wired to a real
+# -E rather than to a no-op, so that a failed burn leaves a blank device instead of
+# one that was silently never erased.
+tools.nedbg.erase.params.verbose=
+tools.nedbg.erase.params.quiet=
+tools.nedbg.erase.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" nEDBG {build.mcu} --erase
+tools.nedbg.bootloader.params.verbose=
+tools.nedbg.bootloader.params.quiet=
+tools.nedbg.bootloader.pattern="{runtime.platform.path}/tools/ipecmd-upload.bat" nEDBG {build.mcu} "{runtime.platform.path}/bootloaders/{bootloader.file}"

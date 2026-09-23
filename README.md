@@ -27,7 +27,7 @@ redistribution — they cannot ship inside the platform:
 | Prerequisite | Needed for | Notes |
 |---|---|---|
 | [XC-DSC compiler v4.00+](https://www.microchip.com/xc-dsc) | compiling | v4.00 is the first with C++ (`xc-dsc-g++`), which this core requires. The free edition is enough. |
-| [MPLAB X IDE](https://www.microchip.com/mplabx) | uploading via PICkit/SNAP/nEDBG | Not needed if you only compile, or if you upload over the UART bootloader. |
+| [MPLAB X IDE](https://www.microchip.com/mplabx) | uploading via PICkit/SNAP/nEDBG | Not needed if you only compile. Needed **once** to burn the serial bootloader, after which dsPIC33CK256MC005 uploads over the UART without it — see [Uploading over the serial bootloader](#uploading-over-the-serial-bootloader). |
 
 Both are found automatically at the moment they are used, including picking the
 newest of several installed versions, so there is nothing to configure. If you
@@ -97,6 +97,55 @@ Six things the board will not tell you, all of which will cost you an evening:
   registers, stepper drive, sine synthesis, I2C, SPI and serial commands. The
   27th, BoostMPPT, is under **File → Examples → HRPWM** because it ships with
   that library, and needs an MP-series part (see [Pin map](#pin-map--dspic33ck256mc005-curiosity-nano-ev08p02a)).
+
+## Uploading over the serial bootloader
+
+**dsPIC33CK256MC005 only.** Normally every upload goes through a debugger, which
+makes MPLAB X a prerequisite for blinking an LED and leaves a custom dsPIC33CK
+board with nothing but a UART unprogrammable from the IDE. The serial bootloader
+removes that: after burning it once, uploads go over the same COM port the Serial
+Monitor uses.
+
+1. Select the board, then pick whichever programmer you own under
+   **Tools → Programmer** — *PICkit 5*, *PICkit 4*, *MPLAB SNAP*, *PKOB4* and
+   *nEDBG* all work — and run **Tools → Burn Bootloader**. (Don't pick
+   *Serial Bootloader (UART)*; it can't install itself.) This needs MPLAB X, and it
+   is the only time you will need it.
+2. Set **Tools → Bootloader → Serial (UART, 115200)**.
+3. Press **Upload**, as usual.
+
+That is all. No button to hold, no reset to time — a running sketch is asked to
+reset itself, so uploading feels exactly like uploading to an Arduino.
+
+Four things to know:
+
+- **Programming with a debugger erases the bootloader.** `ipecmd` erases the whole
+  device, so any upload through nEDBG/PICkit/SNAP — including
+  **Sketch → Upload Using Programmer** — wipes it and you must burn it again.
+  Switch **Bootloader** back to *None* when you go back to the debugger.
+- **The bootloader costs flash twice:** 0x1800 words it reserves for itself, and
+  1608 bytes of interrupt-forwarding table in every sketch. The size bar accounts
+  for both, and the limit drops from 262144 to 246784 bytes.
+- **Soft entry needs a cooperating sketch, and `NanoBlink` is not one.** Entry works
+  by asking the *running* sketch to reset itself, so a sketch that never calls
+  `Serial.begin()` — or that sits with interrupts disabled — blocks the next serial
+  upload. On a Curiosity Nano, **Tools → Burn Bootloader** clears the sketch and
+  leaves the board waiting in the bootloader, with no hands on the hardware; on a
+  board with no debugger, hold **SW0** through a power cycle. Putting
+  `Serial.begin(115200);` in `setup()` avoids it, and every `04.CuriosityNANO`
+  example except `NanoBlink` already does.
+- **An interrupted upload is not a brick.** The image is only marked valid after
+  every word has been verified, so pulling the cable mid-transfer leaves the board
+  in the bootloader, waiting — recoverable over serial alone, with no debugger.
+
+The bootloader's own C sources ship in the platform under
+`bootloaders/dspic33ck256mc005/`, next to the `.hex` that is flashed, so nothing
+about what runs on your board is opaque.
+
+**[Part 6: Serial Bootloader](arduino-platform/docs/part6_serial_bootloader.html)**
+is the full guide — three ways to burn it (IDE, command line, MPLAB IPE), the memory
+map, how interrupts are forwarded, troubleshooting, recovery, and what it takes to
+put this bootloader on your own hardware.
 
 ## Platform support
 

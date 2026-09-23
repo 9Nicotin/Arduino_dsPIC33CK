@@ -40,6 +40,7 @@
     <a href="part3_api_reference.html">Part 3: API Reference</a>
     <a href="part4_testing_sketches.html">Part 4: Testing Sketches</a>
     <a href="part5_upload_troubleshooting.html"><b>Part 5: Upload & Troubleshooting</b></a>
+    <a href="part6_serial_bootloader.html">Part 6: Serial Bootloader</a>
 </div>
 
 <h2>5.1 Upload Method: PICkit 4 / SNAP (Recommended)</h2>
@@ -109,32 +110,120 @@ Programming/Verify complete</code></pre>
     </table>
 </div>
 
-<h2>5.2 Upload Method: UART Bootloader</h2>
+<h2>5.2 Upload Method: Serial Bootloader (dsPIC33CK256MC005)</h2>
 
-<p>For field updates without a programmer. Requires a bootloader to be pre-programmed into the device first.</p>
+<p>Uploads a sketch over the same COM port the Serial Monitor uses, with no debugger
+involved. This is what makes the platform usable on a dsPIC33CK board that has nothing
+but a UART, and it removes MPLAB X from the day-to-day loop.</p>
+
+<div class="info-box">
+    This section is the short version - enough to burn the bootloader once and then upload.
+    <strong><a href="part6_serial_bootloader.html">Part 6: Serial Bootloader</a></strong> is the
+    full guide: three ways to burn it, the memory map, how the interrupt forwarding works, a
+    longer troubleshooting table, recovery procedures, and what to do if you are putting this
+    bootloader on your own board.
+</div>
 
 <div class="warning-box">
-    <strong>Prerequisite:</strong> A UART bootloader must already be programmed into flash addresses 0x000-0xFFF using a PICkit. The bootloader is a one-time setup; after that, you can update the application via UART only.
+    <strong>Supported on dsPIC33CK256MC005 only.</strong> The other three devices have no
+    bootloader and no <strong>Bootloader</strong> menu; they upload through a debugger. Earlier
+    releases (1.0.0-1.0.2) offered a <em>"UART Bootloader"</em> programmer entry that could not
+    work - no bootloader firmware existed. If you tried it and nothing happened, that is why.
 </div>
 
 <div class="step">
-    <h3>Using the UART Upload Script</h3>
-    <pre><code>:: Install Python dependencies (one-time)
-pip install pyserial intelhex
-
-:: Upload your firmware
-python upload_uart.py --port COM3 --baud 115200 --hex project.hex</code></pre>
-
-    <p>The upload process:</p>
+    <h3>One-time setup</h3>
     <ol>
-        <li>Reset the dsPIC while holding BOOT pin (enters bootloader mode)</li>
-        <li>Script syncs with bootloader (sends 0x55 bytes)</li>
-        <li>Flash is erased (application area only)</li>
-        <li>New firmware is written row-by-row</li>
-        <li>Optional verification</li>
-        <li>Device resets into new application</li>
+        <li>Pick whichever programmer you have under <strong>Tools &rarr; Programmer</strong> -
+            <em>PICkit 5</em>, <em>PICkit 4</em>, <em>MPLAB SNAP</em>,
+            <em>PKOB4 (Curiosity On-Board)</em> or <em>nEDBG (Curiosity Nano On-Board)</em> all
+            work - then <strong>Tools &rarr; Burn Bootloader</strong>. Do <em>not</em> pick
+            <em>Serial Bootloader (UART)</em> here; it cannot install itself. This step needs
+            MPLAB X, and it is the only time you will need it.</li>
+        <li><strong>Tools &rarr; Bootloader &rarr; Serial (UART, 115200)</strong>.</li>
     </ol>
+    <p>After that, press <strong>Upload</strong> as usual. There is no button to hold and no
+    reset to time: the host asks the running sketch to reset itself, so it behaves like
+    uploading to an Arduino. Python is required (it ships with nothing to install -
+    <code>pyserial</code> is <em>not</em> needed), and 115200 is the only rate the bootloader
+    speaks, so there is no baud setting.</p>
 </div>
+
+<div class="warning-box">
+    <strong>Programming with a debugger erases the bootloader.</strong> <code>ipecmd</code>
+    erases the entire device, so any upload through nEDBG, PICkit or SNAP - including
+    <strong>Sketch &rarr; Upload Using Programmer</strong> - wipes the bootloader and you must
+    burn it again. Set <strong>Bootloader</strong> back to <em>None</em> when you go back to the
+    debugger.
+</div>
+
+<div class="danger-box">
+    <strong>A sketch with no <code>Serial.begin()</code> blocks the <em>next</em> serial
+    upload.</strong> Soft entry works by asking the running sketch to reset itself, and a sketch
+    that never starts its UART has nothing listening. <code>NanoBlink</code> is the obvious
+    example, and it is the first one most people try. On a Curiosity Nano the fix takes no hands:
+    run <strong>Tools &rarr; Burn Bootloader</strong>, which erases the sketch and leaves the
+    board waiting in the bootloader, then upload normally. On a board with no debugger, hold
+    <strong>SW0</strong> through a power cycle instead. To avoid it entirely, put
+    <code>Serial.begin(115200);</code> in <code>setup()</code> - every
+    <code>04.CuriosityNANO</code> example except <code>NanoBlink</code> already does.
+</div>
+
+<div class="step">
+    <h3>What an upload actually does</h3>
+    <ol>
+        <li>The host asks the running sketch to reset itself (it sweeps the common baud rates,
+            since the sketch is at whatever rate its own <code>Serial.begin()</code> chose).</li>
+        <li>The bootloader answers in its ~300 ms window after reset and reports its own memory
+            geometry - the host never assumes it.</li>
+        <li>The application region is erased. The bootloader's own code and the configuration
+            words are outside that region and are never touched.</li>
+        <li>The sketch is written, then verified by asking the device to checksum what it
+            stored.</li>
+        <li>Only then is the image marked valid, and the device jumps to it.</li>
+    </ol>
+    <p>Because the image is marked valid <em>last</em>, pulling the cable mid-transfer is not a
+    brick: the board comes back up in the bootloader and waits. It is recoverable over serial
+    alone.</p>
+</div>
+
+<h3>When a serial upload fails</h3>
+
+<table>
+    <tr><th>Symptom</th><th>Cause and fix</th></tr>
+    <tr>
+        <td>"could not enter the bootloader"</td>
+        <td>Most often the bootloader was never burned, or a debugger upload erased it - burn
+        it again. Otherwise the sketch cannot cooperate (see the next row), or the wrong port is
+        selected.</td>
+    </tr>
+    <tr>
+        <td>Upload works for some sketches, not others</td>
+        <td>Soft entry needs the sketch to be running its serial interrupt. A sketch that never
+        calls <code>Serial.begin()</code> - <code>NanoBlink</code>, for one - or that sits with
+        interrupts disabled, cannot be asked to reset. On a Curiosity Nano, run
+        <strong>Tools &rarr; Burn Bootloader</strong>: it clears the sketch and leaves the board
+        in the bootloader, and needs no hands on the hardware. On a board with no debugger, hold
+        <strong>SW0</strong> while you unplug and replug USB. (The Curiosity Nano has no reset
+        button, so unplugging is the only power cycle there is.)</td>
+    </tr>
+    <tr>
+        <td>"the sketch places code at 0x000000, below the application base"</td>
+        <td>The sketch was built for the debugger. Select
+        <strong>Bootloader &rarr; Serial (UART, 115200)</strong> and rebuild - the sketch has to
+        be <em>compiled</em> for the bootloader, not just uploaded to it.</td>
+    </tr>
+    <tr>
+        <td>Access denied opening the port</td>
+        <td>Close the Serial Monitor. Only one program can hold the port.</td>
+    </tr>
+    <tr>
+        <td>Sketch no longer fits</td>
+        <td>The bootloader reserves flash for itself and adds a 1608-byte interrupt-forwarding
+        table to every sketch, so the limit is 246784 bytes instead of 262144. Both are shown in
+        the size line after a compile.</td>
+    </tr>
+</table>
 
 <h2>5.3 Troubleshooting: Build Errors</h2>
 
