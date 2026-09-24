@@ -42,12 +42,22 @@ static ring_buffer_t _rx_buffer = { {0}, 0, 0 };
  * if the match never completes they were ordinary data and the sketch is
  * entitled to them, and if it does complete the reset makes the buffer moot.
  *
- * Cost when it never fires: one compare and one branch per received byte. Set
- * SERIAL_NO_BOOTLOADER_ENTRY to remove it entirely - a sketch built that way can
- * then only be replaced by holding SW0 through a power cycle, or with the
- * debugger.
+ * Cost when it never fires: one compare and one branch per received byte, and
+ * 132 bytes of flash.
+ *
+ * COMPILED IN ONLY WHEN -DSERIAL_BOOTLOADER_ENTRY IS PASSED, which in practice
+ * means only the MC005 "Bootloader: Serial (UART, 115200)" menu option. 1.0.3
+ * shipped it unconditionally and so charged all four boards 132 bytes for a
+ * feature three of them cannot use at all - they have no bootloader, so a sketch
+ * on them can only ever be replaced with a debugger, and a sniffer that can reset
+ * the board is then pure liability with no upside. It also silently broke the
+ * promise that "Bootloader: none" builds byte-identically to 1.0.2.
+ *
+ * A sketch built without it can only be replaced by holding SW0 through a power
+ * cycle, or with the debugger. That is the correct default for a board that has no
+ * bootloader burned, because nothing else can program it either.
  * ============================================================ */
-#ifndef SERIAL_NO_BOOTLOADER_ENTRY
+#ifdef SERIAL_BOOTLOADER_ENTRY
 static const uint8_t _soft_entry_magic[10] = {
     0x1B, 0xF0, 0x33, 0x43, 0x4B, 0x21, 0x9E, 0x57, 0xE8, 0x3B
 };
@@ -70,7 +80,7 @@ static void _soft_entry_byte(uint8_t b)
         _soft_entry_pos = (b == _soft_entry_magic[0]) ? 1 : 0;
     }
 }
-#endif
+#endif  /* SERIAL_BOOTLOADER_ENTRY */
 
 /* ============================================================
  * UART1 RX Interrupt
@@ -84,7 +94,7 @@ void __attribute__((interrupt, auto_psv)) _U1RXInterrupt(void)
         _rx_buffer.buffer[_rx_buffer.head] = b;
         _rx_buffer.head = next_head;
     }
-#ifndef SERIAL_NO_BOOTLOADER_ENTRY
+#ifdef SERIAL_BOOTLOADER_ENTRY
     /* After the buffer, so a full buffer cannot stop an upload: a sketch that has
      * stopped calling read() is exactly the one you need to replace. */
     _soft_entry_byte(b);

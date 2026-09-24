@@ -30,7 +30,7 @@
 # platform.local.txt is still honoured as an override and always wins.
 
 name=Arduino_dsPIC33CK
-version=1.0.3
+version=1.0.4
 
 # ============================================================
 # Compiler Configuration
@@ -97,6 +97,22 @@ compiler.cpp.extra_flags=
 compiler.asm.flags=-mcpu={build.mcu} -mdfp={build.dfp.path} -c -g
 compiler.asm.extra_flags=
 
+# Per-board / per-menu-option defines, the standard Arduino hook: boards.txt sets
+# it, every recipe passes it, and it defaults to empty so nothing changes for a
+# board that does not. Added in 1.0.4 for one specific reason worth recording.
+#
+# 1.0.3 compiled the bootloader's soft-entry sniffer into the RX interrupt of
+# EVERY board, including the three that have no bootloader and cannot use it, and
+# including MC005 on "Bootloader: none". It cost 132 bytes on all four and made
+# the claim that the default path was byte-identical to 1.0.2 false - which is how
+# it was found: live_check.sh compiles the PUBLISHED archive against fixed
+# baselines and reported all four boards uniformly +132. The sniffer now needs
+# -DSERIAL_BOOTLOADER_ENTRY, and only the MC005 serial-bootloader menu option
+# passes it. Note that compiler.c.extra_flags could NOT be reused for this: it
+# carries the mandatory -x c++ set above, so a per-menu override would silently
+# drop it (see the WARNING there).
+build.extra_flags=
+
 # Archive flags
 compiler.ar.flags=rcs
 compiler.ar.extra_flags=
@@ -128,15 +144,15 @@ compiler.ld.extra_flags=
 # ============================================================
 
 # C source files (.c)
-recipe.c.o.pattern="{compiler.path}{compiler.c.cmd}" {compiler.c.flags} {compiler.c.extra_flags} {compiler.warning_flags} {includes} "{source_file}" -o "{object_file}"
+recipe.c.o.pattern="{compiler.path}{compiler.c.cmd}" {compiler.c.flags} {compiler.c.extra_flags} {build.extra_flags} {compiler.warning_flags} {includes} "{source_file}" -o "{object_file}"
 
 # C++ / .ino files - real C++: classes, templates, overloading.
 # If xc-dsc-g++.exe is missing, the fix is to install XC-DSC v4.00+, not to point
 # this at xc-dsc-gcc. The core is C++ source; compiling it as C does not build.
-recipe.cpp.o.pattern="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags} {compiler.cpp.extra_flags} {compiler.warning_flags} {includes} "{source_file}" -o "{object_file}"
+recipe.cpp.o.pattern="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags} {compiler.cpp.extra_flags} {build.extra_flags} {compiler.warning_flags} {includes} "{source_file}" -o "{object_file}"
 
 # Assembly files (.s, .S)
-recipe.S.o.pattern="{compiler.path}{compiler.asm.cmd}" {compiler.asm.flags} {compiler.asm.extra_flags} {includes} "{source_file}" -o "{object_file}"
+recipe.S.o.pattern="{compiler.path}{compiler.asm.cmd}" {compiler.asm.flags} {compiler.asm.extra_flags} {build.extra_flags} {includes} "{source_file}" -o "{object_file}"
 
 # ============================================================
 # Archive (library) Pattern

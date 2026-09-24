@@ -1,6 +1,6 @@
 # Arduino_dsPIC33CK Platform — Project Plan
 
-> **Last reconciled against the tree: September 23, 2026.** Phases 1–8 complete.
+> **Last reconciled against the tree: September 24, 2026.** Phases 1–8 complete.
 > Phase 9 is IN PROGRESS (test sketches written, hardware measurement pending).
 > **Phase 13 (EV08P02A / dsPIC33CK256MC005 board support) added September 8, 2026,
 > code-complete the same day, and CLOSED on hardware September 17, 2026** — the
@@ -55,9 +55,11 @@
 > into the application region, a host knock timeout longer than the firmware's own entry
 > window, and `Burn Bootloader` working with the nEDBG only — i.e. with every programmer except
 > the ones the feature exists for. All five are fixed, each with a comment recording the
-> symptom, and the gate went from 84 checks to 105. `Bootloader: "none"` is the default and is
-> bit-for-bit unchanged.
-> **Phase 15 SHIPPED as `v1.0.3` on September 23, 2026**, with
+> symptom, and the gate went from 84 checks to 112. `Bootloader: "none"` is the default.
+> **It is not bit-for-bit unchanged, and v1.0.3 was published claiming it was** - see the
+> v1.0.4 section, which is what that claim cost.
+> **Phase 15 SHIPPED on September 23, 2026 — as `v1.0.3`, corrected within hours by
+> `v1.0.4`, which is the version to install** — with
 > `docs/part6_serial_bootloader.html` as its user guide. Writing that guide found a sixth
 > defect the bench session had missed, because it only shows up across two consecutive uploads:
 > **a sketch with no `Serial.begin()` — `NanoBlink`, the first example anyone opens — blocks the
@@ -883,8 +885,10 @@ first release that can program a dsPIC33CK board that has **no debugger at all**
 
 What a 1.0.2 user gets:
 
-- `Tools > Bootloader` menu on MC005 — `None (upload with the debugger)` stays the default, so
-  **nothing about an existing workflow changes unless the menu is touched**.
+- `Tools > Bootloader` menu on MC005 — `None (upload with the debugger)` stays the default.
+  This release claimed **nothing changes unless the menu is touched**, and that was wrong:
+  1.0.3 charged all four boards 132 bytes for a sniffer three of them cannot use. Fixed in
+  v1.0.4, below — read that section before trusting any size number in this one.
 - `Tools > Burn Bootloader`, working with all five programmers (this was broken for four of
   them until defect 5 — see Phase 15).
 - `tools/serial_upload.py`, stdlib-only: no `pyserial`, no `intelhex`, nothing to `pip install`.
@@ -917,9 +921,111 @@ checks on silicon. **`install_check.sh` was not re-run for this release**, unlik
 archive-serving and fresh-`core install` path is unchanged from 1.0.2 and the new files are
 plain additions to the same tree, but this is a real gap and is stated rather than glossed.
 
+
+### Release v1.0.4 — September 23, 2026 — PUBLISHED
+
+**A correction to v1.0.3, published the same day.** 1.0.3 is not withdrawn — it works, the
+bootloader works, and every hardware result under Phase 15 stands. What it got wrong is
+narrower than that, and worth writing down exactly, because the way it was found is the
+useful part.
+
+**The defect.** The soft-entry sniffer in `HardwareSerial.c`'s RX interrupt was guarded by
+`#ifndef SERIAL_NO_BOOTLOADER_ENTRY`, and **nothing anywhere defines that macro**. So the
+guard was decoration: the sniffer compiled into every build of every board. That is 132 bytes
+and a reset path on `33CK32MP102`, `33CK256MP508` and `33CK256MC002`, none of which have a
+bootloader and none of which can ever use it — a sketch on those boards can only be
+replaced with a debugger, so an RX byte sequence that resets the board is pure liability with
+no upside. It also went into MC005 on `Bootloader: none`.
+
+**What found it, and what did not.** `bootloader_check.sh` passed at 105 checks: it asserted
+the macro appeared three times, which it did. `allboards.sh` passed — it invokes the
+compiler directly and never reads a `platform.txt` recipe at all. `examples_all.sh` passed.
+The release was built, tagged, published, and verified end-to-end from outside: the index's
+checksum matched the downloaded archive exactly. Then `live_check.sh`, run **after**
+publishing because this file admitted the install path had not been re-verified, installed
+1.0.3 from the real Boards Manager URL and failed all four boards at once:
+
+```
+  FAIL dspic33ck32mp102       2696 B, expected 2564
+  FAIL dspic33ck256mp508      4060 B, expected 3928
+  FAIL dspic33ck256mc002      2696 B, expected 2564
+  FAIL dspic33ck256mc005      3328 B, expected 3196
+```
+
+Uniformly `+132`. Four boards moving by the same amount is not four bugs, it is one thing
+added to the core — and 132 bytes was already a measured number in this file, the cost of
+the sniffer. **The only gate that could see it was the only gate that runs after publishing.**
+
+**The fix.** The sniffer is now opt-in on `-DSERIAL_BOOTLOADER_ENTRY`, threaded through a new
+standard Arduino hook:
+
+- `platform.txt` declares `build.extra_flags=` (empty) and passes `{build.extra_flags}` in
+  `recipe.c.o.pattern`, `recipe.cpp.o.pattern` and `recipe.S.o.pattern`.
+- `boards.txt` sets it on **one** key:
+  `dspic33ck256mc005.menu.bootloader.serial.build.extra_flags=-DSERIAL_BOOTLOADER_ENTRY`.
+- `HardwareSerial.c` guards the helper and the ISR call with `#ifdef`, not `#ifndef`.
+
+`compiler.c.extra_flags` could **not** be reused for this, and the reason is a trap worth
+recording: it already carries the mandatory `-x c++` set, so a per-menu override of it would
+silently drop that flag and the whole core would compile as C.
+
+**A second, smaller finding, and the claim it retires.** With the sniffer removed from the
+default path the four boards did not return to 2564 / 3928 / 2564 / 3196 — they came out
+**8 bytes below** it. Attributed rather than assumed: dropping 1.0.2's `HardwareSerial.c`
+into the 1.0.4 tree returns MC005 to exactly 3196, so nothing else in the release touches the
+default path. The cause is the RX interrupt now reading `U1RXREG` **once into a local**
+instead of once per branch, which it has to do — the sniffer must see bytes the ring buffer
+drops, since a sketch that has stopped calling `read()` is exactly the one you need to
+replace.
+
+That is smaller and better code, so it stays, and **the claim goes instead**. The baselines
+are now **2556 / 3920 / 2556 / 3188**, updated in `install_check.sh`, `live_check.sh`,
+`package_check.sh` and `menu_size_check.sh`. `Bootloader: none` in 1.0.4 is **8 bytes
+smaller** than 1.0.2, not identical to it. "Bit-for-bit unchanged" was a proxy for "nothing
+broke"; the proxy failed in both directions in a single release, which is why it has been
+replaced with numbers a gate can check.
+
+**The new gate: `_build/menu_size_check.sh`.** The hole was structural, not an oversight —
+no gate compiled a *menu option* through `arduino-cli` against the *working tree*.
+`allboards.sh` never sees a recipe; `install_check.sh` and `live_check.sh` build the default
+option only; and `live_check.sh` needs a published release to exist. `menu_size_check.sh`
+stages the working tree as a `<version>-dev` install and asserts two things that pull against
+each other:
+
+1. `Bootloader: none` on all four boards sits **exactly** on the baselines. Anything added to
+   the core that the user did not opt into shows up here as a delta.
+2. `Bootloader: Serial` on MC005 is **larger** than its own baseline. This is the one with
+   teeth: it is the only automated proof that the `build.extra_flags` chain actually reaches
+   the compiler. A sniffer that is opt-in and never opted in does not exist, and soft entry
+   would then fail on hardware with **no diagnosis at all** — the upload just reports that
+   no bootloader answered. Asserted as a relation, not a constant, so it cannot fail for
+   reasons that are not defects.
+
+Measured: `+1740` = 1608 (the 200-GOTO trampoline) + 132 (the sniffer). Both halves of the
+matrix are now covered before a tag exists.
+
+`bootloader_check.sh` also grew the assertion that failed to catch this. The old check counted
+occurrences of a macro name; the five that replace it assert the whole chain — `#ifdef`
+twice in the core, the inverted 1.0.3 macro **absent** so the polarity cannot be
+half-changed, `build.extra_flags` declared, all three recipes passing it, the one `boards.txt`
+key setting it, and **no** `Bootloader: none` option setting it. Gate is now
+**112 OK / 0 FAIL**.
+
+Gates for 1.0.4: `bootloader_check.sh` **112 / 0**, `allboards.sh` **4/4**,
+`examples_all.sh` **11/11**, `menu_size_check.sh` **PASS**, and `live_check.sh` against the
+published v1.0.4 — the gate that is only meaningful after publishing, run this time as the
+last step rather than as an afterthought.
+
+**The lesson, stated plainly so the next release inherits it:** a claim about the shipped
+artifact that no gate can check is not a fact, it is an intention. Three separate places
+(commit `7070e4c`, the v1.0.3 release notes, and this file) asserted a byte-identity that
+nothing had measured, and all three were wrong. The v1.0.3 notes on GitHub have been
+corrected in place rather than left to stand.
+
+
 ---
 
-## Phase 15: Serial bootloader for dsPIC33CK256MC005 (SHIPPED in v1.0.3 — Sep 23, 2026; 1 check owed)
+## Phase 15: Serial bootloader for dsPIC33CK256MC005 (SHIPPED in v1.0.3, corrected in v1.0.4 — Sep 23, 2026; 1 check owed)
 
 **Goal:** upload a sketch from the Arduino IDE over the CDC COM port, with no debugger and
 no MPLAB X. Until now every upload on every board routed through `ipecmd`, so **MPLAB X IPE
@@ -1117,7 +1223,9 @@ option overrides `build.ldscript`, `build.ldscript.dir`, `compiler.ld.extra_flag
 written**. They now mean something. The default `build.ldscript.dir` is set **per board in
 `boards.txt`**, not as a `platform.txt` default: defining `build.*` defaults in
 `platform.txt` has ambiguous merge order against `boards.txt`, and this way the
-`Bootloader: none` path is bit-for-bit what it always was.
+`Bootloader: none` path links against exactly the linker script, at exactly the path, that
+it always did. (That is a statement about the linker invocation only - v1.0.4's RX
+interrupt does change the default path's *size*, by -8 bytes. See the v1.0.4 section.)
 
 **Four things must change together** for a fifth board to get a bootloader: the generated
 gld pair, the committed HEX, the `bootloader.file` key, and the `menu.bootloader.serial.*`
@@ -1439,7 +1547,7 @@ from it — no code was copied into this public repo**, since it is Microchip-in
 Adopting its MCC-compatible protocol instead of this custom one is a real option and worth a
 deliberate decision rather than drift.
 
-### Where to pick up — state as of Sep 23, 2026, end of the release
+### Where to pick up — state as of Sep 23, 2026, end of the release (v1.0.4, not v1.0.3)
 
 **The board is running `NanoSerialHello`, uploaded over serial, with the bootloader intact.**
 It was deliberately left on a sketch that *does* call `Serial.begin()` so that soft entry
@@ -1447,29 +1555,43 @@ works and the next upload needs no intervention — see the `NanoBlink` lockout 
 that matters. `SYNC` on COM63 answers `{version 1, devid 0xA272, erase_step 0x400,
 block_words 128, app_base 0x1800, sig_base 0x2B700, app_end 0x2B800}`.
 
-Gates at this moment: `_build/bootloader_check.sh` **105 OK / 0 FAIL** (it was 110 before the
-5 guard assertions were dropped, and 84 before the bench session), `_build/allboards.sh`
-**4/4**, `_build/examples_all.sh` **11/11** with no warnings.
+Gates at this moment: `_build/bootloader_check.sh` **112 OK / 0 FAIL** (105 through 1.0.3; 110
+before the 5 guard assertions were dropped; 84 before the bench session), `_build/allboards.sh`
+**4/4**, `_build/examples_all.sh` **11/11** with no warnings, and `_build/menu_size_check.sh`
+**PASS** — the gate added in 1.0.4, which is the one that would have caught the 1.0.3
+defect before it was published rather than after.
 
-**Housekeeping owed:** delete the `1.0.3-dev` install directory under
-`%LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\`. It was a hand-made copy of
-the repo tree used for testing before the release existed; once real `1.0.3` is installed from
-the Boards Manager it is a trap, because two installs of the same platform differ only by a
-version string in `platform.txt`.
+**Housekeeping: no longer owed, and now automatic.** The `1.0.3-dev` hand-made install under
+`%LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\` is gone. Two installs of
+the same platform differ only by a version string in `platform.txt`, which makes a stale one a
+real trap — so `menu_size_check.sh` now owns that directory: it deletes any leftover
+`*-dev` before staging (a leftover would outrank the staged tree on semver and silently compile
+the wrong sources) and removes its own on exit, pass or fail. **`1.0.2` is still installed
+alongside**, deliberately: it is the reference the 8-byte delta was attributed against.
 
-**The test that is owed, in IDE terms.** Restart the IDE first — `1.0.3-dev` is a copy of the
-repo tree and was re-synced several times, and the IDE caches `platform.txt` at startup. Then
+**The test that is owed, in IDE terms.** Install **1.0.4** from the Boards Manager first, and
+restart the IDE — it caches `platform.txt` at startup, and 1.0.3 is the release that charges
+every board for the sniffer. Then
 Tools > Board `Arduino_dsPIC33CK (dsPIC33CK256MC005 Curiosity Nano)`, Port `COM63`,
 **Bootloader `Serial (UART, 115200)`**, Programmer `nEDBG (Curiosity Nano On-Board)`. Open
-`File > Examples > Arduino_dsPIC33CK > 04.CuriosityNANO > NanoBlink` and press Upload, with
+`File > Examples > Arduino_dsPIC33CK > 04.CuriosityNANO > NanoSerialHello` and press Upload,
+with
 **the Serial Monitor closed** — the upload tool opens the port exclusively. Tick
 `File > Preferences > "Show verbose output during: upload"` to see the block counter. Then
 unplug USB part-way through the transfer, replug, and upload again: the board must still
 answer `SYNC` and must refuse to `JUMP` into the half-written image.
 
+**Use `NanoSerialHello`, not `NanoBlink`, and the reason is not cosmetic.** The interrupted
+upload leaves no valid app, so the board sits in the bootloader and the retry needs no soft
+entry either way. But if the retry *succeeds*, the sketch it just installed is the one that
+has to accept the upload after that — and `NanoBlink` never calls
+`Serial.begin()`, so it would lock the board out and turn a passing test into a recovery
+job. `NanoSerialHello` exercises the same path and leaves the board uploadable.
+
 **One decision still owed by the user**, recorded above and not blocking: whether to adopt the
 bench-validated Microchip-internal protocol in place of this custom one. The version question
-is settled — this shipped as **v1.0.3**. The erase-page ambiguity no longer needs a decision
+is settled — this shipped as **v1.0.3**, corrected by **v1.0.4** the same day. The erase-page
+ambiguity no longer needs a decision
 either; the board reports `erase step 0x400` itself.
 
 ---
@@ -2279,8 +2401,9 @@ clone — recreate or copy them before trusting a "builds clean" claim:
 | `allboards.sh` | all 4 devices compile + link + emit hex; `sketch.cpp` is a synthetic sketch calling the whole API, including all six Phase 10 functions plus `analogWrite(PWM4_PIN, …)` in one translation unit, which is what proves the `wiring_private.h` link contract closes |
 | `examples_mc005.sh` | the six `04.CuriosityNano` sketches, warning count per sketch |
 | `examples_all.sh` | `01.Basics` on all 4 devices, `02.CppFeatures` + `03.PWM` on MP508 only (they use `LED1`/`LED2`/`A22`, which only that variant defines) |
-| `package_check.sh` | **Phase 14.** `arduino-cli` compiles one sketch per board against the *installed* platform — the only gate that exercises `platform.txt`, `boards.txt`, the recipes and the wrappers at all. Baselines: **2564 / 3928 / 2564 / 3196 bytes** (was 11904 / 13992 / 11916 / 12876 before `--gc-sections` landed in 1.0.1) |
-| `install_check.sh` | **Phase 14, the acceptance gate.** Serves the real release archives over local HTTP and runs `arduino-cli core install microchip:dspic33ck`, so checksums, archive roots, tool placement and `toolsDependencies` are all really exercised. Asserts **no `platform.local.txt` anywhere** and the same four sizes. Takes its expected version from `platform.txt` rather than a pinned constant -- the pinned `1.0.0` made it report a phantom `FAIL no platform.txt` the moment 1.0.1 was cut. Also asserts that **`File > Examples` offers every shipped `.ino`** (`lib examples --format json`, filtered to this platform's `container_platform`) — the gap that let eleven invisible examples ship twice, since compiling by absolute path works whether or not the IDE can find them |
+| `package_check.sh` | **Phase 14.** `arduino-cli` compiles one sketch per board against the *installed* platform — the only gate that exercises `platform.txt`, `boards.txt`, the recipes and the wrappers at all. Baselines: **2556 / 3920 / 2556 / 3188 bytes** (2564 / 3928 / 2564 / 3196 from 1.0.1 through 1.0.3; 8 bytes lower in 1.0.4, when the RX interrupt stopped reading `U1RXREG` once per branch — see Release v1.0.4. Was 11904 / 13992 / 11916 / 12876 before `--gc-sections` landed in 1.0.1) |
+| `install_check.sh` | **Phase 14, the acceptance gate.** Serves the real release archives over local HTTP and runs `arduino-cli core install microchip:dspic33ck`, so checksums, archive roots, tool placement and `toolsDependencies` are all really exercised. Asserts **no `platform.local.txt` anywhere** and the same four sizes (the default menu option only — `menu_size_check.sh` covers the other one). Takes its expected version from `platform.txt` rather than a pinned constant -- the pinned `1.0.0` made it report a phantom `FAIL no platform.txt` the moment 1.0.1 was cut. Also asserts that **`File > Examples` offers every shipped `.ino`** (`lib examples --format json`, filtered to this platform's `container_platform`) — the gap that let eleven invisible examples ship twice, since compiling by absolute path works whether or not the IDE can find them |
+| `menu_size_check.sh` | **Phase 15, added in 1.0.4 as the gate that would have caught its predecessor's defect.** Stages the **working tree** as a `<version>-dev` install and compiles through `arduino-cli` at **both** ends of the `Tools > Bootloader` menu — the only gate that compiles a *menu option* at all. Asserts `Bootloader: none` sits exactly on the four baselines (so nothing reaches the core that the user did not opt into) **and** that `Bootloader: Serial` on MC005 is *larger* than its own baseline (so the `build.extra_flags` — `-DSERIAL_BOOTLOADER_ENTRY` chain really reaches the compiler; a sniffer that is opt-in and never opted in fails on hardware with no diagnosis). Measured `+1740` = 1608 trampoline + 132 sniffer. Sizes asserted as a relation, not a constant |
 | `upgrade_check.sh` | **Phase 14.** Installs 1.0.0 then upgrades to a synthesised 1.0.1 off a two-version index: asserts the DFP packs are reused with no second HTTP GET *and* are still on disk afterwards, the old version's directory is gone, and no `platform.local.txt` appears at either version. Re-run for real against the two **live** releases on Sep 22 2026, not a synthesised index: DFP packs reused with no second download, only the 93 KB core archive fetched |
 | `parallel_check.sh` | **Phase 14.** Five cold-cache `-j16` builds — the only gate that exercises the resolver's cache race, which a serial build cannot reach. Fails on output drift, any warning, or an orphan `.tmp` left by a lost race |
 | `live_check.sh` | **Phase 14, post-publication.** Installs from the **real published GitHub URL** into a fresh data directory and compiles all four boards at the baselines. The only gate that covers GitHub itself — a wrong tag in the index's asset URLs, a pre-release flag hiding the release from `/latest`, an asset that failed to upload, or a CDN redirect problem all fail here and nowhere else. Run it after any release |

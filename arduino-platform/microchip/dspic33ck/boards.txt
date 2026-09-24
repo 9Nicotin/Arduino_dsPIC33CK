@@ -212,6 +212,14 @@ dspic33ck256mc005.menu.bootloader.serial.build.ldscript=p33CK256MC005-app.gld
 dspic33ck256mc005.menu.bootloader.serial.build.ldscript.dir={runtime.platform.path}/ldscripts
 dspic33ck256mc005.menu.bootloader.serial.compiler.ld.extra_flags=-Wl,--no-ivt
 #
+# The soft-entry sniffer in HardwareSerial.c's RX interrupt is compiled in ONLY
+# here. 1.0.3 built it into every board unconditionally, which cost all four 132
+# bytes for something three of them cannot use - they have no bootloader - and
+# broke the promise that "Bootloader: none" links byte-identically to 1.0.2.
+# live_check.sh caught it by compiling the published archive against fixed
+# baselines. See build.extra_flags in platform.txt.
+dspic33ck256mc005.menu.bootloader.serial.build.extra_flags=-DSERIAL_BOOTLOADER_ENTRY
+#
 # BOTH upload.tool keys have to be overridden. The board declares upload.tool AND
 # upload.tool.default (lines 134-135), and arduino-cli 1.5.x prefers the .default
 # form; overriding only the legacy key leaves the board-level "nedbg" winning, so
