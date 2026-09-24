@@ -44,20 +44,48 @@
     <a href="part7_bench_verification.html">Part 7: Bench Verification</a>
 </div>
 
+<div class="warning-box">
+    <strong>Which board are these tests for?</strong> They were written for a
+    dsPIC33CK32MP102 on a breadboard, programmed from MPLAB X with a PICkit, and the pin
+    numbers in them are that device's. They still work that way. On a Curiosity Nano
+    (dsPIC33CK256MC005, this platform's priority device) three things are different:
+    <ul>
+        <li><strong>No PICkit, no breadboard, no external LED.</strong> LED0 and SW0 are on the
+            board, and the one USB cable carries the upload and the Serial Monitor.</li>
+        <li><strong><code>LED_BUILTIN</code> is active LOW there.</strong>
+            <code>digitalWrite(LED_BUILTIN, LOW)</code> lights LED0 and <code>HIGH</code>
+            turns it off. The blink tests still blink &mdash; only the phase is inverted &mdash;
+            but a test that lights the LED to signal something reads backwards.</li>
+        <li><strong>Raw pin numbers do not carry over.</strong> <code>LED_BUILTIN</code>,
+            <code>A0</code>, <code>SDA</code> and <code>SCL</code> are portable; <code>5</code>
+            and <code>11</code> are not. Part 3 &sect;3.1 has the numbers for all four devices.</li>
+    </ul>
+    For a start-to-finish walkthrough on that board &mdash; install, three settings, burn, upload,
+    verify &mdash; follow <a href="part7_bench_verification.html">Part 7</a> instead of the
+    build-and-program steps in 4.1.
+</div>
+
 <h2>4.1 Test #1: Blink (Digital Output)</h2>
 
 <p>This is the "Hello World" of embedded systems. If this works, your entire toolchain is correctly set up.</p>
 
 <h3>What You Need</h3>
 <ul>
-    <li>dsPIC33CK32MP102 board with power supply (3.3V)</li>
-    <li>LED (any color) + 330 ohm resistor</li>
-    <li>PICkit 4 or SNAP programmer</li>
+    <li><strong>Curiosity Nano (dsPIC33CK256MC005 or the DM330030 board):</strong> the board and
+        its USB cable. Nothing else &mdash; the LED is already on it.</li>
+    <li><strong>Any other dsPIC33CK board:</strong> 3.3V power; an LED and a 330 ohm resistor on
+        whichever pin <code>LED_BUILTIN</code> names for your device (Part 3 &sect;3.1); and either
+        a PICkit 4 / SNAP or the serial bootloader from
+        <a href="part6_serial_bootloader.html">Part 6</a>.</li>
 </ul>
 
 <h3>Wiring</h3>
+<p>Only for a board without its own LED. On a Curiosity Nano, skip this &mdash; wiring a second
+LED to the <code>LED_BUILTIN</code> pin is not harmful, but it is not needed either.</p>
 <pre><code>
-    dsPIC33CK Pin 2 (RA0) ---[330R]---[LED+]---[LED-]--- GND
+    dsPIC33CK32MP102 RA0 = D0, physical pin 2 of the 28-pin package
+
+    RA0 ---[330R]---[LED+]---[LED-]--- GND
 
     Where:
     - [330R] = 330 ohm resistor (limits current to ~10mA)
@@ -71,26 +99,48 @@
 <p>Create a file called <code>sketch.c</code> in your MPLAB X project:</p>
 <pre><code>/*
  * Test 1: Blink
- * Expected: LED on RA0 blinks ON for 1 sec, OFF for 1 sec
+ * Expected: the LED_BUILTIN pin toggles once a second.
+ *           On a Curiosity Nano that pin drives LED0, which is active low,
+ *           so the LED is lit during the LOW half of the cycle.
  */
 #include "Arduino.h"
 
 void setup()
 {
-    pinMode(LED_BUILTIN, OUTPUT);  // D0 = RA0 = Pin 2
+    pinMode(LED_BUILTIN, OUTPUT);  // whichever pin your board defines
 }
 
 void loop()
 {
-    digitalWrite(LED_BUILTIN, HIGH);  // LED ON
+    digitalWrite(LED_BUILTIN, HIGH);  // pin high: LED off on a Curiosity Nano
     delay(1000);                      // Wait 1 second
-    digitalWrite(LED_BUILTIN, LOW);   // LED OFF
+    digitalWrite(LED_BUILTIN, LOW);   // pin low:  LED on  on a Curiosity Nano
     delay(1000);                      // Wait 1 second
 }
 </code></pre>
 </div>
 
 <h3>Step-by-Step Testing Procedure</h3>
+
+<div class="step">
+    <h3><span class="step-number">A</span>Arduino IDE &mdash; any of the four boards</h3>
+    <ol>
+        <li><strong>Tools &gt; Board</strong>: select your dsPIC33CK board.</li>
+        <li><strong>Tools &gt; Port</strong>: the board's COM port, if you are uploading through
+            the serial bootloader.</li>
+        <li>Press <strong>Upload</strong>. To go through the on-board nEDBG or a PICkit instead
+            of the bootloader, use <strong>Sketch &gt; Upload Using Programmer</strong>.</li>
+    </ol>
+    <div class="test-result">
+        <strong>Expected:</strong> the IDE reports program and data memory used, then
+        <code>Upload complete</code>.
+    </div>
+</div>
+
+<h3>Legacy path: MPLAB X and a PICkit</h3>
+<p>Steps 1&ndash;3 are the workflow from before this platform was installable in the Arduino
+IDE. They still work, and on a board with neither a debugger nor a bootloader they are the only
+way in, but nothing in this guide requires them any more.</p>
 
 <div class="step">
     <h3><span class="step-number">1</span>Build the Project</h3>
@@ -150,8 +200,14 @@ void loop()
         <ul>
             <li>Check LED polarity (flip it around)</li>
             <li>Check resistor value (too high = dim LED)</li>
-            <li>Verify wiring to correct pin (RA0 = physical pin 2)</li>
-            <li>Measure voltage on RA0 with multimeter (should toggle 0V/3.3V)</li>
+            <li>Verify the wiring goes to the pin <code>LED_BUILTIN</code> names on your
+                device (Part 3 &sect;3.1). On the 32MP102 that is RA0, physical pin 2.</li>
+            <li>Measure the LED pin with a multimeter: it should toggle 0V/3.3V once a second.
+                If it toggles and the LED never lights, the LED or the resistor is the
+                problem, not the firmware.</li>
+            <li><strong>On a Curiosity Nano, check the phase before anything else.</strong> LED0
+                is active low, so a sketch that writes HIGH "to turn it on" leaves it dark for
+                the second it thinks it is lit.</li>
         </ul>
     </div>
     <div class="test-fail">
@@ -345,7 +401,8 @@ void loop()
      |  [POT]  |   (10K potentiometer)
      +----+----+
           |
-          +---------- RB0 (D5/A0, physical pin 4)
+          +---------- A0  (32MP102: RB0 = D5, physical pin 4;
+                          256MC005: RA0 = D0 -- see Part 3, 3.1)
           |
      +----+----+
      |  [POT]  |
@@ -586,6 +643,14 @@ void loop()
 
 <h2>4.7 Test #7: Button Input (digitalRead + INPUT_PULLUP)</h2>
 
+<div class="info-box">
+    <strong>On the dsPIC33CK256MC005 you need no button and no wires.</strong> SW0 is on the
+    board as <code>BUTTON_BUILTIN</code> (D38, active low, same polarity as the wired button
+    below), so <code>#define BUTTON_PIN BUTTON_BUILTIN</code> and the sketch runs as written.
+    Remember that LED0 is active low too, so the two <code>digitalWrite(LED_BUILTIN, ...)</code>
+    calls light the LED on release rather than on press until you swap them.
+</div>
+
 <h3>What You Need</h3>
 <ul>
     <li>Push button (momentary)</li>
@@ -660,6 +725,8 @@ void loop()
 <p>This sketch tests ALL functions together. If this works, your Arduino_dsPIC33CK platform is fully functional.</p>
 
 <h3>What You Need</h3>
+<p>These pin numbers are the 32MP102's. On another device look up the same roles in Part 3
+&sect;3.1 first &mdash; on the 256MC005, for instance, <code>A1</code> is not D6.</p>
 <ul>
     <li>LED on D0 (RA0) — for blink indicator</li>
     <li>LED on D5 (RB0) — for PWM fade</li>

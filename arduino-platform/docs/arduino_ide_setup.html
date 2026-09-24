@@ -42,7 +42,10 @@
     <ul style="margin-bottom:0">
         <li>Arduino IDE 2.x installed (<a href="https://www.arduino.cc/en/software">download here</a>)</li>
         <li>Microchip XC-DSC compiler v4.00+ installed (<a href="https://www.microchip.com/xc-dsc">download here</a>)</li>
-        <li>MPLAB X IDE installed (for PICkit4/SNAP upload via ipecmd)</li>
+        <li>MPLAB X IDE installed &mdash; every debugger upload calls its
+        <code>ipecmd</code>, including the on-board nEDBG / PKOB debuggers on the two
+        Curiosity boards. The one path that does not need it is a serial-bootloader
+        upload (<a href="part6_serial_bootloader.html">Part 6</a>)</li>
     </ul>
 </div>
 
@@ -116,56 +119,90 @@
 <h2>Step 2: Select the Board in Arduino IDE</h2>
 
 <div class="step">
-    <h3><span class="step-number">3</span>Open Arduino IDE and Select Board</h3>
+    <h3><span class="step-number">4</span>Open Arduino IDE and Select Board</h3>
     <ol>
         <li>Open <strong>Arduino IDE 2.x</strong></li>
         <li>Go to <strong>Tools → Board</strong></li>
-        <li>Look for <strong>"Arduino_dsPIC33CK (dsPIC33CK32MP102)"</strong></li>
+        <li>Pick your board. Four are listed:
+        <strong>dsPIC33CK256MC005 Curiosity Nano</strong>,
+        <strong>dsPIC33CK256MC002</strong>, <strong>dsPIC33CK32MP102</strong> and
+        <strong>dsPIC33CK256MP508</strong>. The rest of this page uses the
+        dsPIC33CK256MC005 Curiosity Nano, because it needs no wiring at all.</li>
         <li>If you don't see it, restart Arduino IDE</li>
     </ol>
 
-    <div class="screenshot">Tools Menu:
-┌─────────────────────────────────────────┐
-│ Board: "Arduino_dsPIC33CK (dsPIC33CK32MP102)"  │
-│ Clock: "8 MHz Internal FRC (Default)"   │
-│ Programmer: "PICkit 4 (ICSP)"           │
-│ Port: "COM3"                            │
-└─────────────────────────────────────────┘</div>
+    <div class="screenshot">Tools Menu, with the Curiosity Nano selected:
++-----------------------------------------------------------------+
+| Board:      "Arduino_dsPIC33CK (dsPIC33CK256MC005 Curiosity     |
+|              Nano)"                                             |
+| Clock:      "8 MHz Internal FRC (Default)"                      |
+| Bootloader: "None (upload with the debugger)"                   |
+| Programmer: "nEDBG (Curiosity Nano On-Board)"                   |
+| Port:       "COM3"                                              |
++-----------------------------------------------------------------+
+
+The Bootloader entry appears on the dsPIC33CK256MC005 only. Leave it at
+"None" until you have actually burned the bootloader.</div>
 </div>
 
 <div class="step">
-    <h3><span class="step-number">4</span>Select Clock Speed</h3>
+    <h3><span class="step-number">5</span>Select Clock Speed</h3>
     <p>Go to <strong>Tools → Clock</strong> and choose:</p>
     <table>
         <tr><th>Option</th><th>FOSC</th><th>FCY</th><th>Use Case</th></tr>
         <tr><td><strong>8 MHz Internal FRC (Default)</strong></td><td>8 MHz</td><td>4 MHz</td><td>Low power, simple projects</td></tr>
-        <tr><td>100 MHz (PLL from FRC)</td><td>100 MHz</td><td>50 MHz</td><td>High performance, fast ADC/PWM</td></tr>
+        <tr><td>200 MHz PLL</td><td>200 MHz</td><td>100 MHz</td><td>High performance, fast ADC/PWM</td></tr>
     </table>
+    <p>The menu sets the <code>F_CPU</code> and <code>FCY</code> macros; the PLL itself is
+    brought up at run time by the core, which always starts on the FRC. On the
+    dsPIC33CK256MP508 a third entry, "200 MHz PLL (alias)", exists only so sketches saved
+    against the older <code>clock=100mhz_pll</code> identifier still build &mdash; it
+    produces exactly the same clock as "200 MHz PLL".</p>
 </div>
 
 <div class="step">
-    <h3><span class="step-number">5</span>Select Programmer</h3>
-    <p>Go to <strong>Tools → Programmer</strong> and choose:</p>
+    <h3><span class="step-number">6</span>Select Programmer</h3>
+    <p>Go to <strong>Tools → Programmer</strong> and choose the one your board has:</p>
     <table>
         <tr><th>Programmer</th><th>When to Use</th></tr>
-        <tr><td><strong>PICkit 4 (ICSP)</strong></td><td>Most common — direct flash programming via ICSP header</td></tr>
-        <tr><td>MPLAB SNAP (ICSP)</td><td>Alternative programmer from Microchip</td></tr>
-        <tr><td>UART Bootloader (Serial)</td><td>Field updates via serial port (requires pre-programmed bootloader)</td></tr>
+        <tr><td><strong>nEDBG (Curiosity Nano On-Board)</strong></td><td>the
+        dsPIC33CK256MC005 Curiosity Nano &mdash; already on the board, on the same USB
+        cable as the Serial Monitor</td></tr>
+        <tr><td><strong>PKOB4 (Curiosity On-Board)</strong></td><td>the dsPIC33CK256MP508
+        Curiosity board &mdash; likewise on-board</td></tr>
+        <tr><td>PICkit 4</td><td>a board of your own, wired to the ICSP header</td></tr>
+        <tr><td>PICkit 5</td><td>same, with the newer tool</td></tr>
+        <tr><td>MPLAB SNAP</td><td>same, cheaper tool; no high-voltage MCLR</td></tr>
+        <tr><td>Serial Bootloader (UART)</td><td>dsPIC33CK256MC005 with the bootloader
+        already burned, and the sketch built with <strong>Tools → Bootloader: "Serial
+        (UART, 115200)"</strong>. With that menu option selected, plain
+        <strong>Upload</strong> already takes this path &mdash; the entry is only for using
+        it while some other programmer is the default</td></tr>
     </table>
+    <div class="info-box">
+        <strong>Upload vs Upload Using Programmer.</strong> <strong>Upload</strong> (Ctrl+U)
+        uses the board's own default, which is the on-board debugger on both Curiosity
+        boards. <strong>Sketch → Upload Using Programmer</strong> is what forces the
+        selection above.
+    </div>
 </div>
 
 <h2>Step 3: Write Your First Sketch</h2>
 
 <div class="step">
-    <h3><span class="step-number">6</span>Create a New Sketch</h3>
+    <h3><span class="step-number">7</span>Create a New Sketch</h3>
     <p>Go to <strong>File → New Sketch</strong>. Replace the contents with:</p>
 
     <pre><code>/*
  * Blink - Arduino_dsPIC33CK
- * LED on pin D0 (RA0) blinks every 1 second.
+ *
+ * LED_BUILTIN is whichever pin your board defines: D37 (RD10) on the
+ * dsPIC33CK256MC005 Curiosity Nano, D59 (RE6) on the dsPIC33CK256MP508
+ * Curiosity board, and D0 (RA0) as a bare default on the other two, where you
+ * wire your own LED. Part 3 section 3.1 has the table.
  *
  * NOTE: XC-DSC v4.00+ compiles this core as C++, so ordinary Arduino syntax works:
- *   - Serial.begin() / Serial.print() (Serial.begin() still works from .c files)
+ *   - Serial.print(value, HEX), Serial.println(1.5, 2) and the other overloads
  *   - Classes, templates and overloading are available
  *   - But there is no String class and no new/delete
  */
@@ -186,15 +223,25 @@ void loop()
 </code></pre>
 
     <p>Save it as <strong>Blink_dsPIC33CK</strong> (File → Save As)</p>
+    <div class="warning-box">
+        <strong>On the dsPIC33CK256MC005 the on-board LED is active LOW</strong> &mdash;
+        <code>HIGH</code> turns it off, <code>LOW</code> turns it on. The sketch still
+        blinks; the half-second the code calls "on" is the dark one. The variant defines
+        <code>LED_BUILTIN_ACTIVE_LOW</code> so a sketch can test for it.
+    </div>
 </div>
 
 <div class="danger-box">
     <strong>Critical Rules When Writing Sketches:</strong>
     <ol style="margin-bottom:0">
         <li>Always include <code>#include "Arduino.h"</code> at the top</li>
-        <li>For Serial, add <code>#include "HardwareSerial.h"</code> and use <code>Serial.begin()</code> not <code>Serial.begin()</code></li>
-        <li>No C++ features: no classes, no String, no new/delete, no templates</li>
-        <li>Declare all variables at the TOP of a block (C89-style)</li>
+        <li>Serial needs no extra include: <code>Arduino.h</code> already pulls in
+        <code>HardwareSerial.h</code></li>
+        <li>C++ is available (classes, templates, overloading), but this core provides no
+        <code>String</code> class, no <code>new</code>/<code>delete</code>, no exceptions
+        and no RTTI</li>
+        <li>Declare variables wherever you like, <code>for (int i = 0; ...)</code>
+        included</li>
         <li>Do NOT write your own <code>main()</code> — only <code>setup()</code> and <code>loop()</code></li>
     </ol>
 </div>
@@ -202,7 +249,7 @@ void loop()
 <h2>Step 4: Build (Verify)</h2>
 
 <div class="step">
-    <h3><span class="step-number">7</span>Click Verify (Compile)</h3>
+    <h3><span class="step-number">8</span>Click Verify (Compile)</h3>
     <ol>
         <li>Click the <strong>checkmark button</strong> (✓) in the toolbar, or press <strong>Ctrl+R</strong></li>
         <li>Watch the Output panel at the bottom</li>
@@ -228,33 +275,49 @@ Done compiling.</div>
 <h2>Step 5: Upload to Hardware</h2>
 
 <div class="step">
-    <h3><span class="step-number">8</span>Connect PICkit 4 and Upload</h3>
+    <h3><span class="step-number">9</span>Upload</h3>
+    <p><strong>Curiosity Nano or Curiosity board:</strong> the debugger is already on the
+    board, so there is nothing to connect but the USB cable.</p>
     <ol>
-        <li>Connect PICkit 4 to the board's ICSP header</li>
-        <li>Connect PICkit 4 to PC via USB</li>
+        <li>Select the board's port under <strong>Tools → Port</strong></li>
         <li>Click the <strong>Upload button</strong> (→ arrow) or press <strong>Ctrl+U</strong></li>
-        <li>Arduino IDE calls <code>ipecmd</code> to program the device</li>
+        <li>Arduino IDE calls <code>ipecmd</code> through the on-board debugger</li>
     </ol>
+    <p><strong>A board of your own:</strong> wire a PICkit 4 / 5 or SNAP to the ICSP header
+    (MCLR, VDD, GND, PGD, PGC &mdash; see
+    <a href="part5_upload_troubleshooting.html">Part 5 &sect;5.1</a> for which PGD/PGC pair
+    your board selects), choose it under <strong>Tools → Programmer</strong>, then use
+    <strong>Sketch → Upload Using Programmer</strong>.</p>
 
-    <div class="screenshot">Uploading...
+    <div class="screenshot">Uploading to a dsPIC33CK256MC005 Curiosity Nano...
 "C:/Program Files/Microchip/MPLABX/v6.20/mplab_platform/bin/ipecmd.exe"
-  -TPPK4 -PdsPIC33CK32MP102 -M -F"sketch.hex"
+  -TPnEDBG -PdsPIC33CK256MC005 -M -F"sketch.hex"
 
-Connecting to PICkit 4...
-Device ID verified: dsPIC33CK32MP102
+Connecting to nEDBG...
+Device ID verified: dsPIC33CK256MC005
 Erasing...
 Programming...
 Verify...
 Done.
 
 Upload complete.</div>
+
+    <div class="warning-box">
+        <strong>A silent COM port straight after an upload is not a dead sketch.</strong>
+        Programming through the nEDBG can leave its USB-CDC bridge wedged. Unplug the board
+        and plug it back in before suspecting your code.
+    </div>
 </div>
 
 <h2>Step 6: Using Serial Monitor</h2>
 
 <div class="step">
-    <h3><span class="step-number">9</span>Open Serial Monitor for UART Output</h3>
-    <p>If your sketch uses Serial, connect a USB-UART adapter and:</p>
+    <h3><span class="step-number">10</span>Open Serial Monitor for UART Output</h3>
+    <p>On the dsPIC33CK256MC005 Curiosity Nano and the dsPIC33CK256MP508 Curiosity
+    board, the on-board debugger also provides a USB-CDC serial bridge, so
+    <code>Serial</code> reaches the Serial Monitor over the same cable that programmed the
+    board. On a board of your own, wire a 3.3&nbsp;V USB-UART adapter to the variant's
+    <code>Serial</code> pins first. Then:</p>
     <ol>
         <li>Select the correct COM port: <strong>Tools → Port → COMx</strong></li>
         <li>Open Serial Monitor: <strong>Tools → Serial Monitor</strong> or <strong>Ctrl+Shift+M</strong></li>
@@ -263,7 +326,6 @@ Upload complete.</div>
 
     <pre><code>/* Example sketch with Serial */
 #include "Arduino.h"
-#include "HardwareSerial.h"
 
 void setup()
 {
@@ -282,7 +344,13 @@ void loop()
 </code></pre>
 
     <div class="warning-box">
-        <strong>Note:</strong> The Serial Monitor COM port is for your USB-UART adapter (connected to RB4/RB5), NOT the PICkit 4. You may need to select a different port for monitoring vs. programming.
+        <strong>Which COM port?</strong> On the two Curiosity boards the debugger and the
+        CDC bridge are the same USB device, so one port does both and
+        <strong>Tools → Port</strong> is all you set. With an external PICkit the monitor
+        port belongs to your USB-UART adapter, not to the PICkit, and the two are different
+        ports. Which pins the adapter goes to is per device &mdash; RC10/RC11 on the
+        dsPIC33CK256MC005, RB5/RB4 on the dsPIC33CK32MP102 and dsPIC33CK256MC002; see
+        <a href="part3_api_reference.html">Part 3 &sect;3.1</a>.
     </div>
 </div>
 
@@ -293,16 +361,16 @@ void loop()
 │                 Arduino IDE Workflow                      │
 ├─────────────────────────────────────────────────────────┤
 │                                                          │
-│  1. Select Board: Arduino_dsPIC33CK (dsPIC33CK32MP102)  │
-│  2. Select Clock: 8 MHz FRC or 100 MHz PLL              │
-│  3. Select Programmer: PICkit 4                          │
-│  4. Write sketch (C-style, with setup/loop)             │
-│  5. Click Verify (✓) → XC16 compiles → .hex            │
+│  1. Select Board: one of the four Arduino_dsPIC33CK      │
+│  2. Select Clock: 8 MHz FRC or 200 MHz PLL               │
+│  3. Select Programmer: the one your board has             │
+│  4. Write sketch, with setup() and loop()                │
+│  5. Click Verify (✓) → XC-DSC compiles → .hex           │
 │  6. Click Upload (→) → ipecmd programs device           │
 │  7. Open Serial Monitor → see UART output               │
 │                                                          │
-│  Sketch.ino → [Arduino IDE] → .cpp → [XC16 as C]       │
-│     → .elf → [xc-dsc-bin2hex] → .hex → [PICkit4] → MCU  │
+│  Sketch.ino → [Arduino IDE] → .cpp → [xc-dsc-g++]       │
+│     → .elf → [xc-dsc-bin2hex] → .hex → [ipecmd] → MCU   │
 │                                                          │
 └─────────────────────────────────────────────────────────┘
 </code></pre>
@@ -316,7 +384,9 @@ void loop()
     <tr><td>String type</td><td><code>String s = "hello";</code></td><td><code>const char *s = "hello";</code> (no <code>String</code> class)</td></tr>
     <tr><td>Variables</td><td>Declare anywhere</td><td>Declare anywhere (C++)</td></tr>
     <tr><td>Voltage</td><td>5V (Uno) / 3.3V (Due)</td><td><strong>3.3V ONLY</strong></td></tr>
-    <tr><td>Upload</td><td>USB bootloader</td><td>PICkit 4 ICSP (or UART bootloader)</td></tr>
+    <tr><td>Upload</td><td>USB bootloader</td><td>on-board debugger on the two Curiosity
+    boards, an external PICkit / SNAP otherwise, or the serial bootloader on the
+    dsPIC33CK256MC005</td></tr>
     <tr><td>Compiler</td><td>avr-gcc / arm-gcc</td><td>XC-DSC v4.00+ (<code>xc-dsc-g++</code>, C++)</td></tr>
 </table>
 
@@ -349,13 +419,17 @@ void loop()
         <td>Check PICkit4 connection. Ensure MCLR, VDD, GND, PGD, PGC wired correctly.</td>
     </tr>
     <tr>
-        <td>"variable declared in for loop" error</td>
-        <td>Declare loop variable before the for: <code>int i; for(i=0;...)</code> instead of <code>for(int i=0;...)</code></td>
+        <td>Serial Monitor shows nothing after an upload</td>
+        <td>Unplug the board and plug it back in: programming through the on-board debugger
+        can leave its USB-CDC bridge wedged. If output is garbled instead, the baud rates do
+        not match, or the sketch was built for a different clock.</td>
     </tr>
 </table>
 
 <div class="info-box">
-    <strong>Tip:</strong> If you get stuck, you can always fall back to MPLAB X IDE which has full native support for XC16 and dsPIC33CK. The Arduino IDE integration is a convenience layer — MPLAB X gives you the debugger, breakpoints, and register views.
+    <strong>Tip:</strong> If you get stuck, you can always fall back to MPLAB X IDE, which
+    has full native support for XC-DSC and dsPIC33CK. The Arduino IDE integration is a
+    convenience layer — MPLAB X gives you the debugger, breakpoints, and register views.
 </div>
 
 </body>

@@ -85,13 +85,30 @@
 > found the picture was right and the prose around it was not. The SVG regenerates
 > byte-identically and matches `variant.c` on all 39 pins — but nothing *checked* that, and
 > the README claimed it "cannot drift". `tools/pinmap/check_pinmap.py` is now that check
-> (five parts, all seven mutations caught), and `docs/part2` finally documents the priority
+> (seven parts, every mutation caught), and `docs/part2` finally documents the priority
 > device: up to v1.0.5 it covered only the 28-pin MP102, so an MC005 user read a table whose
 > every row named a different port than their board had. **`part2` and `part6` are inside the
 > archive, so this work reaches nobody until a `v1.0.6` is cut** — the release is deliberately
 > held. Nothing else in the archive changed. See the section below for the retracted claim
 > that came out of this: the DFP's `<edc:PinList>` is **not** a usable source of physical pin
 > numbers.
+> **The v1.0.6 audit is IN PROGRESS and UNCOMMITTED (September 24, 2026)** — a re-check of
+> everything v1.0.5 published plus the two held commits, so one release can carry all of it.
+> The finding is systemic rather than scattered: **five of the eight shipped pages were
+> dsPIC33CK32MP102 documents presented as platform documents**, written when the MP102 was the
+> only device and never retargeted, so an MC005 user read plausible and wrong numbers on each.
+> All five are fixed, and one of `part1`'s defects **did not build** — the hand-build file list
+> omitted `wiring_interrupts.c` and `wiring_tone.c`, so following the shipped instructions
+> fails to link `attachInterrupt()` or `tone()`. `part6` and `part7`, never re-audited before,
+> were checked against the artefacts and the compiler and are **correct as shipped** (200
+> vectors, +1740 = 1608 + 132, 4532/6272 B against limits 262144/246784). Checks **F** and
+> **G** were added to `check_pinmap.py`, G mutation-tested 20/20, and both generators the marker
+> comments pointed at — neither of which was in the repository — are now
+> `tools/docs/gen_device_table.py` and `tools/docs/gen_mc005_rows.py`, each with a self-applying
+> `--write`. §5.8 also shipped two device cards under prose promising one per board; it now
+> emits four. **The work is committed and the release is HELD — `main` is unpushed.**
+> See that section for what remains and for the one item that needs a go-ahead: v1.0.5's
+> published release notes still print retracted package pin numbers, with TX/RX swapped.
 > **One item remains open:** the fresh-install/resolver-glob test still wants a machine with
 > a different XC-DSC version. See that section.
 > Some later-phase items were delivered ahead of the plan — see "Delivered Ahead
@@ -1850,7 +1867,7 @@ with no diff anywhere to notice. `README.md` asserted it "cannot drift from the 
 core actually compiles against"; it could. `tools/pinmap/check_pinmap.py` is what makes that
 sentence true, and the README now says what is actually enforced instead.
 
-### `tools/pinmap/check_pinmap.py` — five checks, one defect behind each
+### `tools/pinmap/check_pinmap.py` — seven checks, one defect behind each
 
 Tracked, unlike every other gate (those live in the gitignored `_build/`), because it is the
 thing that keeps a *committed artefact* honest.
@@ -1862,6 +1879,8 @@ thing that keeps a *committed artefact* honest.
 | **C** | the four pins compiled into the bootloader HEX (`bl_config.h`) carry those roles on the map, so moving the bootloader's UART makes the map stale the moment the header is saved |
 | **D** | no wholly-MC005 page attaches a bare physical pin number to a port name |
 | **E** | `part2`'s MC005 table matches `variant.c` on port, `An` name and ADC channel, has no missing or extra rows, and its MC005 half obeys D |
+| **F** | `part3`'s generated per-device table agrees with all four variants, **and none of seven retired MP102-only phrases has come back** — v1.0.1's examples returned once already through an in-place overwrite, so the retired wording is gated by name |
+| **G** | `part5` §5.8's generated device cards: every card resolves to a real `variants/` directory, its flash/RAM figures match `boards.txt`, its pin count, analog range, PWM list and eight `TX/RX/SCK/MOSI/MISO/SS/SDA/SCL` numbers match `pins_arduino.h`, every `D<n> (R<port><bit>)` pair matches `variant.c`, `none` means the macro is genuinely absent, `active LOW` appears iff `*_ACTIVE_LOW` is defined — and the priority device has a card at all |
 
 Wired into `_build/docs_code_check.sh` ahead of the compiles. **Not** as `python … | sed`: in a
 pipeline the exit status is `sed`'s, which is always 0, so `set -e` would have sailed straight
@@ -1869,7 +1888,12 @@ past a FAIL. `PIPESTATUS[0]` is checked instead. That is the third instance in t
 *a check whose pass condition is "nothing was reported" passing because it did not run* — after
 the v1.0.3 `#ifndef` macro and the v1.0.5 docs link checker. Every check here was therefore
 mutation-tested: seven mutations, seven caught, including one that renames a heading so check E
-would lose its scope silently.
+would lose its scope silently. Checks F and G got their own suites — `_build/mutate_part3.py`
+and `_build/mutate_part5.py`, the latter 17 mutations, 17 caught.
+
+Both F and G re-derive their expectations from `pins_arduino.h`, `variant.c` and `boards.txt`,
+never from the generator. *A checker that asks the generator what it generated cannot catch a
+generator that is wrong.*
 
 ### The §6.9 defect, and the claim that was retracted
 
@@ -1927,6 +1951,142 @@ this cheap.
 held at the user's instruction.** When it is cut, `part6`'s §6.9 correction and `part2`'s MC005
 half go out together; nothing else in the archive has changed, so the four boards' 2556 / 3920 /
 2556 / 3188 baselines must come back identical.
+
+---
+
+## v1.0.6 audit — committed September 24, 2026, release HELD
+
+Asked to re-check everything published in v1.0.5 plus the two local commits so a single
+v1.0.6 could carry all of it. The docs and gate work is committed; **the release itself is
+held**, and `main` is still unpushed.
+
+### The systemic finding: five of the eight shipped pages were MP102 documents
+
+Not five pages with five unrelated errors. `part1`, `part3`, `part4`, `part5` and
+`arduino_ide_setup.html` were each written when the MP102 was the only device, and each was
+then presented as a *platform* document without being retargeted. A user of the priority
+device read plausible, internally consistent, wrong numbers on every one of them. All five are
+now fixed. The ground truth, read out of all four `pins_arduino.h` + `variant.c`:
+
+| | 256MC005 | 256MC002 | 32MP102 | 256MP508 |
+|---|---|---|---|---|
+| `NUM_DIGITAL_PINS` | 39 | 21 | 21 | 69 |
+| `NUM_ANALOG_INPUTS` | 20 | 13 | 6 | 23 |
+| `LED_BUILTIN` | D37 (RD10) LED0, **active LOW** | D0 (RA0) default only | D0 (RA0) default only | D59 (RE6) LED1 |
+| `BUTTON_BUILTIN` | D38 (RD13) SW0, **active LOW** | – | – | – |
+| `A0` | D0 (RA0) | D5 (RB0) | D5 (RB0) | D0 (RA0) |
+| Serial TX / RX | D31 / D32 | D10 / D9 | D10 / D9 | D41 / D40 |
+| SPI SCK/MOSI/MISO/SS | D25/D26/D33/D34 | D13/D11/D12/D16 | D13/D11/D12/D16 | D13/D11/D12/D16 |
+| Wire SDA / SCL | D14 / **D13** | D14 / D15 | D14 / D15 | D14 / D15 |
+| `analogWrite` | D5–D8 | D5–D8 | D5–D8 | D5–D8, **D58** |
+
+The MC005's `SCL = D13` is the row most likely to be "corrected" by a future reader. It is
+right; check G holds it.
+
+### `part1_introduction_setup.html` — six defects, one of them not cosmetic
+
+Rewritten by `_build/splice_part1.py` (16491 → 24932 bytes):
+
+1. §1.1 said the platform programs "Microchip's dsPIC33CK32MP102". It programs four, and the
+   MC005 is the one it is developed against.
+2. §1.2 marked **PICkit 4 / SNAP as required**. Two of the four boards carry an on-board
+   debugger on the same USB cable, and since v1.0.3 the serial bootloader needs no debugger.
+3. §1.2 marked MPLAB X "Recommended". Both halves wrong: it is *required* for every debugger
+   upload including the on-board nEDBG/PKOB4 — the recipe shells out to `ipecmd` — and *not*
+   required for the bootloader path.
+4. §1.3, titled "Installation Steps", was eight steps of "create an MPLAB X project and add
+   the core files by hand" — not how anyone installs this platform. Replaced by a four-step
+   Arduino IDE install; the hand-build survives as **§1.4, relabelled a legacy path**.
+5. **The hand-built file list omitted `wiring_interrupts.c` and `wiring_tone.c`.** A project
+   built by following the shipped instructions fails to link `attachInterrupt()` or `tone()`.
+   This one did not build. `wiring_private.h` was missing from the headers too. §1.4 now lists
+   all ten `.c` files and says explicitly what happens if you drop those two.
+6. The folder listing showed one variant and one library.
+
+§1.4 also gained the `Serial.print_int(v, HEX)`-vs-C++-overloads box, the F_CPU/FCY pairing
+rule, and a warning that programming through a debugger erases a burned bootloader.
+
+### `part6` and `part7` were never re-audited before. They are correct as shipped
+
+Every number reproduced from the artefacts and the compiler, not from the plan:
+
+- **200 interrupt vectors, not the 254 this plan's Phase 15 section assumed.**
+  `tools/gld/gen_bootloader_gld.py --check` prints `vectors : 200 (ivt region holds 254
+  slots)`; the committed `p33CK256MC005-boot.gld` has 200 `LONG(` entries; the app gld's
+  `.trampoline` has 202 `DEFINED(__` tests (201 GOTOs × 8 bytes = the 1608 bytes §6.4 prints).
+  **`part6`'s "200 slots" is right and this file's "254" was the wrong one.**
+- `--check` geometry: boot 0x000000–0x001800, app entry 0x001800, trampoline
+  0x001804–0x001B24 (0x320), app code 0x001B24–0x02B700, signature 0x02B700–0x02B800, erase
+  range 84 pages.
+- `_build/menu_size_check.sh` PASS: baselines exact at **2556 / 3920 / 2556 / 3188**;
+  `bootloader=serial` **4928 B, +1740** — which is §6.4's 1608 + 132 decomposition.
+- §7.5's absolutes are exact: `NanoSerialHello` `none` = **4532 B** / limit **262144**,
+  `serial` = **6272 B** / limit **246784**.
+
+### The generator the marker comments pointed at was not in the repository
+
+`part3`'s `device-facts` and `part5`'s `device-cards` are committed HTML carrying a
+"generated by …" comment that named a file in the gitignored `_build/`. Promoted to
+**`tools/docs/gen_device_table.py`**, repo-relative, with a self-applying `--write` that
+splices both regions and is verified idempotent. The way to change a generated region has to
+be runnable by whoever reads the marker.
+
+**`tools/docs/gen_mc005_rows.py` is now promoted too**, with `<!-- BEGIN/END mc005-rows -->`
+markers around part2 §2.2's 39 rows and the same `--write`. Its first `--write` reported
+**"unchanged"** — i.e. the generator reproduces the committed rows byte for byte, which is what
+makes the promotion provably faithful rather than merely plausible; the whole diff is the four
+marker lines. Check E now also asserts the markers are present, mutation-tested by stripping
+them (caught). The earlier attempt at this failed for a reason worth keeping: **do not pass
+backslash-bearing Python through a Bash heredoc** — it collapses `\\` to `\`, which produced
+first a silently-unmatched anchor (the script printed "patched" while nothing changed) and then
+a `SyntaxError`. Use `Write`/`Edit`, or `chr(10)`.
+
+### §5.8 shipped two cards under prose promising four
+
+The lead paragraph said *"One card per board, priority device first"* and the region held two —
+MC005 and the MP102 — with a sentence sending MC002 and MP508 readers to part3 instead. That is
+the same defect as the five MP102 pages in miniature: **prose describing a device set the
+artefact does not cover.** The cards are generated and gated, so carrying the two held boards
+costs nothing; `gen_device_table.py` now iterates `BOARDS` and emits **four**, and the
+paragraph says what the v1.0.5 card actually did (the MP102's numbers under a platform
+heading, so three boards in four read someone else's pinout).
+
+That widened `mutate_part5.py` from 17 mutations to **20, all caught** — and it first reported
+**4 SKIPs rather than 4 passes**, because with four cards `LED_BUILTIN: D0` and the
+262144/16384 size bar are shared by two or three of them and a whole-page anchor no longer
+matches once. Those four are now scoped to one card by position, and three new mutations cover
+the two boards nobody is looking at (MC002's analog count, MP508's `D59` LED, MP508's fifth PWM
+pin). **A mutation that cannot place its anchor must count as a failure, not a pass** — the
+same principle as a check that passes when it did not run.
+
+### Smaller fixes in the same pass
+
+- **`arduino_ide_setup.html` had two steps numbered 3** — §1.3's *Check the Prerequisites* and
+  §2's *Open Arduino IDE and Select Board*. Renumbered to a clean 1–10; nothing anywhere cites
+  these numbers, which was checked first (part6's and part7's "step N" references are their
+  own).
+- `_build/allboards.sh` green on all four boards, and a structural sweep over all eight pages:
+  **zero raw `<` inside `<pre><code>`, every tag balanced, no dead local links.**
+
+### State
+
+Every gate green after the edits, and each mutation suite re-run *after* the pages changed
+rather than before: `check_pinmap.py` OK (39 pins, part2 39/39 rows, part3 14×4, part5 4 cards,
+SVG byte-identical), `mutate_part2.py` 7/7, `mutate_part3.py` 8/8, `mutate_part5.py` 20/20,
+`docs_code_check.sh` OK (part1's new sketch compiles as `part1_introduction_setup__10`),
+`allboards.sh` OK on four boards, `menu_size_check.sh` PASS, `gen_bootloader_gld.py --check` OK.
+
+**Left deliberately uncommitted, pending the user's call:** `.gitignore` and the five
+`cmake/SCCP1_dsPIC33CK/default/…` files.
+
+Still to do when the release is cut: bump `platform.txt:33` to `1.0.6`, **push `main` before
+creating the tag** — a tag made by name lands on the *remote* branch head — and confirm
+2556 / 3920 / 2556 / 3188 come back identical, since no firmware changed in this release
+either.
+
+**Needs the user's go-ahead, because it edits published content:** the v1.0.5 GitHub release
+notes still print `| TXD | RC11 | U1RX, pin 32 |` / `| RXD | RC10 | U1TX, pin 31 |` — both the
+retracted package numbers and TX/RX swapped against the label.
 
 ---
 

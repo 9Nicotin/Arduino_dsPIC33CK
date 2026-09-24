@@ -44,12 +44,36 @@
     <a href="part7_bench_verification.html">Part 7: Bench Verification</a>
 </div>
 
-<h2>5.1 Upload Method: PICkit 4 / SNAP (Recommended)</h2>
+<h2>5.1 Upload Method: Debugger / ICSP</h2>
 
-<p>The most reliable upload method. Directly programs flash memory via the ICSP (In-Circuit Serial Programming) interface.</p>
+<p>This section is the debugger path: the sketch is written straight into flash over
+ICSP (In-Circuit Serial Programming). On the two Curiosity boards the debugger is already
+on the board and this is what the <strong>Upload</strong> button does, with nothing to wire.
+On a board of your own it means a PICkit 4 or SNAP and five wires.</p>
 
 <div class="step">
-    <h3>Hardware Setup</h3>
+    <h3>From the Arduino IDE &mdash; all four boards</h3>
+    <ol>
+        <li><strong>Tools &rarr; Board &rarr; Arduino_dsPIC33CK</strong>, then your board</li>
+        <li><strong>Tools &rarr; Port</strong>, and pick the board's COM port</li>
+        <li>Click <strong>Upload</strong> (Ctrl+U)</li>
+    </ol>
+    <p>On the <strong>dsPIC33CK256MC005 Curiosity Nano</strong> and the
+    <strong>dsPIC33CK256MP508 Curiosity board</strong> that is the whole procedure: the
+    on-board debugger (nEDBG / PKOB) is on the same USB cable as the Serial Monitor, so no
+    PICkit, no breadboard and no external wiring are involved.</p>
+    <p>If you are driving an external PICkit 4 or SNAP instead, use
+    <strong>Sketch &rarr; Upload Using Programmer</strong> and select the programmer under
+    <strong>Tools &rarr; Programmer</strong>. Wiring for that case is below.</p>
+    <div class="info-box">
+        <strong>No debugger at all?</strong> On the dsPIC33CK256MC005 you can burn the
+        serial bootloader once and upload over the COM port from then on &mdash;
+        &sect;5.2, and <a href="part6_serial_bootloader.html">Part 6</a> in full.
+    </div>
+</div>
+
+<div class="step">
+    <h3>Hardware Setup &mdash; external PICkit 4 / SNAP only</h3>
     <pre><code>
     PICkit 4 Header        dsPIC33CK32MP102
     +----------+           +--------+
@@ -64,12 +88,17 @@
     </code></pre>
 
     <div class="warning-box">
-        <strong>PGD1/PGC1 pin locations:</strong> Check your specific board schematic. On dsPIC33CK32MP102, the default debug pair depends on the ICS configuration bit setting (ICS = PGD1 in our config).
+        <strong>Which debug pair?</strong> The core sets the <code>ICS</code> config bit per
+        board in <code>cores/arduino/system_config.c</code>: <code>ICS = PGD1</code> on the
+        dsPIC33CK32MP102 and dsPIC33CK256MC002, and <code>ICS = PGD3</code> on the
+        dsPIC33CK256MC005 and dsPIC33CK256MP508, because their on-board debuggers are wired
+        to PGC3/PGD3. Wire the PICkit to the pair your board selects, and check the
+        schematic for where those pins come out.
     </div>
 </div>
 
 <div class="step">
-    <h3>Upload via MPLAB X IDE</h3>
+    <h3>Legacy path: upload from MPLAB X</h3>
     <ol>
         <li>Build the project: <strong>Production → Build Main Project</strong> (F11)</li>
         <li>Ensure build succeeds with no errors</li>
@@ -249,10 +278,12 @@ but a UART, and it removes MPLAB X from the day-to-day loop.</p>
     <p><strong>Cause:</strong> Device Family Pack (DFP) not installed.</p>
     <p class="solution">Solution:</p>
     <ol>
-        <li>Open MPLAB X → Tools → Packs</li>
-        <li>Search: <code>dsPIC33CK-MP_DFP</code></li>
-        <li>Click Install (version 1.15+)</li>
-        <li>Restart IDE and rebuild</li>
+        <li>In the <strong>Arduino IDE</strong> this should not happen: Boards Manager
+        installs both Device Family Packs with the platform. If it does, remove the platform
+        and reinstall it &mdash; a half-finished download is the usual cause.</li>
+        <li>In <strong>MPLAB X</strong>: Tools &rarr; Packs, search
+        <code>dsPIC33CK-MP_DFP</code> (or <code>dsPIC33CK-MC_DFP</code> for the
+        dsPIC33CK256MC002 / dsPIC33CK256MC005), install, restart and rebuild.</li>
     </ol>
 </div>
 
@@ -262,7 +293,7 @@ but a UART, and it removes MPLAB X from the day-to-day loop.</p>
     <p class="solution">Solution:</p>
     <ol>
         <li>Right-click project → Properties</li>
-        <li>Under "Conf: [default]" verify Device = <code>dsPIC33CK32MP102</code></li>
+        <li>Under "Conf: [default]" verify Device matches the part you are building for</li>
         <li>If changed, Clean and Rebuild</li>
     </ol>
 </div>
@@ -286,22 +317,31 @@ void loop()  { /* ... */ }
 
 <div class="error-entry">
     <h4>Error: "Section .text will not fit in region 'program'"</h4>
-    <p><strong>Cause:</strong> Code exceeds 32KB flash memory.</p>
+    <p><strong>Cause:</strong> the sketch is bigger than the flash on the part you selected.
+    How much that is depends on the board &mdash; 32 KB on the dsPIC33CK32MP102, 256 KB on
+    the other three. The Arduino IDE prints the figure it is measuring against after every
+    Verify.</p>
     <p class="solution">Solution:</p>
     <ul>
-        <li>Enable compiler optimization: Properties → XC-DSC → Optimization → Level 1 or 2</li>
-        <li>Remove unused libraries/functions</li>
-        <li>Use smaller data types where possible</li>
+        <li>Check you have the right board selected under <strong>Tools &rarr; Board</strong>
+        before anything else &mdash; a 256 KB sketch aimed at the 32 KB part fails here</li>
+        <li>Remove unused code; the platform already links with
+        <code>-ffunction-sections -fdata-sections -Wl,--gc-sections</code>, so unreferenced
+        functions are dropped for you</li>
+        <li>Use smaller data types; <code>double</code> arithmetic and the float print paths
+        are the usual surprises</li>
+        <li>In MPLAB X only: Properties &rarr; XC-DSC &rarr; Optimization &rarr; Level 1 or 2</li>
     </ul>
 </div>
 
 <div class="error-entry">
-    <h4>Warning: "Implicit declaration of function 'Serial.begin'"</h4>
-    <p><strong>Cause:</strong> Missing include for HardwareSerial.h.</p>
+    <h4>Error: "'Serial' was not declared in this scope"</h4>
+    <p><strong>Cause:</strong> the sketch does not include the core header.
+    <code>Arduino.h</code> already pulls in <code>HardwareSerial.h</code>, so one include is
+    enough &mdash; adding <code>HardwareSerial.h</code> separately fixes nothing.</p>
     <p class="solution">Solution:</p>
-    <p>Add at the top of your sketch:</p>
+    <p>Put this at the top of the sketch:</p>
     <pre><code>#include "Arduino.h"
-#include "HardwareSerial.h"
 </code></pre>
 </div>
 
@@ -324,7 +364,9 @@ void loop()  { /* ... */ }
     <p class="solution">Solution:</p>
     <p>The project device setting doesn't match the physical chip. Verify:</p>
     <ul>
-        <li>Project is set to <code>dsPIC33CK32MP102</code> (not 105, 202, etc.)</li>
+        <li>The selected board really is the part on your desk &mdash;
+        <strong>Tools &rarr; Board</strong> in the Arduino IDE, or the project's Device in
+        MPLAB X. The four boards this platform ships are easy to mix up.</li>
         <li>Read the chip markings to confirm part number</li>
     </ul>
 </div>
@@ -347,7 +389,10 @@ void loop()  { /* ... */ }
     <h4>LED doesn't blink / Device seems dead after programming</h4>
     <p class="solution">Check these in order:</p>
     <ol>
-        <li><strong>Watchdog Timer:</strong> Ensure <code>FWDTEN = OFF</code> in system_config.h</li>
+        <li><strong>Watchdog Timer:</strong> the core ships
+        <code>FWDTEN = ON_SW</code> in <code>cores/arduino/system_config.c</code> &mdash;
+        software-controlled, and left off at startup. If you enabled it yourself, a sketch
+        that never clears it will reset in a loop.</li>
         <li><strong>MCLR pin:</strong> Must be pulled HIGH (10K to VDD) for device to run</li>
         <li><strong>Power supply:</strong> Measure VDD — must be 2.7-3.6V</li>
         <li><strong>Oscillator:</strong> Check that config bits select correct clock source (FRC)</li>
@@ -386,7 +431,11 @@ void loop()  { /* ... */ }
         <li><strong>Baud rate mismatch:</strong> Ensure terminal AND code use same baud (e.g., both 115200)</li>
         <li><strong>Clock mismatch:</strong> If F_CPU/FCY doesn't match reality, BRG calculation is wrong.
             Verify your actual clock: <code>F_CPU=8000000</code> and <code>FCY=4000000</code></li>
-        <li><strong>Wrong PPS mapping:</strong> TX should be on RB5 (RP37), RX on RB4 (RP36)</li>
+        <li><strong>Wrong PPS mapping:</strong> <code>Serial.begin()</code> maps the pins
+        itself, from the variant's <code>SERIAL_TX_RP_REG</code> / <code>SERIAL_RX_RP_NUM</code>
+        &mdash; RP58/RP59 (RC10/RC11) on the dsPIC33CK256MC005, RP37/RP36 (RB5/RB4) on the
+        dsPIC33CK32MP102 and dsPIC33CK256MC002. If your own code writes those registers
+        afterwards, it wins</li>
         <li><strong>5V adapter:</strong> Use a 3.3V logic adapter. 5V TX into dsPIC can damage it</li>
     </ul>
 </div>
@@ -395,7 +444,9 @@ void loop()  { /* ... */ }
     <h4>PWM (analogWrite) doesn't produce output</h4>
     <p class="solution">Solutions:</p>
     <ul>
-        <li>Only pins D5-D8 support PWM. Other pins fall back to digital HIGH/LOW</li>
+        <li>Only the SCCP pins support PWM: D5-D8 on every board, plus D58 on the
+        dsPIC33CK256MP508. Every other pin falls through to a plain HIGH/LOW &mdash; see
+        <a href="part3_api_reference.html">Part 3 &sect;3.1</a></li>
         <li>Check PPS output mapping — SCCP output must be routed to physical pin</li>
         <li>Verify SCCP module is enabled: <code>CCP1CON1Lbits.CCPON = 1</code></li>
         <li>Measure with oscilloscope on the pin to verify PWM waveform</li>
@@ -435,6 +486,8 @@ void loop()
 </code></pre>
 
 <h3>Using LED as Debug Indicator</h3>
+<p>On the dsPIC33CK256MC005 the on-board LED is active LOW, so the pattern below runs
+inverted &mdash; still perfectly readable, but <code>HIGH</code> is the dark half.</p>
 <pre><code>// Quick blink patterns to indicate state
 void debugBlink(int count) {
     int i;
@@ -476,7 +529,9 @@ debugBlink(3);  // 3 blinks = reached point C
     </tr>
     <tr>
         <td>Can I use multiple UARTs?</td>
-        <td>dsPIC33CK32MP102 has UART1 only. Larger variants (256MP508) have up to 6 UARTs.</td>
+        <td>All four devices have three UART modules (U1-U3, per the DFP's own device
+        description). This core's <code>Serial</code> is UART1 only; U2 and U3 are reachable
+        with raw registers plus your own PPS mapping.</td>
     </tr>
     <tr>
         <td>How do I access dsPIC registers directly?</td>
@@ -488,40 +543,113 @@ debugBlink(3);  // 3 blinks = reached point C
     </tr>
     <tr>
         <td>What if I need more flash/RAM?</td>
-        <td>Use a larger variant: dsPIC33CK64MP102 (64KB), dsPIC33CK128MP... (128KB), etc. Same pin mapping works.</td>
+        <td>Switch to one of the bigger boards this platform already ships: the
+        dsPIC33CK256MC005, dsPIC33CK256MC002 and dsPIC33CK256MP508 all have 256 KB of flash
+        against the dsPIC33CK32MP102's 32 KB. Another dsPIC33CK part number is not a menu
+        entry &mdash; it needs a variant and a <code>boards.txt</code> block adding, and its
+        pin numbering will not match, because the pin map is per device
+        (<a href="part3_api_reference.html">Part 3 &sect;3.1</a>).</td>
     </tr>
 </table>
 
-<h2>5.8 Quick Reference Card</h2>
+<h2>5.8 Quick Reference Cards</h2>
+
+<p>One card per board, priority device first. Every number on them is generated from that
+board's <code>pins_arduino.h</code> and checked by
+<code>tools/pinmap/check_pinmap.py</code>, so the cards cannot drift away from the code the
+way the single card in 1.0.5 did &mdash; that card carried the dsPIC33CK32MP102's numbers
+under a platform heading, so three boards out of four read someone else's pinout. For the
+full pin list of a board rather than its headline pins, see
+<a href="part3_api_reference.html">Part 3 &sect;3.1</a> and
+<a href="part2_pin_mapping_hardware.html">Part 2</a>.</p>
+
+<!-- BEGIN device-cards: generated by tools/docs/gen_device_table.py,
+     checked by tools/pinmap/check_pinmap.py check G. Do not hand-edit. -->
+<pre><code>
++=======================================================================+
+| DEVICE:         dsPIC33CK256MC005                                     |
+| SIZE BAR:       262144 B flash / 16384 B RAM (as the IDE reports)     |
++-----------------------------------------------------------------------+
+| DIGITAL I/O:    39 pins (D0-D38)                                      |
+| ANALOG IN:      20 channels (A0-A19), A0 = D0                         |
+| PWM OUT:        D5-D8 (SCCP)                                          |
+| SERIAL:         TX = D31 (RC10), RX = D32 (RC11)                      |
+| SPI:            SCK = D25, MOSI = D26, MISO = D33, SS = D34           |
+| I2C:            SDA = D14, SCL = D13                                  |
+| LED_BUILTIN:    D37 (active LOW)                                      |
+| BUTTON_BUILTIN: D38 (active LOW)                                      |
++=======================================================================+
+</code></pre>
+<pre><code>
++=======================================================================+
+| DEVICE:         dsPIC33CK256MC002                                     |
+| SIZE BAR:       262144 B flash / 16384 B RAM (as the IDE reports)     |
++-----------------------------------------------------------------------+
+| DIGITAL I/O:    21 pins (D0-D20)                                      |
+| ANALOG IN:      13 channels (A0-A12), A0 = D5                         |
+| PWM OUT:        D5-D8 (SCCP)                                          |
+| SERIAL:         TX = D10 (RB5), RX = D9 (RB4)                         |
+| SPI:            SCK = D13, MOSI = D11, MISO = D12, SS = D16           |
+| I2C:            SDA = D14, SCL = D15                                  |
+| LED_BUILTIN:    D0                                                    |
+| BUTTON_BUILTIN: none                                                  |
++=======================================================================+
+</code></pre>
+<pre><code>
++=======================================================================+
+| DEVICE:         dsPIC33CK32MP102                                      |
+| SIZE BAR:       32768 B flash / 4096 B RAM (as the IDE reports)       |
++-----------------------------------------------------------------------+
+| DIGITAL I/O:    21 pins (D0-D20)                                      |
+| ANALOG IN:      6 channels (A0-A5), A0 = D5                           |
+| PWM OUT:        D5-D8 (SCCP)                                          |
+| SERIAL:         TX = D10 (RB5), RX = D9 (RB4)                         |
+| SPI:            SCK = D13, MOSI = D11, MISO = D12, SS = D16           |
+| I2C:            SDA = D14, SCL = D15                                  |
+| LED_BUILTIN:    D0                                                    |
+| BUTTON_BUILTIN: none                                                  |
++=======================================================================+
+</code></pre>
+<pre><code>
++=======================================================================+
+| DEVICE:         dsPIC33CK256MP508                                     |
+| SIZE BAR:       262144 B flash / 24576 B RAM (as the IDE reports)     |
++-----------------------------------------------------------------------+
+| DIGITAL I/O:    69 pins (D0-D68)                                      |
+| ANALOG IN:      23 channels (A0-A22), A0 = D0                         |
+| PWM OUT:        D5-D8, D58 (SCCP)                                     |
+| SERIAL:         TX = D41 (RD4), RX = D40 (RD3)                        |
+| SPI:            SCK = D13, MOSI = D11, MISO = D12, SS = D16           |
+| I2C:            SDA = D14, SCL = D15                                  |
+| LED_BUILTIN:    D59                                                   |
+| BUTTON_BUILTIN: none                                                  |
++=======================================================================+
+</code></pre>
+<!-- END device-cards -->
+
+<p>The rest is the same whichever board you selected:</p>
 
 <pre><code>
-+=========================================================+
-|             Arduino_dsPIC33CK Quick Reference            |
-+=========================================================+
-| DEVICE:      dsPIC33CK32MP102 (28-pin, 3.3V)            |
-| COMPILER:    XC-DSC v4.00+ (C++)                         |
-| CLOCK:       8 MHz FRC (default) or 100 MHz PLL          |
-| FLASH:       32 KB        RAM: 4 KB                      |
-+---------------------------------------------------------+
-| DIGITAL I/O: 21 pins (D0-D20)                           |
-| ANALOG IN:   6 channels (A0-A5 = D5-D10)                |
-| PWM OUT:     4 channels (D5-D8 via SCCP)                |
-| SERIAL:      1x UART (TX=D10/RB5, RX=D9/RB4)           |
-| SPI:         MOSI=D11, MISO=D12, SCK=D13, SS=D16       |
-| I2C:         SDA=D14, SCL=D15                           |
-| LED_BUILTIN: D0 (RA0)                                   |
-+---------------------------------------------------------+
-| SERIAL API:                                             |
-|   Serial.begin(baud)     Serial.available()              |
-|   Serial.print(str)      Serial.read()                   |
-|   Serial.println(str)    Serial.write(byte)              |
-|   Serial.print(val, base)                                |
-|   Serial.println(val, base)                              |
-+---------------------------------------------------------+
-| BUILD:  F11 (MPLAB X)                                   |
-| UPLOAD: Make and Program (down-arrow icon)               |
-| DEBUG:  Ctrl+F5 (with PICkit attached)                  |
-+=========================================================+
++=======================================================================+
+| COMPILER:        XC-DSC v4.00+; the IDE builds the core and your      |
+|                  sketch as C++ with xc-dsc-g++ (no String class,      |
+|                  no new/delete, no exceptions, no RTTI)               |
+| CLOCK:           8 MHz FRC at reset; the Tools > Clock menu picks     |
+|                  the PLL option, brought up at runtime                |
++-----------------------------------------------------------------------+
+| SERIAL API:      Serial.begin(baud)     Serial.available()            |
+|                  Serial.print(s)        Serial.read()                 |
+|                  Serial.println(s)      Serial.write(b)               |
+|                  Serial.print(v, HEX)   Serial.println(x, 2)          |
++-----------------------------------------------------------------------+
+| ARDUINO IDE:     Verify  Ctrl+R      Upload  Ctrl+U                   |
+|                  Serial Monitor  Ctrl+Shift+M                         |
+|                  Sketch > Upload Using Programmer, for a PICkit       |
+|                  Tools > Burn Bootloader, MC005 only                  |
++-----------------------------------------------------------------------+
+| LEGACY MPLAB X:  Build F11    Make and Program: down-arrow icon       |
+|                  Debug Ctrl+F5, with a debugger attached              |
++=======================================================================+
 </code></pre>
 
 <div class="info-box">
