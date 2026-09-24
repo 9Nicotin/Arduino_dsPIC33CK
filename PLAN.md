@@ -81,6 +81,17 @@
 > serial adapter forever after*) and **Part 7**, the bench-verification procedure. See that
 > section; it also records why `package_check.sh`'s hex column was stale since v1.0.4 and what
 > was checked before re-baselining it.
+> **Committed after v1.0.5 and HELD, unreleased (September 24, 2026):** a pin-map audit that
+> found the picture was right and the prose around it was not. The SVG regenerates
+> byte-identically and matches `variant.c` on all 39 pins — but nothing *checked* that, and
+> the README claimed it "cannot drift". `tools/pinmap/check_pinmap.py` is now that check
+> (five parts, all seven mutations caught), and `docs/part2` finally documents the priority
+> device: up to v1.0.5 it covered only the 28-pin MP102, so an MC005 user read a table whose
+> every row named a different port than their board had. **`part2` and `part6` are inside the
+> archive, so this work reaches nobody until a `v1.0.6` is cut** — the release is deliberately
+> held. Nothing else in the archive changed. See the section below for the retracted claim
+> that came out of this: the DFP's `<edc:PinList>` is **not** a usable source of physical pin
+> numbers.
 > **One item remains open:** the fresh-install/resolver-glob test still wants a machine with
 > a different XC-DSC version. See that section.
 > Some later-phase items were delivered ahead of the plan — see "Delivered Ahead
@@ -1818,6 +1829,104 @@ bench-validated Microchip-internal protocol in place of this custom one. The ver
 is settled — this shipped as **v1.0.3**, corrected by **v1.0.4** the same day. The erase-page
 ambiguity no longer needs a decision
 either; the board reports `erase step 0x400` itself.
+
+---
+
+## Pin-map audit — committed September 24, 2026, release HELD
+
+Asked whether the pin-map diagram still agreed with v1.0.5, the answer turned out to be yes,
+three independent ways: regenerating `docs/img/pinmap-dspic33ck256mc005.svg` from
+`tools/pinmap/gen_pinmap.py` produces a byte-identical file, the generator's tables match
+`g_pin_map` and `pins_arduino.h` on all 39 pins and 20 analog names, and v1.0.5's platform
+code is unchanged from v1.0.4 so nothing could have moved. **What was wrong was everything
+written around the picture.**
+
+### The generator only *claims* to be generated from `variant.c`
+
+Its docstring says the pin data has one source of truth in `variant.c` + `pins_arduino.h`.
+That is the intent, but `LEFT`/`RIGHT` are Python literals — **nothing reads `variant.c`**. So
+the diagram can be internally consistent, regenerate byte-identically, and still be wrong,
+with no diff anywhere to notice. `README.md` asserted it "cannot drift from the pin table the
+core actually compiles against"; it could. `tools/pinmap/check_pinmap.py` is what makes that
+sentence true, and the README now says what is actually enforced instead.
+
+### `tools/pinmap/check_pinmap.py` — five checks, one defect behind each
+
+Tracked, unlike every other gate (those live in the gitignored `_build/`), because it is the
+thing that keeps a *committed artefact* honest.
+
+| | |
+|---|---|
+| **A** | every pad matches `g_pin_map` and `pins_arduino.h` — port, bit, ADC channel, `An` name, `LED_BUILTIN`, `BUTTON_BUILTIN` — and no pin in `g_pin_map` is missing from the map |
+| **B** | the committed SVG is what the current generator produces, *and is pure ASCII* — the file declares no `<?xml encoding?>`, so a literal em dash renders at the consumer's mercy. One was found and removed (69623 → 69621 bytes) |
+| **C** | the four pins compiled into the bootloader HEX (`bl_config.h`) carry those roles on the map, so moving the bootloader's UART makes the map stale the moment the header is saved |
+| **D** | no wholly-MC005 page attaches a bare physical pin number to a port name |
+| **E** | `part2`'s MC005 table matches `variant.c` on port, `An` name and ADC channel, has no missing or extra rows, and its MC005 half obeys D |
+
+Wired into `_build/docs_code_check.sh` ahead of the compiles. **Not** as `python … | sed`: in a
+pipeline the exit status is `sed`'s, which is always 0, so `set -e` would have sailed straight
+past a FAIL. `PIPESTATUS[0]` is checked instead. That is the third instance in this project of
+*a check whose pass condition is "nothing was reported" passing because it did not run* — after
+the v1.0.3 `#ifndef` macro and the v1.0.5 docs link checker. Every check here was therefore
+mutation-tested: seven mutations, seven caught, including one that renames a heading so check E
+would lose its scope silently.
+
+### The §6.9 defect, and the claim that was retracted
+
+`part6_serial_bootloader.html` §6.9 wrote `RC11 — U1RX, RP59, pin 32`. That `32` is the
+Arduino number `D32`, but in a cell that already says `RP59` it reads as a package pin. Fixed
+to `Arduino D32` plus *"solder to the edge pad silkscreened `RC11`"*, with a warning box
+saying so.
+
+**Retracted: the DFP's `<edc:PinList>` is not a usable source of physical pin numbers.** The
+investigation first concluded that RC10/RC11 are package pins 40/41 and that physical 31/32
+are VSS/VDD — i.e. that a reader counting pins would wire TXD into VDD. That rested entirely
+on the list being in physical pin order (it carries no numbers; pin *N* = the *N*th
+`<edc:Pin>` block). Two devices kill the assumption:
+
+```
+DSPIC33CK32MP102   edc:desc="28-pin SSOP"   1-4: RA1 RA2 RA3 RA4   25-28: RB14 RB15 MCLR RA0
+DSPIC33CK256MC002  (no desc)                1-4: RB14 RB15 MCLR RA0
+```
+
+Same 28-pin package, same cyclic order of port names, **offset by four**. At most one starts at
+pin 1 and nothing inside the pack says which; `DSPIC33CK256MC005.PIC` has no `edc:desc` either,
+so it is in the unlabelled group. **This repo has no verifiable source of package pin numbers,
+and does not need one** — a user wires to a Curiosity Nano edge pad, which is silkscreened with
+the port name, and writes code against the Arduino number. Both of those *are* verifiable here,
+so check D forbids the bare number rather than correcting it.
+
+Consequence for future work: the MP102 ASCII diagram in `part2` §2.3 **was left alone**. Its
+numbering disagrees with the EDC by two and it lists `RB5` at two different pins, but only the
+second of those is provable from inside the repo, so only that one was fixed (pin 15 is now
+`VCAP`). *Do not "correct" package pin numbers in this tree from the EDC.*
+
+### `part2` now documents the priority device
+
+Up to v1.0.5, `part2_pin_mapping_hardware.html` covered only the 28-pin MP102 — so a user of
+the priority device read a complete pin-mapping table whose every row named a different port
+than their board had, with no warning that it was the wrong device. Now:
+
+- **§2.1** MC005 intro, a link to the diagram, and the warning that package numbers are
+  deliberately absent
+- **§2.2** all 39 MC005 pins, **generated** from `variant.c` + `pins_arduino.h` by
+  `_build/gen_mc005_rows.py` — transcribing 39 rows by hand is how a pin table goes wrong —
+  and gated by check E. Includes the `D10`/`D11` = `PGD3`/`PGC3` danger box, the "MCPWM has no
+  Arduino API on MC parts" note, and the `A19` = `D37` = channel `AN18` mismatch spelled out
+- **§2.3–§2.7** the existing MP102 sections, renumbered and retitled to name their device,
+  behind a lead box warning that the same Arduino number is a different port on each
+
+Renumbering was safe because `part2` has no `id=` anchors and nothing in any doc, `README.md`
+or this file cites its section numbers — checked before editing, and the reason the change is
+this cheap.
+
+### Release status
+
+`README.md`, the SVG and the gates are repo-only and need no version bump. **`part2` and
+`part6` ship inside the archive, so those two changes reach users only in a `v1.0.6`, which is
+held at the user's instruction.** When it is cut, `part6`'s §6.9 correction and `part2`'s MC005
+half go out together; nothing else in the archive has changed, so the four boards' 2556 / 3920 /
+2556 / 3188 baselines must come back identical.
 
 ---
 
