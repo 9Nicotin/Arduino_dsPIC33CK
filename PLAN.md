@@ -1195,7 +1195,48 @@ confirms Part 7's own figures), `parallel_check` PASS, `docs_code_check` 28/28.
 | `dsPIC33CK-MP_DFP-1.16.521-pruned.1.zip` | 810615 B · `6cee9c30…` — byte-identical since v1.0.0 |
 | `dsPIC33CK-MC_DFP-1.11.412-pruned.1.zip` | 652421 B · `5533d058…` — byte-identical since v1.0.0 |
 
-Archive root `dspic33ck-1.0.5`, 97 files.
+Archive root `dspic33ck-1.0.5`, 97 files. Commit `b61433b`, tag `v1.0.5`, release id
+`395379753`, `/releases/latest` resolves to it.
+
+**Then verified against what GitHub actually serves**, which is the only check that counts:
+
+| | |
+|---|---|
+| `live_check.sh` | **PASS** — 2556 / 3920 / 2556 / 3188, all four exactly on the v1.0.4 baselines |
+| `bootloader=serial` on MC005 | **4928 B**, `+1740`, size bar `246784` |
+| the 8 guide pages in the install | present, `how-to-use` absent, every cross-link resolving |
+| those pages vs the repo | **byte-identical**, and **0** `Serial_*` calls and **0** raw `<` in any `<pre>` |
+
+The first row is the evidence for "the code is unchanged from v1.0.4" — not the intention,
+the measurement, taken from the downloaded artifact rather than the tree that built it.
+
+**Two things went wrong during the publish, both recorded rather than tidied away.**
+
+*The tag was created on the wrong commit.* `publish_release.py` creates the release with
+`tag_name`, which GitHub resolves against the **default branch as it currently stands** — and
+`main` had not been pushed. I had run `git rev-parse HEAD origin/main`, seen two hashes, and
+read it as agreement when it was the opposite. So `v1.0.5` was cut at `5e1f0a5`: the right
+assets under a tag whose tree had none of the doc fixes. Caught within minutes by reading the
+tag back, and fixed by pushing `main` and force-moving the tag to `b61433b`. Moving a
+published tag is normally worse than leaving it wrong — the v1.0.1 tag is still deliberately
+wrong for exactly that reason — but that judgement is about a tag people may already have
+fetched, and this one was minutes old with nothing pointing at it. **The lasting fix belongs
+in the script:** it should refuse to create a release when `HEAD` is not pushed, since
+nothing else in the pipeline looks at the remote.
+
+*A new gate reported OK while its checker had crashed.* The docs link check captured
+python's stdout and tested whether it was empty. A traceback prints no findings, so a check
+that never ran was indistinguishable from a check that passed — visible in the first
+`live_check` run, where the same block printed a `FileNotFoundError` **and** `OK  every
+cross-link in the installed guide resolves` two lines apart. The exit status is now tested in
+both `live_check.sh` and `install_check.sh`, and the reason is in the comment. Same family as
+the v1.0.3 macro that nothing defined: **a check whose pass condition is "nothing was
+reported" passes when it did not run.**
+
+For the record, the first `live_check` run also failed on a CDN connection reset
+(`wsarecv: An existing connection was forcibly closed`) during the DFP download. Transient,
+not a release defect — the index had already resolved `microchip:dspic33ck 1.0.5` — and the
+re-run downloaded all three archives cleanly.
 
 **For anyone mid-bench on 1.0.4: your results carry over.** The compiled image is the same
 one. Upgrading gets you the guide that compiles, §6.9 and Part 7 — not a different binary.
