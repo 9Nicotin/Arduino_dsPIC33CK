@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino_dsPIC33CK - Part 7: Verifying a Board at the Bench</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.7; max-width: 900px; margin: 0 auto; padding: 30px; background: #f8f9fa; color: #333; }
+        h1 { color: #1a5276; border-bottom: 3px solid #2e86c1; padding-bottom: 10px; }
+        h2 { color: #2e86c1; margin-top: 40px; border-left: 4px solid #2e86c1; padding-left: 12px; }
+        h3 { color: #1a5276; margin-top: 25px; }
+        h4 { color: #1a5276; margin-bottom: 6px; }
+        .info-box { background: #d4efdf; border-left: 5px solid #27ae60; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .warning-box { background: #fdebd0; border-left: 5px solid #f39c12; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        .danger-box { background: #fadbd8; border-left: 5px solid #e74c3c; padding: 15px 20px; margin: 20px 0; border-radius: 4px; }
+        code { background: #ecf0f1; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 0.9em; }
+        pre { background: #2c3e50; color: #ecf0f1; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+        pre code { background: none; padding: 0; color: inherit; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #bdc3c7; padding: 10px 14px; text-align: left; vertical-align: top; }
+        th { background: #2e86c1; color: white; }
+        tr:nth-child(even) { background: #eaf2f8; }
+        .nav-links { background: #eaf2f8; padding: 15px; border-radius: 6px; margin: 20px 0; }
+        .nav-links a { color: #2e86c1; text-decoration: none; margin-right: 15px; }
+        .nav-links a:hover { text-decoration: underline; }
+        .step { background: white; border: 1px solid #d5dbdb; border-radius: 8px; padding: 20px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .solution { color: #27ae60; font-weight: bold; }
+        .menu { background: #eaf2f8; border: 1px solid #aed6f1; border-radius: 3px; padding: 1px 6px; font-weight: 600; white-space: nowrap; }
+        .stepnum { display: inline-block; background: #2e86c1; color: white; border-radius: 50%; width: 28px; height: 28px; text-align: center; line-height: 28px; font-weight: bold; margin-right: 8px; }
+    </style>
+</head>
+<body>
+
+<h1>Arduino_dsPIC33CK User Guide</h1>
+<h2 style="border:none; padding:0; margin-top:5px; color:#666; font-size:1em;">Part 7: Verifying a Board at the Bench</h2>
+
+<div class="nav-links">
+    <strong>Navigation:</strong>
+    <a href="part1_introduction_setup.html">Part 1: Setup</a>
+    <a href="part2_pin_mapping_hardware.html">Part 2: Pin Mapping</a>
+    <a href="part3_api_reference.html">Part 3: API Reference</a>
+    <a href="part4_testing_sketches.html">Part 4: Testing Sketches</a>
+    <a href="part5_upload_troubleshooting.html">Part 5: Upload &amp; Troubleshooting</a>
+    <a href="part6_serial_bootloader.html">Part 6: Serial Bootloader</a>
+    <a href="part7_bench_verification.html"><b>Part 7: Bench Verification</b></a>
+</div>
+
+<div class="info-box">
+    <strong>What this is.</strong> Part 6 tells you how to <em>use</em> the serial bootloader. This
+    page tells you how to <strong>prove it works</strong> on a board in front of you, in eight
+    steps, each with the output you should see and what it means when you do not see it. Work
+    through it after a fresh install, after burning a bootloader onto a new board, or when
+    something has started failing and you want to find out where.
+</div>
+
+<p>Every step here is ordered so that it depends on as little as possible of the step after it. That
+is the whole value of a procedure over a checklist: when step 5 fails you already know steps 1 to 4
+passed, so the fault is in a much smaller place. Resist the urge to skip ahead to the interesting
+part &mdash; the interesting part is where everyone's time gets lost.</p>
+
+<h2 id="before">7.1 Before you start</h2>
+
+<table>
+    <tr><th>You need</th><th>How to check</th></tr>
+    <tr>
+        <td>A dsPIC33CK256MC005 Curiosity Nano (EV08P02A)</td>
+        <td>The serial bootloader is supported on this device only. The other three boards in this
+            platform compile but have no bootloader menu.</td>
+    </tr>
+    <tr>
+        <td>This platform, <strong>1.0.4 or later</strong></td>
+        <td><span class="menu">Tools &rarr; Board &rarr; Boards Manager</span>, search
+            <code>dspic33ck</code>. In 1.0.3 the soft-entry sniffer was compiled into every board
+            by mistake, so the size figures on this page will not match.</td>
+    </tr>
+    <tr>
+        <td>Python 3 on <code>PATH</code></td>
+        <td><code>python --version</code> at a command prompt. Standard library only &mdash; there
+            is nothing to <code>pip install</code> for the upload itself.</td>
+    </tr>
+    <tr>
+        <td>MPLAB X IPE, once</td>
+        <td>Only to burn the bootloader in step 3. After that you never need it again.</td>
+    </tr>
+    <tr>
+        <td><code>pymcuprog</code>, optional but recommended</td>
+        <td><code>pip install pymcuprog</code>. Used to reset the debugger's serial bridge, which
+            <code>ipecmd</code> wedges every time it programs. Without it you unplug and replug
+            instead.</td>
+    </tr>
+</table>
+
+<p>Note the COM port your board appears on before you start &mdash; Windows Device Manager, or
+<span class="menu">Tools &rarr; Port</span>. It normally keeps the same number across reboots and
+reflashes.</p>
+
+<h2 id="step1">7.2 <span class="stepnum">1</span> Restart the Arduino IDE</h2>
+
+<p>Not optional, and easy to dismiss. <strong>The IDE reads <code>platform.txt</code> once, at
+startup.</strong> If you installed or upgraded this platform while the IDE was open, it is still
+running on the old copy.</p>
+
+<p>The symptom is that <span class="menu">Tools &rarr; Bootloader</span> is missing altogether, or
+is present but its settings have no effect &mdash; which looks exactly like a broken package and
+sends you off investigating the wrong thing entirely.</p>
+
+<h2 id="step2">7.3 <span class="stepnum">2</span> Three settings, in this order</h2>
+
+<ul>
+    <li><span class="menu">Tools &rarr; Board</span> &rarr; <em>Arduino_dsPIC33CK (dsPIC33CK256MC005
+        Curiosity Nano)</em></li>
+    <li><span class="menu">Tools &rarr; Programmer</span> &rarr; <em>nEDBG (Curiosity Nano
+        On-Board)</em></li>
+    <li><span class="menu">Tools &rarr; Bootloader</span> &rarr; <em>Serial (UART, 115200)</em></li>
+</ul>
+
+<div class="warning-box">
+    <strong>Set <em>Bootloader</em> before you compile, not before you upload.</strong> It is not
+    only an upload switch. It relinks your sketch to sit above the bootloader at
+    <code>0x1800</code> and builds the interrupt-forwarding table into it. A sketch compiled under
+    <em>None</em> cannot be uploaded over serial &mdash; and the reverse is also true, so remember
+    to set it back when you return to the debugger.
+</div>
+
+<div class="danger-box">
+    <strong>Do not pick "Serial Bootloader (UART)" under <span class="menu">Tools &rarr;
+    Programmer</span>.</strong> That is a different menu, listing debugger hardware. The serial path
+    is driven entirely by <span class="menu">Tools &rarr; Bootloader</span>. Choosing it in the
+    Programmer list is a common and confusing mistake.
+</div>
+
+<h2 id="step3">7.4 <span class="stepnum">3</span> Burn the bootloader</h2>
+
+<p><span class="menu">Tools &rarr; Burn Bootloader</span>. It takes roughly fifteen seconds. You are
+looking for two lines:</p>
+
+<pre><code>Program Succeeded
+...
+Serial bridge ready.</code></pre>
+
+<p>The first is <code>ipecmd</code>. The second is the part that matters and is easy to overlook.</p>
+
+<div class="warning-box">
+    <strong><code>Program Succeeded</code> without <code>Serial bridge ready.</code> means the COM
+    port will deliver zero bytes.</strong> Programming with <code>ipecmd</code> wedges the Curiosity
+    Nano's USB-CDC bridge every single time: the port still enumerates, still opens, and returns
+    nothing, indefinitely. The upload script reboots the debugger afterwards to clear it, but only
+    if <code>pymcuprog</code> is installed &mdash; otherwise it prints a note and carries on.
+    <br><br>
+    <span class="solution">Fix:</span> <code>pymcuprog reboot-debugger</code>, then wait about ten
+    seconds for USB to re-enumerate. Or unplug and replug the board.
+    <br><br>
+    <strong>Never conclude anything about firmware from a silent port until after that reboot.</strong>
+    During the original development of this bootloader, three separate firmwares &mdash; the Arduino
+    core, a bare-metal UART test, and a bare-metal pin bit-bang that bypassed the UART entirely
+    &mdash; were all "broken" for this reason and this reason alone.
+</div>
+
+<p>Burning erases the chip, so the board is now sitting in the bootloader with no application. That
+is a useful state, and step 5 depends on it.</p>
+
+<h2 id="step4">7.5 <span class="stepnum">4</span> Compile first, and read two numbers</h2>
+
+<p>Open <span class="menu">File &rarr; Examples &rarr; Arduino_dsPIC33CK &rarr; 04.CuriosityNANO
+&rarr; NanoSerialHello</span> and press <strong>Verify</strong> (the tick), <em>not</em> Upload.</p>
+
+<p>Compiling before uploading separates a build problem from an upload problem, and it gives you two
+numbers that confirm the <span class="menu">Bootloader</span> setting actually reached the compiler.
+Read them off the size line:</p>
+
+<table>
+    <tr><th>Setting</th><th>NanoSerialHello</th><th>Limit</th><th>What it tells you</th></tr>
+    <tr>
+        <td><em>Bootloader: None</em></td>
+        <td>4532 bytes</td>
+        <td>262144</td>
+        <td>The ordinary debugger build. Your sketch is charged nothing for a feature it is not
+            using.</td>
+    </tr>
+    <tr>
+        <td><em>Bootloader: Serial</em></td>
+        <td>6272 bytes</td>
+        <td><strong>246784</strong></td>
+        <td>The limit drops by the bootloader's reserve, and the sketch grows by
+            <strong>exactly 1740 bytes</strong>: 1608 of interrupt-forwarding table plus 132 of
+            soft-entry sniffer.</td>
+    </tr>
+</table>
+
+<div class="info-box">
+    <strong>The 1740 is the check, not the 6272.</strong> Your figure will differ the moment you
+    change a line of the sketch, but the <em>difference</em> between the two settings is fixed by the
+    design. If you switch to <em>Serial</em> and the sketch does not grow, the menu option is not
+    reaching the compiler, and the upload in step 7 will fail with no useful diagnosis &mdash; it
+    will simply report that no bootloader answered.
+</div>
+
+<p>If you want the compiled image on disk &mdash; you will need it if you fall back to the manual
+commands in <a href="#fail">7.10</a> &mdash; use <span class="menu">Sketch &rarr; Export Compiled
+Binary</span>. It writes next to your sketch:</p>
+
+<pre><code>build/microchip.dspic33ck.dspic33ck256mc005/NanoSerialHello.ino.hex</code></pre>
+
+<div class="warning-box">
+    <strong>That folder name does not include the Bootloader setting.</strong> Both menu options
+    export to the same path, and the filename gives you no hint which one produced it. If you have
+    been switching settings, export again before trusting the file &mdash; uploading a
+    <em>None</em> build over serial fails in a way that looks like a bootloader fault.
+</div>
+
+<h2 id="step5">7.6 <span class="stepnum">5</span> The first upload</h2>
+
+<p>Press <strong>Upload</strong>.</p>
+
+<p>The board has no sketch on it right now, so it is already waiting in the bootloader. <strong>This
+step therefore tests the bootloader firmware and the host tool on their own</strong>, with the
+entry handshake taken out of the picture. You should see the host sync, erase the application area,
+write a run of rows, verify by CRC, commit, and jump.</p>
+
+<p>The LED should then do whatever the sketch says, and the sketch is running.</p>
+
+<h2 id="step6">7.7 <span class="stepnum">6</span> Open the Serial Monitor</h2>
+
+<p><span class="menu">Tools &rarr; Serial Monitor</span>, <strong>115200 baud</strong>. You should
+see the uptime lines ticking.</p>
+
+<div class="info-box">
+    <strong>You will probably not see the <code>=== dsPIC33CK256MC005 ===</code> banner, and that is
+    not a fault.</strong> <code>setup()</code> runs the instant the bootloader jumps into your
+    sketch, which is well before you can get the Serial Monitor open. The banner is printed into a
+    port nobody is listening to. The ticking lines are the proof that it worked.
+    <br><br>
+    To see the banner, leave the monitor open and power-cycle the target only:
+    <pre><code>pymcuprog setsupplyvoltage -l 0
+pymcuprog setsupplyvoltage -l 3.3</code></pre>
+    This resets the MCU while leaving the USB bridge alive, so the port stays open across the reset.
+    <code>reboot-debugger</code> cannot do this &mdash; it drops the port.
+</div>
+
+<div class="warning-box">
+    <strong>A silent monitor has a second, cheaper explanation: DTR.</strong> A terminal that does
+    not assert DTR reads zero bytes from a perfectly healthy board, which is indistinguishable from
+    the wedged bridge in step 3. The Arduino IDE's Serial Monitor and PuTTY assert DTR by default;
+    hand-rolled readers using .NET <code>System.IO.Ports</code> or pyserial do not.
+</div>
+
+<h2 id="step7">7.8 <span class="stepnum">7</span> Upload a second time &mdash; the real test</h2>
+
+<p>Change something you can see &mdash; the delay, or the text it prints &mdash; and press
+<strong>Upload</strong> again, <strong>without touching the board.</strong></p>
+
+<p>This is the step the whole feature exists for. The board is now running <em>your sketch</em>, not
+the bootloader, so the host cannot simply talk to a waiting bootloader as it did in step 5. It has
+to ask the running sketch to reset itself: it sends a ten-byte magic sequence, the sketch's serial
+receive interrupt recognises it, sets a flag that survives a reset, and reboots into the
+bootloader.</p>
+
+<p>If that works with no button held and no cable touched, the feature is doing what it claims.
+This is also the step that fails if the <span class="menu">Bootloader</span> setting was not applied
+at compile time, which is why step 4 checked the 1740 bytes.</p>
+
+<div class="danger-box">
+    <strong>A sketch that never calls <code>Serial.begin()</code> blocks the next serial
+    upload.</strong> Soft entry needs a live serial receive interrupt in the <em>running</em> sketch.
+    <code>NanoBlink</code> has no <code>Serial</code> in it at all &mdash; and it is the first
+    example most people open. See <a href="part6_serial_bootloader.html#recover">6.5</a>; the way out
+    is <span class="menu">Tools &rarr; Burn Bootloader</span>, which erases the sketch and leaves the
+    board waiting, or holding <strong>SW0</strong> through a power cycle.
+</div>
+
+<h2 id="step8">7.9 <span class="stepnum">8</span> Interrupt an upload on purpose</h2>
+
+<p>The last step checks the property you will care about most on the day you need it: that a failed
+upload leaves a board you can still recover, over serial, with no debugger.</p>
+
+<ol>
+    <li>Press <strong>Upload</strong>.</li>
+    <li><strong>Unplug the USB cable part-way through the transfer</strong>, while rows are being
+        written.</li>
+    <li>Plug it back in and wait for the port to reappear.</li>
+    <li>Press <strong>Upload</strong> again.</li>
+</ol>
+
+<p>Two things must both be true. The board must still answer, and it must <strong>not</strong> have
+jumped into the half-written image. That is what writing the signature last buys: the image is
+marked valid only after every row has been verified by the device's own CRC-32, so an interrupted
+upload leaves no valid application and the board simply waits for the host again.</p>
+
+<div class="warning-box">
+    <strong>Use <code>NanoSerialHello</code> for this, not <code>NanoBlink</code>.</strong> The
+    interrupted attempt leaves no valid application either way, so the retry does not need soft
+    entry. But if the retry <em>succeeds</em>, the sketch it has just installed is the one that has
+    to accept the upload after that &mdash; and <code>NanoBlink</code> never calls
+    <code>Serial.begin()</code>, so it would lock the board out and turn a passing test into a
+    recovery job.
+</div>
+
+<h2 id="fail">7.10 When a step fails</h2>
+
+<p>Work from the smallest claim outwards. The host tool can be driven directly, which takes the IDE
+out of the picture entirely:</p>
+
+<pre><code>python "%LOCALAPPDATA%\Arduino15\packages\microchip\hardware\dspic33ck\&lt;version&gt;\tools\serial_upload.py" ^
+  --port COM7 --hex path\to\sketch.ino.hex --verbose</code></pre>
+
+<table>
+    <tr><th>Add this</th><th>To find out</th></tr>
+    <tr>
+        <td><code>--dry-run</code></td>
+        <td>Whether the HEX file itself is sane. Parses and checks it without opening a port, so it
+            works with no board attached.</td>
+    </tr>
+    <tr>
+        <td><code>--no-soft-entry</code></td>
+        <td>Whether the problem is the <em>protocol</em> or the <em>entry handshake</em> &mdash; the
+            two independent halves. Run it right after <span class="menu">Burn Bootloader</span>,
+            when the board is already waiting: if this succeeds and a normal upload does not, soft
+            entry is your fault area, not the protocol.</td>
+    </tr>
+    <tr>
+        <td><code>--no-jump</code></td>
+        <td>Leaves the board in the bootloader after committing, so you can upload repeatedly
+            without soft entry being involved at all.</td>
+    </tr>
+    <tr>
+        <td><code>--verbose</code></td>
+        <td>Reports retries. Occasional retries are normal; a wall of them points at the serial
+            bridge rather than the protocol.</td>
+    </tr>
+</table>
+
+<h3>The three explanations worth ruling out first</h3>
+
+<table>
+    <tr><th>Symptom</th><th>Likely cause</th></tr>
+    <tr>
+        <td>No bootloader answered</td>
+        <td>The running sketch has no <code>Serial.begin()</code>; or the sketch was compiled under
+            <em>Bootloader: None</em>; or a previous debugger upload erased the bootloader. Run
+            <span class="menu">Burn Bootloader</span> &mdash; it resolves all three.</td>
+    </tr>
+    <tr>
+        <td>Port opens but delivers nothing</td>
+        <td>The CDC bridge is wedged from an <code>ipecmd</code> session, or your terminal does not
+            assert DTR. Neither is a firmware fault. See <a href="#step3">7.4</a> and
+            <a href="#step6">7.7</a>.</td>
+    </tr>
+    <tr>
+        <td>Everything worked yesterday, nothing works today</td>
+        <td>Check <span class="menu">Tools &rarr; Bootloader</span> is still <em>Serial</em>, and
+            that nothing has been uploaded through <span class="menu">Sketch &rarr; Upload Using
+            Programmer</span> since &mdash; that erases the whole device, bootloader included.</td>
+    </tr>
+</table>
+
+<h2 id="notproven">7.11 What this procedure does not prove</h2>
+
+<p>It is worth being precise about the edges, because a procedure that implies more coverage than it
+has is worse than a short one.</p>
+
+<ul>
+    <li><strong>A power cut during a flash row write is not covered.</strong> Step 8 interrupts the
+        <em>transfer</em>, and what the board decides when it reboots is genuinely verified. But the
+        NVM controller being interrupted <em>mid-write</em> is a different event, and it has not been
+        reproduced on a bench. It is a documented limit, not a tested one.</li>
+    <li><strong>Nothing here covers the other three devices.</strong> The bootloader is
+        dsPIC33CK256MC005 only. The other boards compile and upload through a debugger; they have no
+        bootloader menu, and none of the size figures on this page apply to them.</li>
+    <li><strong>It does not test your sketch.</strong> It tests that the board can be programmed.
+        For the peripherals, work through
+        <a href="part4_testing_sketches.html">Part 4</a> and the
+        <code>04.CuriosityNANO</code> examples.</li>
+    <li><strong>Passing step 7 once does not prove every sketch can be replaced.</strong> Soft entry
+        depends on the sketch that happens to be running. A sketch that disables interrupts for long
+        periods, or never opens the serial port, needs <span class="menu">Burn Bootloader</span> or
+        the SW0 route instead.</li>
+    <li><strong>It does not prove a third-party USB-serial adapter works.</strong> Every upload in
+        this procedure goes through the Curiosity Nano's own CDC bridge. Replacing that bridge with a
+        CP2102 or FT232 should change nothing &mdash; the upload path contains no debugger at all
+        &mdash; but it cannot be tried on this board, because the on-board debugger is already
+        connected to the same two pins. See
+        <a href="part6_serial_bootloader.html#noDebugger">6.9</a>.</li>
+</ul>
+
+<h2 id="record">7.12 A record you can keep</h2>
+
+<p>Eight lines, so that "it worked" becomes something you can compare against next month.</p>
+
+<table>
+    <tr><th>#</th><th>Step</th><th>What proves it</th><th>Result</th></tr>
+    <tr><td>1</td><td>IDE restarted</td><td><span class="menu">Tools &rarr; Bootloader</span> is present</td><td></td></tr>
+    <tr><td>2</td><td>Board, Programmer, Bootloader set</td><td>All three read back as expected</td><td></td></tr>
+    <tr><td>3</td><td>Bootloader burned</td><td><code>Program Succeeded</code> and <code>Serial bridge ready.</code></td><td></td></tr>
+    <tr><td>4</td><td>Compiles for the bootloader</td><td>Limit 246784, and +1740 bytes versus <em>None</em></td><td></td></tr>
+    <tr><td>5</td><td>First serial upload</td><td>Sync, erase, write, verify, commit, jump</td><td></td></tr>
+    <tr><td>6</td><td>Serial Monitor</td><td>Uptime lines at 115200</td><td></td></tr>
+    <tr><td>7</td><td>Soft entry</td><td>Second upload with no hands on the board</td><td></td></tr>
+    <tr><td>8</td><td>Interrupted upload recovers</td><td>Board answers again; no jump into a partial image</td><td></td></tr>
+</table>
+
+<div class="nav-links">
+    <strong>Navigation:</strong>
+    <a href="part1_introduction_setup.html">Part 1: Setup</a>
+    <a href="part2_pin_mapping_hardware.html">Part 2: Pin Mapping</a>
+    <a href="part3_api_reference.html">Part 3: API Reference</a>
+    <a href="part4_testing_sketches.html">Part 4: Testing Sketches</a>
+    <a href="part5_upload_troubleshooting.html">Part 5: Upload &amp; Troubleshooting</a>
+    <a href="part6_serial_bootloader.html">Part 6: Serial Bootloader</a>
+    <a href="part7_bench_verification.html"><b>Part 7: Bench Verification</b></a>
+</div>
+
+</body>
+</html>

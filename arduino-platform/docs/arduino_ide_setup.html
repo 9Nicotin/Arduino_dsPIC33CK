@@ -165,7 +165,7 @@
  * LED on pin D0 (RA0) blinks every 1 second.
  *
  * NOTE: XC-DSC v4.00+ compiles this core as C++, so ordinary Arduino syntax works:
- *   - Serial.begin() / Serial.print() (Serial_begin() still works from .c files)
+ *   - Serial.begin() / Serial.print() (Serial.begin() still works from .c files)
  *   - Classes, templates and overloading are available
  *   - But there is no String class and no new/delete
  */
@@ -192,7 +192,7 @@ void loop()
     <strong>Critical Rules When Writing Sketches:</strong>
     <ol style="margin-bottom:0">
         <li>Always include <code>#include "Arduino.h"</code> at the top</li>
-        <li>For Serial, add <code>#include "HardwareSerial.h"</code> and use <code>Serial_begin()</code> not <code>Serial.begin()</code></li>
+        <li>For Serial, add <code>#include "HardwareSerial.h"</code> and use <code>Serial.begin()</code> not <code>Serial.begin()</code></li>
         <li>No C++ features: no classes, no String, no new/delete, no templates</li>
         <li>Declare all variables at the TOP of a block (C89-style)</li>
         <li>Do NOT write your own <code>main()</code> — only <code>setup()</code> and <code>loop()</code></li>
@@ -268,15 +268,15 @@ Upload complete.</div>
 void setup()
 {
     pinMode(LED_BUILTIN, OUTPUT);
-    Serial_begin(115200);
-    Serial_println("Hello from Arduino_dsPIC33CK!");
+    Serial.begin(115200);
+    Serial.println("Hello from Arduino_dsPIC33CK!");
 }
 
 void loop()
 {
     int adc = analogRead(A0);
-    Serial_print("ADC: ");
-    Serial_println_int(adc, DEC);
+    Serial.print("ADC: ");
+    Serial.println(adc);
     delay(500);
 }
 </code></pre>
@@ -311,7 +311,7 @@ void loop()
 
 <table>
     <tr><th>Feature</th><th>Standard Arduino</th><th>Arduino_dsPIC33CK</th></tr>
-    <tr><td>Serial</td><td><code>Serial.begin(9600)</code></td><td><code>Serial_begin(9600)</code></td></tr>
+    <tr><td>Serial</td><td><code>Serial.begin(9600)</code></td><td><code>Serial.begin(9600)</code></td></tr>
     <tr><td>Print number</td><td><code>Serial.println(val)</code></td><td><code>Serial.println(val)</code> &mdash; same</td></tr>
     <tr><td>String type</td><td><code>String s = "hello";</code></td><td><code>const char *s = "hello";</code> (no <code>String</code> class)</td></tr>
     <tr><td>Variables</td><td>Declare anywhere</td><td>Declare anywhere (C++)</td></tr>

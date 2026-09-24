@@ -41,6 +41,7 @@
     <a href="part4_testing_sketches.html"><b>Part 4: Testing Sketches</b></a>
     <a href="part5_upload_troubleshooting.html">Part 5: Upload & Troubleshooting</a>
     <a href="part6_serial_bootloader.html">Part 6: Serial Bootloader</a>
+    <a href="part7_bench_verification.html">Part 7: Bench Verification</a>
 </div>
 
 <h2>4.1 Test #1: Blink (Digital Output)</h2>
@@ -204,17 +205,17 @@ unsigned long count = 0;
 void setup()
 {
     pinMode(LED_BUILTIN, OUTPUT);
-    Serial_begin(9600);  // 9600 baud, 8N1
+    Serial.begin(9600);  // 9600 baud, 8N1
     delay(100);          // Wait for UART to stabilize
-    Serial_println("=== Arduino_dsPIC33CK Started ===");
-    Serial_println("Serial communication test");
+    Serial.println("=== Arduino_dsPIC33CK Started ===");
+    Serial.println("Serial communication test");
 }
 
 void loop()
 {
     count++;
-    Serial_print("Loop count: ");
-    Serial_println_int(count, DEC);
+    Serial.print("Loop count: ");
+    Serial.println(count);
 
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));  // Toggle LED
     delay(1000);
@@ -283,22 +284,22 @@ void loop()
 void setup()
 {
     pinMode(LED_BUILTIN, OUTPUT);
-    Serial_begin(115200);
-    Serial_println("=== Echo Test ===");
-    Serial_println("Type characters - they will be echoed back.");
+    Serial.begin(115200);
+    Serial.println("=== Echo Test ===");
+    Serial.println("Type characters - they will be echoed back.");
 }
 
 void loop()
 {
-    if (Serial_available() > 0) {
-        int c = Serial_read();
+    if (Serial.available() > 0) {
+        int c = Serial.read();
 
         // Echo the character
-        Serial_print("Received: '");
-        Serial_write((uint8_t)c);
-        Serial_print("' (0x");
-        Serial_print_int(c, HEX);
-        Serial_println(")");
+        Serial.print("Received: '");
+        Serial.write((uint8_t)c);
+        Serial.print("' (0x");
+        Serial.print(c, HEX);
+        Serial.println(")");
 
         // Blink LED on each received character
         digitalWrite(LED_BUILTIN, HIGH);
@@ -365,11 +366,11 @@ void loop()
 
 void setup()
 {
-    Serial_begin(115200);
-    Serial_println("=== Analog Read Test ===");
-    Serial_println("Turn the potentiometer connected to A0 (RB0)");
-    Serial_println("ADC range: 0 (0V) to 1023 (3.3V)");
-    Serial_println("");
+    Serial.begin(115200);
+    Serial.println("=== Analog Read Test ===");
+    Serial.println("Turn the potentiometer connected to A0 (RB0)");
+    Serial.println("ADC range: 0 (0V) to 1023 (3.3V)");
+    Serial.println("");
 }
 
 void loop()
@@ -380,15 +381,15 @@ void loop()
     // voltage = value * 3.3 / 1023
     long voltage_mv = (long)value * 3300L / 1023L;
 
-    Serial_print("ADC: ");
-    Serial_print_int(value, DEC);
-    Serial_print("  Voltage: ");
-    Serial_print_int(voltage_mv / 1000, DEC);
-    Serial_print(".");
-    if ((voltage_mv % 1000) < 100) Serial_print("0");
-    if ((voltage_mv % 1000) < 10) Serial_print("0");
-    Serial_print_int(voltage_mv % 1000, DEC);
-    Serial_println(" V");
+    Serial.print("ADC: ");
+    Serial.print(value);
+    Serial.print("  Voltage: ");
+    Serial.print(voltage_mv / 1000);
+    Serial.print(".");
+    if ((voltage_mv % 1000) &lt; 100) Serial.print("0");
+    if ((voltage_mv % 1000) &lt; 10) Serial.print("0");
+    Serial.print(voltage_mv % 1000);
+    Serial.println(" V");
 
     delay(250);
 }
@@ -450,9 +451,9 @@ void loop()
 
 void setup()
 {
-    Serial_begin(115200);
-    Serial_println("=== PWM Fade Test ===");
-    Serial_println("LED on D5 (RB0) should fade in and out");
+    Serial.begin(115200);
+    Serial.println("=== PWM Fade Test ===");
+    Serial.println("LED on D5 (RB0) should fade in and out");
 }
 
 void loop()
@@ -460,12 +461,12 @@ void loop()
     int brightness;
 
     // Fade in
-    for (brightness = 0; brightness <= 255; brightness += 5) {
+    for (brightness = 0; brightness &lt;= 255; brightness += 5) {
         analogWrite(5, brightness);  // D5 = RB0, SCCP1 PWM
         delay(30);
     }
 
-    Serial_println("Brightness: MAX");
+    Serial.println("Brightness: MAX");
 
     // Fade out
     for (brightness = 255; brightness >= 0; brightness -= 5) {
@@ -473,7 +474,7 @@ void loop()
         delay(30);
     }
 
-    Serial_println("Brightness: MIN");
+    Serial.println("Brightness: MIN");
     delay(500);
 }
 </code></pre>
@@ -523,11 +524,11 @@ unsigned long loopCount = 0;
 void setup()
 {
     pinMode(LED_BUILTIN, OUTPUT);
-    Serial_begin(115200);
-    Serial_println("=== Millis Timing Test ===");
-    Serial_println("LED toggles every 500ms");
-    Serial_println("Serial prints every 2000ms");
-    Serial_println("Loop counter shows non-blocking operation");
+    Serial.begin(115200);
+    Serial.println("=== Millis Timing Test ===");
+    Serial.println("LED toggles every 500ms");
+    Serial.println("Serial prints every 2000ms");
+    Serial.println("Loop counter shows non-blocking operation");
 }
 
 void loop()
@@ -546,10 +547,10 @@ void loop()
     if (currentMillis - previousPrintMillis >= 2000) {
         previousPrintMillis = currentMillis;
 
-        Serial_print("Time: ");
-        Serial_print_int(currentMillis / 1000, DEC);
-        Serial_print("s  Loops: ");
-        Serial_println_int(loopCount, DEC);
+        Serial.print("Time: ");
+        Serial.print(currentMillis / 1000);
+        Serial.print("s  Loops: ");
+        Serial.println(loopCount);
         loopCount = 0;
     }
 }
@@ -621,9 +622,9 @@ void setup()
 {
     pinMode(LED_BUILTIN, OUTPUT);
     pinMode(BUTTON_PIN, INPUT_PULLUP);  // Internal pull-up resistor
-    Serial_begin(115200);
-    Serial_println("=== Button Test ===");
-    Serial_println("Press button on D2 to toggle LED");
+    Serial.begin(115200);
+    Serial.println("=== Button Test ===");
+    Serial.println("Press button on D2 to toggle LED");
 }
 
 void loop()
@@ -634,10 +635,10 @@ void loop()
         lastState = buttonState;
 
         if (buttonState == LOW) {
-            Serial_println("Button PRESSED");
+            Serial.println("Button PRESSED");
             digitalWrite(LED_BUILTIN, HIGH);
         } else {
-            Serial_println("Button RELEASED");
+            Serial.println("Button RELEASED");
             digitalWrite(LED_BUILTIN, LOW);
         }
         delay(50);  // Simple debounce
@@ -689,24 +690,24 @@ void setup()
     pinMode(LED_BUILTIN, OUTPUT);
     pinMode(BUTTON_PIN, INPUT_PULLUP);
 
-    Serial_begin(115200);
+    Serial.begin(115200);
     delay(100);
-    Serial_println("====================================");
-    Serial_println("  Arduino_dsPIC33CK Integration Test");
-    Serial_println("====================================");
-    Serial_println("");
-    Serial_println("Functions tested:");
-    Serial_println("  [OK] pinMode / digitalWrite / digitalRead");
-    Serial_println("  [OK] Serial_begin / print / println");
-    Serial_println("  [..] analogRead (potentiometer on A1)");
-    Serial_println("  [..] analogWrite/PWM (LED on D5)");
-    Serial_println("  [..] millis() timing");
-    Serial_println("  [..] Button input (D2)");
-    Serial_println("");
-    Serial_println("Press button to toggle mode:");
-    Serial_println("  Mode 0: Auto LED fade");
-    Serial_println("  Mode 1: Pot controls LED brightness");
-    Serial_println("");
+    Serial.println("====================================");
+    Serial.println("  Arduino_dsPIC33CK Integration Test");
+    Serial.println("====================================");
+    Serial.println("");
+    Serial.println("Functions tested:");
+    Serial.println("  [OK] pinMode / digitalWrite / digitalRead");
+    Serial.println("  [OK] Serial.begin / print / println");
+    Serial.println("  [..] analogRead (potentiometer on A1)");
+    Serial.println("  [..] analogWrite/PWM (LED on D5)");
+    Serial.println("  [..] millis() timing");
+    Serial.println("  [..] Button input (D2)");
+    Serial.println("");
+    Serial.println("Press button to toggle mode:");
+    Serial.println("  Mode 0: Auto LED fade");
+    Serial.println("  Mode 1: Pot controls LED brightness");
+    Serial.println("");
 }
 
 void loop()
@@ -719,8 +720,8 @@ void loop()
     int btn = digitalRead(BUTTON_PIN);
     if (btn == LOW && lastButton == HIGH) {
         mode = !mode;
-        Serial_print(">> Mode changed to: ");
-        Serial_println_int(mode, DEC);
+        Serial.print(">> Mode changed to: ");
+        Serial.println(mode);
         delay(200);  // Debounce
     }
     lastButton = btn;
@@ -729,7 +730,7 @@ void loop()
     if (mode == 0) {
         brightness += fadeDir;
         if (brightness >= 255) { brightness = 255; fadeDir = -5; }
-        if (brightness <= 0)   { brightness = 0;   fadeDir = 5;  }
+        if (brightness &lt;= 0)   { brightness = 0;   fadeDir = 5;  }
         analogWrite(PWM_PIN, brightness);
     }
     // Mode 1: Pot controls brightness
@@ -751,16 +752,16 @@ void loop()
         lastPrintTime = millis();
 
         int pot = analogRead(ANALOG_PIN);
-        Serial_print("[");
-        Serial_print_int(millis() / 1000, DEC);
-        Serial_print("s] Mode:");
-        Serial_print_int(mode, DEC);
-        Serial_print(" ADC:");
-        Serial_print_int(pot, DEC);
-        Serial_print(" PWM:");
-        Serial_print_int(brightness, DEC);
-        Serial_print(" Btn:");
-        Serial_println(btn == LOW ? "PRESS" : "---");
+        Serial.print("[");
+        Serial.print(millis() / 1000);
+        Serial.print("s] Mode:");
+        Serial.print(mode);
+        Serial.print(" ADC:");
+        Serial.print(pot);
+        Serial.print(" PWM:");
+        Serial.print(brightness);
+        Serial.print(" Btn:");
+        Serial.println(btn == LOW ? "PRESS" : "---");
     }
 
     delay(20);  // ~50 Hz update rate
@@ -800,13 +801,13 @@ void loop()
     </tr>
     <tr>
         <td>Test 2</td>
-        <td>Serial_begin, Serial_print</td>
+        <td>Serial.begin, Serial.print</td>
         <td>Text appears in terminal</td>
         <td>[ ]</td>
     </tr>
     <tr>
         <td>Test 3</td>
-        <td>Serial_available, Serial_read</td>
+        <td>Serial.available, Serial.read</td>
         <td>Characters echo correctly</td>
         <td>[ ]</td>
     </tr>

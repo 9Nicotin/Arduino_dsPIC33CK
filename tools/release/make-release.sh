@@ -128,9 +128,11 @@ PY
 }
 
 # --- 1. the platform archive -------------------------------------------------
-# Contents are exactly arduino-platform/microchip/dspic33ck/, which is also what
+# Contents are arduino-platform/microchip/dspic33ck/, which is also what
 # install_arduino_ide.bat copies -- minus platform.local.txt, which is
-# machine-specific and must never ship (the .template stays, as documentation).
+# machine-specific and must never ship (the .template stays, as documentation) --
+# plus docs/, which is assembled below and is the one thing the archive carries
+# that a local install_arduino_ide.bat install does not.
 echo "== platform"
 STAGE="$OUT/stage/dspic33ck-$VERSION"
 mkdir -p "$STAGE"
@@ -140,6 +142,51 @@ find "$STAGE" -name '*.o' -o -name '*.elf' -o -name '.DS_Store' -o -name 'Thumbs
   -o -name '__pycache__' -prune | while IFS= read -r junk; do rm -rf "$junk"; done
 [ ! -e "$STAGE/platform.local.txt" ] || { echo "platform.local.txt leaked into the archive" >&2; exit 1; }
 
+# --- the user guide, copied into the archive rather than moved into the tree ---
+# The docs live at arduino-platform/docs/, which is OUTSIDE the directory this
+# archive is built from, so up to and including v1.0.4 a Board Manager install
+# carried none of them: the guide existed only on GitHub. They ship as docs/ so an
+# installed platform is self-documenting with no network.
+#
+# COPIED, not moved, and that is deliberate. The published v1.0.3 and v1.0.4
+# release notes both link to
+#   .../blob/main/arduino-platform/docs/part6_serial_bootloader.html
+# and /blob/main/ resolves against the branch as it is today, so relocating the
+# directory would 404 those links permanently, for readers of releases that have
+# already shipped. The source of truth stays where it is and the archive gets a
+# copy; the byte-identity check after zipdir is what keeps the copy honest.
+#
+# The list is explicit rather than a glob, for two reasons: docs/how-to-use/ is a
+# superseded 124 KB copy of the same guide and docs/how-to-use.zip is a zip inside
+# a zip, neither of which belongs in an install; and a glob would silently ship
+# whatever scratch file someone left in the directory. Adding a page to the
+# package should be a deliberate act, so a new part must be added here too.
+DOCS=(
+  arduino_ide_setup.html
+  part1_introduction_setup.html
+  part2_pin_mapping_hardware.html
+  part3_api_reference.html
+  part4_testing_sketches.html
+  part5_upload_troubleshooting.html
+  part6_serial_bootloader.html
+  part7_bench_verification.html
+)
+DOCSRC="$REPO/arduino-platform/docs"
+mkdir -p "$STAGE/docs"
+for d in "${DOCS[@]}"; do
+  [ -f "$DOCSRC/$d" ] || { echo "doc listed but not present: docs/$d" >&2; exit 1; }
+  # Tracked-ness is asserted per file rather than inferred, because the stage
+  # check below is about to be told to EXPECT these paths -- without this, an
+  # uncommitted doc would ship and the check that exists to catch exactly that
+  # would wave it through.
+  git -C "$REPO" ls-files --error-unmatch "arduino-platform/docs/$d" >/dev/null 2>&1 || {
+    echo "doc is not tracked, so it must not ship: docs/$d" >&2
+    echo "commit it, or remove it from the DOCS list in $(basename "$0")" >&2
+    exit 1; }
+  cp "$DOCSRC/$d" "$STAGE/docs/$d"
+done
+echo "  docs: ${#DOCS[@]} pages"
+
 # `cp -r` copies the working tree, which means anything gitignored rides along --
 # that is how tools/MPLABXLog.xml (a 103-byte skeleton ipecmd drops next to itself)
 # ended up in both the 1.0.0 and 1.0.1 archives. Rather than blacklist each stray
@@ -147,8 +194,14 @@ find "$STAGE" -name '*.o' -o -name '*.elf' -o -name '.DS_Store' -o -name 'Thumbs
 # here is either junk or something the author forgot to commit, and both should stop
 # the release. Uncommitted *modifications* are still allowed on purpose -- that is
 # what makes a release testable before the commit that carries it.
-git -C "$REPO" ls-files "arduino-platform/microchip/dspic33ck" \
-  | sed 's|^arduino-platform/microchip/dspic33ck/||' | LC_ALL=C sort >"$OUT/stage.tracked"
+#
+# The expected set is the tracked platform tree PLUS the docs staged above, each
+# of which was just asserted to be tracked in its own right.
+{
+  git -C "$REPO" ls-files "arduino-platform/microchip/dspic33ck" \
+    | sed 's|^arduino-platform/microchip/dspic33ck/||'
+  printf 'docs/%s\n' "${DOCS[@]}"
+} | LC_ALL=C sort >"$OUT/stage.tracked"
 ( cd "$STAGE" && find . -type f | sed 's|^\./||' | LC_ALL=C sort ) >"$OUT/stage.actual"
 if ! extra=$(comm -13 "$OUT/stage.tracked" "$OUT/stage.actual") || [ -n "$extra" ]; then
   echo "untracked files would ship in the archive:" >&2
@@ -163,6 +216,35 @@ if missing=$(comm -23 "$OUT/stage.tracked" "$OUT/stage.actual") && [ -n "$missin
 fi
 
 zipdir "$STAGE" "$OUT/$PLATFORM_ARCHIVE" "dspic33ck-$VERSION"
+
+# Read the docs back OUT of the finished zip and compare them to the repo. The
+# stage check above compares file NAMES; this compares bytes, and it reads the
+# artifact that will actually be published rather than the directory it was built
+# from. A truncated or stale guide in the package is worse than no guide at all,
+# because a reader has no way to tell which one they have.
+"$PY" - "$OUT/$PLATFORM_ARCHIVE" "dspic33ck-$VERSION" "$DOCSRC" "${DOCS[@]}" <<'PY'
+import os, sys, zipfile
+zpath, root, docsrc = sys.argv[1:4]
+names = sys.argv[4:]
+prefix = root + '/docs/'
+with zipfile.ZipFile(zpath) as z:
+    have = set(z.namelist())
+    for n in names:
+        entry = prefix + n
+        if entry not in have:
+            sys.exit('archive is missing %s' % entry)
+        got = z.read(entry)
+        want = open(os.path.join(docsrc, n), 'rb').read()
+        if got != want:
+            sys.exit('%s differs from the repo copy (%d vs %d bytes)'
+                     % (entry, len(got), len(want)))
+    extra = sorted(e for e in have
+                   if e.startswith(prefix) and e[len(prefix):] not in names)
+    if extra:
+        sys.exit('unexpected files under docs/ in the archive: %s' % ', '.join(extra))
+print('  docs verified in the archive: %d pages, byte-identical to the repo'
+      % len(names))
+PY
 
 # --- 2. the pruned DFP archives ---------------------------------------------
 for spec in "${TOOLS[@]}"; do

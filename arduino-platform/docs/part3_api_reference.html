@@ -39,6 +39,7 @@
     <a href="part4_testing_sketches.html">Part 4: Testing Sketches</a>
     <a href="part5_upload_troubleshooting.html">Part 5: Upload & Troubleshooting</a>
     <a href="part6_serial_bootloader.html">Part 6: Serial Bootloader</a>
+    <a href="part7_bench_verification.html">Part 7: Bench Verification</a>
 </div>
 
 <h2>3.1 Digital I/O Functions</h2>
@@ -148,7 +149,7 @@ float tempC = voltage * 100.0;        // LM35: 10mV per degree C
 void loop() {
     // Fade up
     int i;
-    for (i = 0; i <= 255; i += 5) {
+    for (i = 0; i &lt;= 255; i += 5) {
         analogWrite(5, i);
         delay(30);
     }
@@ -201,9 +202,9 @@ void loop() {
 unsigned long start = micros();
 // ... code to measure ...
 unsigned long elapsed = micros() - start;
-Serial_print("Took ");
-Serial_print_int(elapsed, DEC);
-Serial_println(" microseconds");
+Serial.print("Took ");
+Serial.print(elapsed);
+Serial.println(" microseconds");
 </code></pre>
 </div>
 
@@ -232,12 +233,12 @@ delayMicroseconds(100);  // 100 microsecond pause
 <h2>3.4 Serial (UART) Functions</h2>
 
 <div class="warning-box">
-    <strong>C-Style API:</strong> Because XC16 is a C-only compiler (no C++), Serial uses function calls like <code>Serial_begin()</code> instead of <code>Serial.begin()</code>.
+    <strong>C-Style API:</strong> Because XC16 is a C-only compiler (no C++), Serial uses function calls like <code>Serial.begin()</code> instead of <code>Serial.begin()</code>.
 </div>
 
 <div class="api-func">
-    <h4>Serial_begin()</h4>
-    <p class="api-sig">void Serial_begin(unsigned long baud)</p>
+    <h4>Serial.begin()</h4>
+    <p class="api-sig">void Serial.begin(unsigned long baud)</p>
     <p>Initializes UART1 with the specified baud rate. Configures PPS pins automatically (TX=RB5, RX=RB4).</p>
     <table>
         <tr><th>Baud Rate</th><th>Common Use</th></tr>
@@ -248,47 +249,47 @@ delayMicroseconds(100);  // 100 microsecond pause
         <tr><td>115200</td><td>Fast (recommended for most use)</td></tr>
     </table>
     <pre><code>void setup() {
-    Serial_begin(115200);  // Start serial at 115200 baud
-    Serial_println("System ready!");
+    Serial.begin(115200);  // Start serial at 115200 baud
+    Serial.println("System ready!");
 }
 </code></pre>
 </div>
 
 <div class="api-func">
-    <h4>Serial_print() / Serial_println()</h4>
-    <p class="api-sig">size_t Serial_print(const char *str)</p>
-    <p class="api-sig">size_t Serial_println(const char *str)</p>
+    <h4>Serial.print() / Serial.println()</h4>
+    <p class="api-sig">size_t Serial.print(const char *str)</p>
+    <p class="api-sig">size_t Serial.println(const char *str)</p>
     <p>Sends a string over UART. <code>println</code> adds a newline (CR+LF) at the end.</p>
-    <pre><code>Serial_print("Value: ");       // No newline
-Serial_println("Hello!");      // With newline
-Serial_print_int(42, DEC);     // Print number in decimal
-Serial_print_int(255, HEX);    // Print "FF" (hex)
-Serial_print_int(0b1010, BIN); // Print "1010" (binary)
-Serial_println_int(analogRead(A0), DEC);  // Print ADC value
+    <pre><code>Serial.print("Value: ");       // No newline
+Serial.println("Hello!");      // With newline
+Serial.print(42);     // Print number in decimal
+Serial.print(255, HEX);    // Print "FF" (hex)
+Serial.print(0b1010, BIN); // Print "1010" (binary)
+Serial.println(analogRead(A0));  // Print ADC value
 </code></pre>
 </div>
 
 <div class="api-func">
-    <h4>Serial_available() / Serial_read()</h4>
-    <p class="api-sig">int Serial_available(void)</p>
-    <p class="api-sig">int Serial_read(void)</p>
+    <h4>Serial.available() / Serial.read()</h4>
+    <p class="api-sig">int Serial.available(void)</p>
+    <p class="api-sig">int Serial.read(void)</p>
     <p>Check if data has been received and read one byte from the RX buffer.</p>
     <pre><code>// Example: Echo received characters
 void loop() {
-    if (Serial_available() > 0) {
-        int c = Serial_read();    // Read one byte
-        Serial_write((uint8_t)c); // Echo it back
+    if (Serial.available() > 0) {
+        int c = Serial.read();    // Read one byte
+        Serial.write((uint8_t)c); // Echo it back
     }
 }
 </code></pre>
 </div>
 
 <div class="api-func">
-    <h4>Serial_write()</h4>
-    <p class="api-sig">size_t Serial_write(uint8_t c)</p>
+    <h4>Serial.write()</h4>
+    <p class="api-sig">size_t Serial.write(uint8_t c)</p>
     <p>Sends a single raw byte over UART (no formatting).</p>
-    <pre><code>Serial_write(0x41);  // Sends 'A'
-Serial_write('\n');  // Sends newline character
+    <pre><code>Serial.write(0x41);  // Sends 'A'
+Serial.write('\n');  // Sends newline character
 </code></pre>
 </div>
 

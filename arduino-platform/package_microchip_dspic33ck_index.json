@@ -12,15 +12,15 @@
         {
           "name": "Arduino_dsPIC33CK (Windows only)",
           "architecture": "dspic33ck",
-          "version": "1.0.4",
+          "version": "1.0.5",
           "category": "Contributed",
           "help": {
             "online": "https://github.com/9Nicotin/Arduino_dsPIC33CK"
           },
-          "url": "https://github.com/9Nicotin/Arduino_dsPIC33CK/releases/download/v1.0.4/dspic33ck-arduino-core-1.0.4.zip",
-          "archiveFileName": "dspic33ck-arduino-core-1.0.4.zip",
-          "checksum": "SHA-256:257ab974a5e9d8cccaf1b2c7e3354143692cf807fa98c87f26edd4e3c41629b4",
-          "size": "256003",
+          "url": "https://github.com/9Nicotin/Arduino_dsPIC33CK/releases/download/v1.0.5/dspic33ck-arduino-core-1.0.5.zip",
+          "archiveFileName": "dspic33ck-arduino-core-1.0.5.zip",
+          "checksum": "SHA-256:79148b335b47e42d42298f9ddfe50d667714c16a3d4d8caa98b9e0d678d5cd6d",
+          "size": "311937",
           "boards": [
             {
               "name": "Arduino_dsPIC33CK (dsPIC33CK32MP102)"
@@ -56,7 +56,7 @@
           "systems": [
             {
               "host": "i686-mingw32",
-              "url": "https://github.com/9Nicotin/Arduino_dsPIC33CK/releases/download/v1.0.4/dsPIC33CK-MP_DFP-1.16.521-pruned.1.zip",
+              "url": "https://github.com/9Nicotin/Arduino_dsPIC33CK/releases/download/v1.0.5/dsPIC33CK-MP_DFP-1.16.521-pruned.1.zip",
               "archiveFileName": "dsPIC33CK-MP_DFP-1.16.521-pruned.1.zip",
               "size": "810615",
               "checksum": "SHA-256:6cee9c30b3027b2dd14ccd64483440a5432613e3945a7d4a820795cfd0476899"
@@ -69,7 +69,7 @@
           "systems": [
             {
               "host": "i686-mingw32",
-              "url": "https://github.com/9Nicotin/Arduino_dsPIC33CK/releases/download/v1.0.4/dsPIC33CK-MC_DFP-1.11.412-pruned.1.zip",
+              "url": "https://github.com/9Nicotin/Arduino_dsPIC33CK/releases/download/v1.0.5/dsPIC33CK-MC_DFP-1.11.412-pruned.1.zip",
               "archiveFileName": "dsPIC33CK-MC_DFP-1.11.412-pruned.1.zip",
               "size": "652421",
               "checksum": "SHA-256:5533d058359bd7482401c8c2011a5dbd05fd4396271cad93bd4c8cc54a076651"

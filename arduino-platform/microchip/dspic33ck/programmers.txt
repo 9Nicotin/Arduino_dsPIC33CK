@@ -36,7 +36,7 @@ nedbg.program.extra_params=
 # the real one. Two things to know before selecting it:
 #
 #   * The sketch must have been BUILT for the bootloader, i.e. with
-#     Tools > Bootloader: "Serial (UART)". A sketch linked for 0x200 will be
+#     Tools > Bootloader: "Serial (UART, 115200)". A sketch linked for 0x200 will be
 #     rejected by serial_upload.py rather than written to the wrong place.
 #   * Sketch > Upload already does this when that menu option is selected, so
 #     this entry is only for using the serial path while some other programmer is

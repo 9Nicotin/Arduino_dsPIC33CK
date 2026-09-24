@@ -37,7 +37,7 @@ if not exist "%ARDUINO_DATA%" (
 
 REM Target installation path. Must match the version in platform.txt, so that
 REM this overwrites the Boards Manager install rather than sitting beside it.
-set "INSTALL_PATH=%ARDUINO_DATA%\packages\microchip\hardware\dspic33ck\1.0.4"
+set "INSTALL_PATH=%ARDUINO_DATA%\packages\microchip\hardware\dspic33ck\1.0.5"
 set "TOOLS_PATH=%ARDUINO_DATA%\packages\microchip\tools"
 
 echo [1/4] Creating installation directory...
@@ -49,6 +49,15 @@ mkdir "%INSTALL_PATH%"
 
 echo [2/4] Copying platform files...
 xcopy /E /I /Q "microchip\dspic33ck\*" "%INSTALL_PATH%\"
+
+REM The user guide lives in arduino-platform\docs, outside the platform tree, so
+REM the xcopy above does not pick it up. From v1.0.5 the release archive carries
+REM docs\ inside it, and a developer install should not be the one flavour that
+REM lacks the guide -- the docs are how the bootloader and the pin maps are
+REM explained, and "it is on GitHub" is a worse answer when the file could just
+REM be here. No /E on purpose: it would recurse into docs\how-to-use, which is
+REM superseded and must not be installed.
+xcopy /I /Q /Y "docs\*.html" "%INSTALL_PATH%\docs\" >nul
 
 echo [3/4] Verifying installation...
 if exist "%INSTALL_PATH%\boards.txt" (

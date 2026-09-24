@@ -144,8 +144,14 @@ about what runs on your board is opaque.
 
 **[Part 6: Serial Bootloader](arduino-platform/docs/part6_serial_bootloader.html)**
 is the full guide — three ways to burn it (IDE, command line, MPLAB IPE), the memory
-map, how interrupts are forwarded, troubleshooting, recovery, and what it takes to
-put this bootloader on your own hardware.
+map, how interrupts are forwarded, troubleshooting, recovery, replacing the on-board
+debugger with a plain USB-serial adapter, and what it takes to put this bootloader on
+your own hardware.
+
+**[Part 7: Bench Verification](arduino-platform/docs/part7_bench_verification.html)**
+is the procedure to run once on a real board: nine steps from burning the bootloader to
+deliberately interrupting an upload, the two numbers to read off a compile, and a section
+on what the procedure does *not* prove.
 
 ## Platform support
 

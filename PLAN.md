@@ -66,6 +66,21 @@
 > next serial upload**, since soft entry asks the *running* sketch to reset itself. Recovery is
 > verified (`Burn Bootloader`, no hands on the board) and documented; the real fix, a host-side
 > replug catch, is the top candidate for the next version.
+> **`v1.0.5` is PUBLISHED (September 24, 2026) and is the version to install** — a
+> documentation release in which the **platform code is unchanged from v1.0.4**, measured
+> rather than claimed: flash and RAM sit exactly on the 2556 / 3920 / 2556 / 3188 baselines in
+> five separate gates. A pre-release audit compiled the shipped user guide for the first time
+> and found two defects in it: **133 calls to `Serial_*` functions that do not exist**, and
+> **6 raw `<` operators inside `<pre>` blocks**, which HTML parses as start tags — so browsers
+> had been eating spans of code and serving readers 12 invisible lines of `part4` plus a `for`
+> loop that compiles and never runs. Both fixed, and both now gated by
+> `_build/docs_code_check.sh` (14 sketches, 28 builds, 0 warnings), which exists because every
+> other gate compiled files in the repo and nothing compiled the code in the docs. This release
+> also **ships the 8 guide pages inside the archive**, adds **Part 6 §6.9** (uploading with a
+> plain 3.3 V USB-serial adapter and no debugger at all — *a programmer once per board, a
+> serial adapter forever after*) and **Part 7**, the bench-verification procedure. See that
+> section; it also records why `package_check.sh`'s hex column was stale since v1.0.4 and what
+> was checked before re-baselining it.
 > **One item remains open:** the fresh-install/resolver-glob test still wants a machine with
 > a different XC-DSC version. See that section.
 > Some later-phase items were delivered ahead of the plan — see "Delivered Ahead
@@ -88,10 +103,13 @@
 > still at `0a24860` and have **none** of them. So a release cut from `latest` on GitHub
 > today would ship the pre-Phase-10 tree — push before tagging.
 >
-> **Known inconsistency, not yet fixed:** the Phase 6 documentation still teaches the
-> superseded suffixed `Serial` API and does not mention the MC005 board, `tone()` or
-> `attachInterrupt()`. See "Documentation is behind the code" under Phase 12. (Its
-> *installation and toolchain* half was corrected in Phase 14; the API half was not.)
+> **Known inconsistency — the API half was fixed in v1.0.5, and this note had it wrong.**
+> It said the Phase 6 documentation taught the "superseded suffixed `Serial` API", which
+> implied code that worked but was old-fashioned. The docs in fact called `Serial_begin`
+> and `Serial_println`, which do not exist and do not compile. Fixed, and now gated by
+> `_build/docs_code_check.sh`. What remains is coverage: the MC005 board, `tone()` and
+> `attachInterrupt()` are still unmentioned. See Phase 12. (The *installation and
+> toolchain* half was corrected in Phase 14.)
 >
 > ### PRIORITY, set September 17, 2026: dsPIC33CK256MC005 only
 >
@@ -1044,6 +1062,145 @@ artifact that no gate can check is not a fact, it is an intention. Three separat
 nothing had measured, and all three were wrong.
 
 
+### Release v1.0.5 — September 24, 2026 — PUBLISHED
+
+**A documentation release, and the first one whose documentation is compiled.** The
+platform **code is unchanged from v1.0.4** — not as a claim, as a measurement: flash and RAM
+land **exactly** on the 2556 / 3920 / 2556 / 3188 baselines in five independent gates
+(`allboards`, `menu_size_check`, `package_check`, `install_check`, `upgrade_check`), and
+MC005 with `Bootloader: Serial` is still 4928 B, `+1740`, with the size bar still at 246784.
+What changed is the docs, the version strings, four comments, and two new gates.
+
+**Two defects in the shipped user guide, both found by compiling it.** v1.0.4 exists because
+a claim nothing could check turned out false; this release found the same failure mode in the
+one place no gate had ever looked.
+
+*Defect 1 — 133 calls to functions that do not exist.* The guide taught
+`Serial_begin(115200)`, `Serial_println("x")`, `Serial_print_int(v, DEC)` and four more
+`Serial_*` names. **None of them exist** anywhere in `cores/`, `variants/` or `libraries/`.
+Compiled, not grepped: `error: 'Serial_begin' was not declared in this scope`. Counts:
+`arduino_ide_setup` 7, `part1` 1, `part3` 29, `part4` 82, `part5` 14. Rewritten to the
+object API the `HardwareSerial.h` header's own examples show — `Serial.begin`,
+`Serial.print`, `Serial.println` with the real overload set. A *lowercase* C API
+(`serial_print`, `serial_print_int`) does genuinely exist and would have compiled; it was
+rejected deliberately, because an Arduino guide should teach the Arduino API. `DEC` is
+dropped as the default; `HEX`/`BIN`/`OCT` are kept.
+
+*Defect 2 — 6 raw `<` operators inside `<pre>` blocks, and this one is worse.* HTML does
+not exempt `<pre>`. `if ((voltage_mv % 1000) < 100)` is parsed as a start tag that runs to
+the next `>`, and the browser **swallows everything in between**. Readers were served
+truncated code. In `part4` the eaten span crossed a statement boundary and left behind code
+that looks plausible:
+
+```
+for (brightness = 0; brightness = 0; brightness -= 5) {     <- what the reader saw
+for (brightness = 0; brightness <= 255; brightness += 5) {  <- what was written
+```
+
+That loop compiles, warns only `suggest parentheses around assignment used as truth value`,
+and never executes. **12 lines of part4 were invisible** — the extracted sketch grew from
+83 to 95 lines once the escaping was fixed. Distribution: part3 (1), part4 (4), part5 (1).
+A bare `>` is valid HTML, which is why only `<` was damaged, and every `#include` in these
+blocks uses quotes rather than brackets, so no real markup was at risk.
+
+Defect 1 fails loudly. Defect 2 produces code that looks right, compiles, and silently does
+nothing — the strictly worse of the two, and the reason this release ships a gate rather than
+just a fix.
+
+**The new gate: `_build/docs_code_check.sh`.** Extracts every `<pre>` block containing both
+`void setup` and `void loop`, HTML-unescapes it (`&amp;` decoded **last**, or `&amp;lt;`
+double-decodes), and compiles each one for MP102 and MC005 with `-include Arduino.h` — a doc
+snippet never prints its own `#include`. No link step; these are illustrative sketches.
+**14 sketches, 28 builds, 0 warnings.** Every other gate compiles files in the repo. Nothing
+compiled the code in the docs, which mattered less when the docs were a web page and matters
+now that they ship inside the archive.
+
+**Docs now ship in the package.** All 8 guide pages are **copied** into
+`dspic33ck-1.0.5.zip` under `docs/`, and `make-release.sh` asserts each one is tracked and
+byte-identical inside the archive: `docs verified in the archive: 8 pages, byte-identical to
+the repo`. Copied, not moved, on purpose — the published v1.0.3 and v1.0.4 release notes link
+`/blob/main/arduino-platform/docs/part6_serial_bootloader.html`, which resolves against the
+branch as it is today, so relocating would permanently 404 both.
+
+`install_check.sh` gained the matching assertions, because make-release checks the docs
+against the *repo* before upload and this is the only gate that sees a real install on a real
+disk: all 8 pages present and non-empty, `docs/how-to-use/` **absent** (it is superseded and
+must not ship), and every `href="*.html"` in the installed guide resolving to a file that
+exists. That last one is the class of bug that let v1.0.1 ship 11 invisible sketches.
+`install_arduino_ide.bat` also copies `docs\*.html` now — deliberately without `/E`, which
+would recurse into `how-to-use`.
+
+**New: Part 6 §6.9, "Using a plain USB-serial adapter instead of the debugger."** The user's
+question — *after I remove the nEDBG, can a generic USB-serial adapter upload sketches?* —
+answered from the sources: **yes, and nothing in the platform has to change.**
+`platform.txt:229` runs `serial_upload.py` against a COM port; there is no `ipecmd`, no
+`pymcuprog`, no debugger anywhere in that path. All five programmers carry
+`bootloader.pattern` (platform.txt 270/284/298/312/349), so Burn Bootloader works from any of
+them; `bootloader.tool=nedbg` in `boards.txt` is only the board default. The one thing a
+serial adapter cannot do is the **initial** burn — there is no ICSP over UART. Hence:
+**a programmer once per board, a serial adapter forever after.** Wiring: adapter TXD → RC11
+(U1RX, RP59, pin 32), adapter RXD ← RC10 (U1TX, RP58, pin 31), common GND, VCC left off;
+115200 8N1, no flow control. **3.3 V only** — a 5 V FTDI damages the input, and that is the
+one mistake on the page that costs a chip. No reset wire is needed (soft entry is in-band
+magic bytes). An SW0-equivalent button is strongly recommended: without it, a sketch that
+never calls `Serial.begin()` can only be recovered with a programmer. Pins are compiled into
+`bootloaders/dspic33ck256mc005/bl_config.h` and changed by rebuilding with
+`_build/build_bootloader.sh`. **Stated as unbenched, and untestable on a Nano** — the nEDBG
+CDC bridge already occupies RC10/RC11, so an external adapter would contend for the same two
+pins. Part 7 §7.11 carries the same caveat as its fifth limitation.
+
+**New: `docs/part7_bench_verification.html`**, sections 7.1–7.12 — the step-by-step bench
+procedure for the serial bootloader, written so the one hardware check still owed can be run
+by following a page instead of a chat transcript.
+
+**`package_check.sh`'s hex column was stale and is re-baselined.** All four boards failed with
+flash and RAM **byte-exact** and only the hex file size moved. Established before changing
+anything, because "re-baseline the failing gate" is the wrong reflex:
+
+- Not caused by v1.0.5 — stashing the entire platform tree back to HEAD reproduced the
+  identical four failures on a pristine tree.
+- Not the DFP version — `examples_all.sh` uses 1.10.386 from `~/.mchp_packs`,
+  `package_check.sh` uses the pruned 1.11.412 in `_build/dfp`, and **both produce 17189**.
+- The cause is in this file: PLAN.md records flash 2564 → 2556 **in v1.0.4**, and v1.0.4 was
+  released without re-running this gate. Two of its three columns were updated; one was not.
+- Rebuilding Blink from the v1.0.3 tree in a `git worktree` gave **15738**, not 15353 — so
+  15353 is reproducible from neither tree. It is not arithmetic anyone can re-derive; it is
+  stale.
+
+Baselines are now 15337 / 19445 / 15405 / 17189, and the two gates agree on 15337 for
+Blink/32MP102. **If this column drifts again while flash and RAM hold, suspect the gate
+before the platform — but check that `examples_all.sh` moved with it. The two agreeing is
+the signal; either alone is not.** `_build/` is gitignored, so this reasoning lives in the
+gate's own comment block, where it has no git history to fall back on.
+
+**The PLAN.md entry that was wrong about all of this.** Phase 12 used to read: *"those calls
+still compile — the suffixed methods were kept deliberately — so this is not a broken-docs
+bug."* That was a guess from grepping for `print_int`, and it was false. It is now an `[x]`
+that owns the error explicitly, plus a narrower `[ ]` for the coverage debt that remains
+(MC005 barely mentioned, part5's card is still an MP102 card, no `tone()` or
+`attachInterrupt()`). Note `docs/how-to-use/` (six files) carries **19 more `Serial_*`
+calls** and was left alone deliberately — it is not shipped and is superseded. Delete it or
+fix it; do not leave it ambiguous.
+
+Gates for 1.0.5, all green: `allboards` 4/4, `examples_all` 11/11 with 0 warnings,
+`bootloader_check` PASS, `menu_size_check` PASS (4 baselines plus the `+1740` and 246784),
+`package_check` PASS after the re-baseline, `install_check` PASS including the new docs
+assertions (27 examples offered, 4 boards at baseline), `upgrade_check` PASS,
+`examples_mc005` OK, `examples_new_mc005` OK (`NanoSerialHello 4532 420 21144`, which
+confirms Part 7's own figures), `parallel_check` PASS, `docs_code_check` 28/28.
+
+| | |
+|---|---|
+| `dspic33ck-arduino-core-1.0.5.zip` | 311937 B · `79148b335b47e42d42298f9ddfe50d667714c16a3d4d8caa98b9e0d678d5cd6d` (256003 B in 1.0.4 — the `+55934` is the docs) |
+| `dsPIC33CK-MP_DFP-1.16.521-pruned.1.zip` | 810615 B · `6cee9c30…` — byte-identical since v1.0.0 |
+| `dsPIC33CK-MC_DFP-1.11.412-pruned.1.zip` | 652421 B · `5533d058…` — byte-identical since v1.0.0 |
+
+Archive root `dspic33ck-1.0.5`, 97 files.
+
+**For anyone mid-bench on 1.0.4: your results carry over.** The compiled image is the same
+one. Upgrading gets you the guide that compiles, §6.9 and Part 7 — not a different binary.
+
+
 ---
 
 ## Phase 15: Serial bootloader for dsPIC33CK256MC005 (SHIPPED in v1.0.3, corrected in v1.0.4 — Sep 23, 2026; 1 check owed)
@@ -1705,22 +1862,40 @@ work the priority makes more relevant rather than less.
       build on plain `analogWrite()`-class PWM, not the 250 ps path.
 
 ### Phase 12: Testing & Polish
-- [ ] **Documentation is behind the code** — the highest-value item left, because it is
-      what a new user reads first. Eleven HTML files under `arduino-platform/docs/`
-      (the 5-part guide plus `how-to-use/`); **seven of them still teach the suffixed
-      `Serial` API** (`print_int`, `println_int`, `print_float`, `println_float`) that
-      Phase 10 replaced. Those calls still compile — the suffixed methods were kept
-      deliberately — so this is not a broken-docs bug, it is worse: the docs teach the
-      dsPIC-specific spelling as *the* API when stock Arduino syntax now works. Also
-      missing everywhere: the MC005 / Curiosity Nano board (only `installation_guide.html`
-      mentions it at all), `tone()`, `attachInterrupt()`, and the fact that the debugger
-      reboot is now automatic. Affected: `arduino_ide_setup.html`,
-      `part3_api_reference.html`, `part4_testing_sketches.html`,
-      `part5_upload_troubleshooting.html`, `how-to-use/part2_writing_sketches.html`,
-      `how-to-use/part5_serial_debugging.html`.
+- [x] **The guide taught an API that does not exist** — *fixed in v1.0.5, and this entry
+      was wrong about it.* It used to read "those calls still compile — the suffixed
+      methods were kept deliberately — so this is not a broken-docs bug." That was a guess
+      from grepping for `print_int`, and it was false. What the files actually contained
+      was **`Serial_begin`, `Serial_println`, `Serial_print_int`** — 133 calls across five
+      pages, to identifiers that appear **nowhere** in `cores/`, `variants/` or
+      `libraries/`. Not a style problem: `error: 'Serial_begin' was not declared in this
+      scope`. Every serial example in the shipped user guide was uncompilable, through
+      four releases.
+      Two separate defects, both found by *compiling* the docs rather than reading them:
+      - 133 `Serial_*` calls rewritten to the stock object API (`_build/fix_docs_serial_api.py`).
+      - **Six raw `<` comparison operators inside `<pre>` blocks**
+        (`_build/fix_docs_angle_brackets.py`). A browser reads `if (x < 100) {` as a start
+        tag and swallows everything to the next `>`, so readers were shown truncated code.
+        In one sketch the eaten span crossed a statement and left behind
+        `for (brightness = 0; brightness = 0; brightness -= 5)` — a loop that compiles,
+        warns only about parentheses, and never executes. Twelve lines of
+        `part4_testing_sketches.html` were invisible on the page.
+      New gate **`_build/docs_code_check.sh`** extracts every complete sketch from the
+      guide and compiles it for MP102 and MC005: 14 sketches, 28 builds, no warnings. It
+      exists because every other gate compiled files in the repo and nothing compiled the
+      code in the docs — which mattered more from v1.0.5 on, since the docs now ship
+      inside the archive.
+- [ ] **Documentation is still behind the code** in the ways that are about *coverage*
+      rather than correctness, now that the API names are right. Missing everywhere: the
+      MC005 / Curiosity Nano board (only `installation_guide.html` mentions it at all, and
+      `part5`'s quick-reference card is still an MP102 card), `tone()`,
+      `attachInterrupt()`, and the fact that the debugger reboot is now automatic.
       Under the MC005 priority this item gets *easier and more urgent at once*: the docs
       need to describe one board rather than four, and that board is the one they currently
       barely mention.
+      Note `docs/how-to-use/` (six files) carries **19 more `Serial_*` calls** and was left
+      alone deliberately — it is superseded, it does not ship in the archive, and fixing it
+      would imply it is maintained. Delete it or fix it; do not leave it ambiguous.
 - [ ] No example uses `tone()` or `attachInterrupt()` — the two newest APIs are the two
       with no example. **A `04.CuriosityNano` sketch covering both is now the highest-value
       code task**: it doubles as the Phase 10 bench checklist (all four outstanding checks

@@ -41,6 +41,7 @@
     <a href="part4_testing_sketches.html">Part 4: Testing Sketches</a>
     <a href="part5_upload_troubleshooting.html">Part 5: Upload &amp; Troubleshooting</a>
     <a href="part6_serial_bootloader.html"><b>Part 6: Serial Bootloader</b></a>
+    <a href="part7_bench_verification.html">Part 7: Bench Verification</a>
 </div>
 
 <div class="info-box">
@@ -89,8 +90,11 @@ that board this is the difference between "programmable from the Arduino IDE" an
     </tr>
     <tr>
         <td>Flash added to <em>your</em> sketch</td>
-        <td>1608 bytes</td>
-        <td>The interrupt-forwarding table &mdash; see <a href="#vectors">6.4</a>.</td>
+        <td>1740 bytes</td>
+        <td>1608 for the interrupt-forwarding table, plus 132 for the soft-entry
+            sniffer &mdash; see <a href="#vectors">6.4</a>. Both are added
+            <strong>only</strong> when <b>Bootloader</b> is set to <em>Serial</em>;
+            on <em>None</em> your sketch is not charged for either.</td>
     </tr>
     <tr>
         <td>Sketch size limit</td>
@@ -294,7 +298,7 @@ listening"</em> instead: there was nothing to ask to reset.</p>
 <h2>6.4 How it works inside</h2>
 
 <p>You do not need this section to use the bootloader. It is here because the design has
-consequences you can see &mdash; the 1608 bytes, the 2-cycle latency, the fact that a power cut
+consequences you can see &mdash; the 1740 bytes, the 2-cycle latency, the fact that a power cut
 mid-upload is survivable &mdash; and because anyone porting this to another dsPIC33CK will need
 to know why it is shaped this way.</p>
 
@@ -323,7 +327,7 @@ erase page that starts at <code>0x2B800</code>, and erasing that page would clea
 <code>FWDTEN</code> &mdash; and an erased <code>FWDTEN</code> reads as <em>watchdog enabled</em>,
 which would put the board into a reset loop. So the application stops short of that page.</p>
 
-<h3 id="vectors">Why your sketch grows by 1608 bytes</h3>
+<h3 id="vectors">Why your sketch grows by 1740 bytes</h3>
 
 <p>On this device the interrupt vector table is at a fixed address, <code>0x004</code>, and cannot
 be moved. It also shares an erase page with the reset vector and the start of the bootloader. So
@@ -336,6 +340,18 @@ that only a programmer could fix.</p>
 <code>0x1800</code>. Your sketch rebuilds that table on every upload. An interrupt therefore goes
 hardware vector &rarr; <code>GOTO</code> &rarr; your handler, which costs 2 instruction cycles
 and 1608 bytes of flash.</p>
+
+<p>The remaining 132 bytes of the 1740 are the <strong>soft-entry sniffer</strong>: a small state
+machine in the serial receive interrupt that watches for the host's 10-byte magic sequence and
+resets the board when it arrives. That is what lets an upload start without you touching the
+board, and it is why a sketch that never calls <code>Serial.begin()</code> cannot be replaced over
+serial &mdash; see <a href="#recover">6.5</a>.</p>
+
+<p><strong>Both costs are opt-in.</strong> They are compiled only when <b>Bootloader</b> is set to
+<em>Serial</em>, and a sketch built with <em>None</em> is byte-for-byte what it would have been
+without this feature existing. This was not true in release 1.0.3, where the sniffer compiled into
+every build on every board; 1.0.4 fixed it, and that is the only difference between those two
+releases.</p>
 
 <p>The payoff is that <strong>no source code has to change</strong>. The alternative designs all
 break compatibility: the device's alternate vector table requires renaming every interrupt
@@ -391,7 +407,7 @@ step 3, 4 or 5 and the signature is simply absent, so on the next reset the boot
 jump and waits for a host instead. <strong>Recovery is another serial upload, with no programmer
 involved.</strong></p>
 
-<h2>6.5 Recovering a board</h2>
+<h2 id="recover">6.5 Recovering a board</h2>
 
 <table>
     <tr><th>Situation</th><th>What to do</th></tr>
@@ -463,8 +479,8 @@ involved.</strong></p>
     </tr>
     <tr>
         <td>Sketch no longer fits after switching to the bootloader</td>
-        <td>Expected: the limit is 246784 rather than 262144, and the forwarding table adds 1608
-            bytes. If you are that close to full, the debugger path gives you the space back.</td>
+        <td>Expected: the limit is 246784 rather than 262144, and the bootloader support code
+            adds 1740 bytes. If you are that close to full, the debugger path gives you the space back.</td>
     </tr>
     <tr>
         <td>Upload succeeds but the Serial Monitor shows nothing</td>
@@ -552,6 +568,113 @@ involved.</strong></p>
 <p>The configuration words are programmed along with the bootloader, so a blank chip needs one
 ICSP session and nothing more.</p>
 
+<h2 id="noDebugger">6.9 Using a plain USB-serial adapter instead of the debugger</h2>
+
+<p>A common question: once the bootloader is burned, can a $2 USB-serial adapter replace the
+on-board debugger entirely?</p>
+
+<div class="info-box">
+    <strong>Yes, and nothing in the platform has to change.</strong> The serial upload path never
+    touches a debugger. It is one line in <code>platform.txt</code> and it runs
+    <code>serial_upload.py</code> against a COM port &mdash; there is no <code>ipecmd</code>, no
+    <code>pymcuprog</code>, and no mention of nEDBG anywhere in it. Whether that COM port belongs to
+    the Curiosity Nano's built-in CDC bridge or to a CP2102 you soldered on makes no difference to
+    the IDE, because by then it is just a COM port.
+</div>
+
+<h3>The wiring</h3>
+
+<p>Three wires. The bootloader's UART pins are fixed in the HEX that ships with this platform:</p>
+
+<table>
+    <tr><th>Adapter</th><th>&nbsp;</th><th>dsPIC33CK256MC005</th><th>Note</th></tr>
+    <tr>
+        <td>TXD (adapter output)</td><td>&rarr;</td>
+        <td><strong>RC11</strong> &mdash; U1RX, RP59, pin&nbsp;32</td>
+        <td>Crossed: the adapter's transmit goes to the chip's receive.</td>
+    </tr>
+    <tr>
+        <td>RXD (adapter input)</td><td>&larr;</td>
+        <td><strong>RC10</strong> &mdash; U1TX, RP58, pin&nbsp;31</td>
+        <td>Remappable output 1 (U1TX) is assigned to RP58 by the bootloader itself.</td>
+    </tr>
+    <tr>
+        <td>GND</td><td>&mdash;</td><td>GND</td>
+        <td>Required. Without a common ground the other two wires mean nothing.</td>
+    </tr>
+    <tr>
+        <td>VCC</td><td colspan="3">Leave it disconnected if the board is powered separately.
+            Do not let two supplies fight.</td>
+    </tr>
+</table>
+
+<p>115200 baud, 8N1. No flow control &mdash; the upload tool explicitly disables CTS/RTS
+handshaking and simply asserts DTR and RTS when it opens the port.</p>
+
+<div class="danger-box">
+    <strong>3.3&nbsp;V logic only.</strong> The dsPIC33CK is a 3.3&nbsp;V part and its pins are not
+    5&nbsp;V tolerant here. A great many FTDI and CH340 cables sold as "TTL serial" drive
+    5&nbsp;V, and one of those wired to RC11 can damage the input permanently. Check the adapter's
+    jumper or buy the 3.3&nbsp;V version. This is the one mistake on this page that costs a chip.
+</div>
+
+<h3>No reset wire is needed</h3>
+
+<p>Adapters are often wired DTR&rarr;reset on other platforms, through a capacitor, so the host can
+restart the target. That is not needed here: entry into the bootloader is in-band. The upload tool
+sends a magic byte sequence to the running sketch, the sketch's serial receive interrupt recognises
+it and resets the chip itself, and the bootloader then stays put. See
+<a href="#vectors">6.4</a> for the mechanism and the
+<a href="#trouble">troubleshooting table</a> for the case where it cannot work.</p>
+
+<p>If you are designing your own board, a DTR-to-MCLR capacitor is still a nice thing to have. It
+is a convenience, not a requirement.</p>
+
+<div class="warning-box">
+    <strong>Wire a button to RD13 as well.</strong> The bootloader reads RD13 (SW0 on the Curiosity
+    Nano, with its internal pull-up enabled) at power-up as a forced-entry path. Without it, a
+    sketch that never calls <code>Serial.begin()</code> &mdash; or that sits with interrupts
+    disabled &mdash; cannot be interrupted over serial at all, and the only way back is a
+    programmer. That one button is what keeps a USB-serial adapter sufficient in every case.
+</div>
+
+<h3>The one thing a serial adapter cannot do</h3>
+
+<p>It cannot perform the <em>initial</em> burn. There is no ICSP over UART: putting the bootloader
+onto a blank chip needs MCLR, PGD and PGC, which means a programmer. So the honest rule is:</p>
+
+<div class="solution">
+    <strong>A programmer once per board. A serial adapter forever after.</strong>
+</div>
+
+<p>Any of the five supported programmers can do that one burn &mdash; PICkit&nbsp;4, PICkit&nbsp;5,
+SNAP, PKoB4 or nEDBG all carry a <em>Burn Bootloader</em> recipe. The board's default is nEDBG only
+because that is what a Curiosity Nano has on it; select a different one under
+<span class="menu">Tools &rarr; Programmer</span> and <em>Burn Bootloader</em> works the same way.
+So "remove nEDBG" does not have to mean "own no programmer" &mdash; one PICkit on the bench is
+enough for an unlimited number of boards.</p>
+
+<h3>Different pins on your own board</h3>
+
+<p>RC10 and RC11 are compiled into the shipped bootloader HEX, not configured at run time. To move
+them, edit <code>BL_TX_*</code>, <code>BL_RX_*</code>, <code>BL_TX_RP_REG</code> and
+<code>BL_RX_RP_NUM</code> in
+<code>bootloaders/dspic33ck256mc005/bl_config.h</code> and rebuild with
+<code>_build/build_bootloader.sh</code>. The same file holds <code>BL_LED</code> and
+<code>BL_SW0</code>. Any remappable pin will do; the numbers are the RPn values from the device
+data sheet's pin-select tables, not the port letters.</p>
+
+<div class="warning-box">
+    <strong>This section is verified from the firmware and the tooling, not from a bench.</strong>
+    The pin assignments, the baud rate, the absence of a debugger in the upload path and the
+    programmer recipes are all read out of the shipped sources. What has not been done is an actual
+    upload through a third-party adapter &mdash; and it cannot cleanly be tried on a Curiosity Nano,
+    because the on-board debugger's CDC bridge is already connected to RC10 and RC11, so an external
+    adapter on the same two pins would be contending with it. Proving this needs a board where those
+    pins are free. Nothing about the design is expected to differ; it is listed as untested because
+    it is untested.
+</div>
+
 <div class="nav-links">
     <strong>Navigation:</strong>
     <a href="part1_introduction_setup.html">Part 1: Setup</a>
@@ -560,6 +683,7 @@ ICSP session and nothing more.</p>
     <a href="part4_testing_sketches.html">Part 4: Testing Sketches</a>
     <a href="part5_upload_troubleshooting.html">Part 5: Upload &amp; Troubleshooting</a>
     <a href="part6_serial_bootloader.html"><b>Part 6: Serial Bootloader</b></a>
+    <a href="part7_bench_verification.html">Part 7: Bench Verification</a>
 </div>
 
 </body>

@@ -397,9 +397,11 @@ Uploads over the UART with no debugger. Burn the bootloader once with
 and press Upload — the IDE does the rest. See
 [Uploading over the serial bootloader](../README.md#uploading-over-the-serial-bootloader)
 for the workflow, [part5](docs/part5_upload_troubleshooting.html) for what to do when it
-fails, and **[part6](docs/part6_serial_bootloader.html)** for the full guide — burning it
-three different ways, the memory map, interrupt forwarding, recovery, and porting it to
-your own board.
+fails, **[part6](docs/part6_serial_bootloader.html)** for the full guide — burning it
+three different ways, the memory map, interrupt forwarding, recovery, using a plain
+USB-serial adapter instead of the debugger, and porting it to your own board — and
+**[part7](docs/part7_bench_verification.html)** for the step-by-step procedure to verify
+all of it on a real board.
 
 All five programmers can burn it (*PICkit 5*, *PICkit 4*, *MPLAB SNAP*, *PKOB4*,
 *nEDBG*); the *Serial Bootloader (UART)* programmer entry cannot, since it would have to

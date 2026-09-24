@@ -41,6 +41,7 @@
     <a href="part4_testing_sketches.html">Part 4: Testing Sketches</a>
     <a href="part5_upload_troubleshooting.html"><b>Part 5: Upload & Troubleshooting</b></a>
     <a href="part6_serial_bootloader.html">Part 6: Serial Bootloader</a>
+    <a href="part7_bench_verification.html">Part 7: Bench Verification</a>
 </div>
 
 <h2>5.1 Upload Method: PICkit 4 / SNAP (Recommended)</h2>
@@ -295,7 +296,7 @@ void loop()  { /* ... */ }
 </div>
 
 <div class="error-entry">
-    <h4>Warning: "Implicit declaration of function 'Serial_begin'"</h4>
+    <h4>Warning: "Implicit declaration of function 'Serial.begin'"</h4>
     <p><strong>Cause:</strong> Missing include for HardwareSerial.h.</p>
     <p class="solution">Solution:</p>
     <p>Add at the top of your sketch:</p>
@@ -416,19 +417,19 @@ void loop()  { /* ... */ }
 <pre><code>// Add debug prints to narrow down issues
 void setup()
 {
-    Serial_begin(115200);
-    Serial_println("[DEBUG] setup() started");
+    Serial.begin(115200);
+    Serial.println("[DEBUG] setup() started");
 
     pinMode(LED_BUILTIN, OUTPUT);
-    Serial_println("[DEBUG] pinMode done");
+    Serial.println("[DEBUG] pinMode done");
 
     // ... more init code ...
-    Serial_println("[DEBUG] setup() complete");
+    Serial.println("[DEBUG] setup() complete");
 }
 
 void loop()
 {
-    Serial_println("[DEBUG] loop() top");
+    Serial.println("[DEBUG] loop() top");
     // ... your code ...
 }
 </code></pre>
@@ -437,7 +438,7 @@ void loop()
 <pre><code>// Quick blink patterns to indicate state
 void debugBlink(int count) {
     int i;
-    for (i = 0; i < count; i++) {
+    for (i = 0; i &lt; count; i++) {
         digitalWrite(LED_BUILTIN, HIGH);
         delay(100);
         digitalWrite(LED_BUILTIN, LOW);
@@ -510,12 +511,12 @@ debugBlink(3);  // 3 blinks = reached point C
 | I2C:         SDA=D14, SCL=D15                           |
 | LED_BUILTIN: D0 (RA0)                                   |
 +---------------------------------------------------------+
-| SERIAL API (C-style):                                   |
-|   Serial_begin(baud)     Serial_available()              |
-|   Serial_print(str)      Serial_read()                   |
-|   Serial_println(str)    Serial_write(byte)              |
-|   Serial_print_int(val, base)                            |
-|   Serial_println_int(val, base)                          |
+| SERIAL API:                                             |
+|   Serial.begin(baud)     Serial.available()              |
+|   Serial.print(str)      Serial.read()                   |
+|   Serial.println(str)    Serial.write(byte)              |
+|   Serial.print(val, base)                                |
+|   Serial.println(val, base)                              |
 +---------------------------------------------------------+
 | BUILD:  F11 (MPLAB X)                                   |
 | UPLOAD: Make and Program (down-arrow icon)               |

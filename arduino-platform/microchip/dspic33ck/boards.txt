@@ -183,7 +183,7 @@ dspic33ck256mc005.bootloader.file=dspic33ck256mc005/bootloader-dspic33ck256mc005
 # "None" is the default and changes nothing: the board links against the stock
 # DFP script and uploads through the on-board debugger, exactly as in 1.0.2.
 #
-# "Serial (UART)" relinks the sketch to start at 0x1800, above the bootloader,
+# "Serial (UART, 115200)" relinks the sketch to start at 0x1800, above the bootloader,
 # and uploads it over the CDC COM port. Four things change together and all four
 # are necessary:
 #
