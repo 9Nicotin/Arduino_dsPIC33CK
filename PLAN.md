@@ -212,7 +212,10 @@ Build a portable Arduino-compatible platform for Microchip dsPIC33CK family usin
   - UART: 9600 baud via PKOB4 CDC ✓
 
 ### Phase 6: Documentation
-- [x] `arduino-platform/docs/how-to-use/` — 5 HTML guide files:
+- [x] `arduino-platform/docs/how-to-use/` — 5 HTML guide files. **These files no longer
+      exist**: superseded by the eight-page guide and deleted September 24, 2026. Kept as a
+      record of what Phase 6 delivered; recover with `git checkout <sha> -- <path>` if the
+      original wording is ever needed.
   - Part 1: Installation
   - Part 2: Writing Sketches
   - Part 3: Build & Verify
@@ -343,7 +346,8 @@ Found during the August 25, 2026 reconciliation.
     PG4 is PPS-routable)
 - [x] `libraries/HRPWM/examples/BoostMPPT/BoostMPPT.ino` — solar MPPT example
 - [ ] **Hardware-verify HRPWM** — no record that any PG channel was scoped
-- [ ] Document HRPWM in `docs/how-to-use/` (Phase 6 docs predate it)
+- [ ] Document HRPWM in `docs/part3_api_reference.html` (it predates the HRPWM library;
+      the original target, `docs/how-to-use/`, was deleted September 24, 2026)
 
 ### UART Bootloader Upload — SUPERSEDED by Phase 15 (Sep 23, 2026)
 - [x] `tools/upload_uart.py` — sends .hex over UART, Microchip 16-bit bootloader
@@ -1178,9 +1182,11 @@ still compile — the suffixed methods were kept deliberately — so this is not
 bug."* That was a guess from grepping for `print_int`, and it was false. It is now an `[x]`
 that owns the error explicitly, plus a narrower `[ ]` for the coverage debt that remains
 (MC005 barely mentioned, part5's card is still an MP102 card, no `tone()` or
-`attachInterrupt()`). Note `docs/how-to-use/` (six files) carries **19 more `Serial_*`
-calls** and was left alone deliberately — it is not shipped and is superseded. Delete it or
-fix it; do not leave it ambiguous.
+`attachInterrupt()`). The v1.0.5 record asked for `docs/how-to-use/` — six superseded files
+carrying **19 more `Serial_*` calls** — to be deleted or fixed rather than left ambiguous.
+**Deleted September 24, 2026**, along with the gitignored `docs/how-to-use.zip` beside it.
+Nothing shipped it, nothing linked to it, and no published release note mentioned it, so no
+version bump was needed; the files remain in git history if the old wording is ever wanted.
 
 Gates for 1.0.5, all green: `allboards` 4/4, `examples_all` 11/11 with 0 warnings,
 `bootloader_check` PASS, `menu_size_check` PASS (4 baselines plus the `+1740` and 246784),
@@ -1934,9 +1940,10 @@ work the priority makes more relevant rather than less.
       Under the MC005 priority this item gets *easier and more urgent at once*: the docs
       need to describe one board rather than four, and that board is the one they currently
       barely mention.
-      Note `docs/how-to-use/` (six files) carries **19 more `Serial_*` calls** and was left
-      alone deliberately — it is superseded, it does not ship in the archive, and fixing it
-      would imply it is maintained. Delete it or fix it; do not leave it ambiguous.
+      `docs/how-to-use/` — six superseded files with **19 more `Serial_*` calls** — was
+      **deleted September 24, 2026** rather than fixed, since fixing it would have implied it
+      was maintained. It shipped in no archive and nothing linked to it, so it needed no
+      version bump. `docs/` is now exactly the eight pages that ship.
 - [ ] No example uses `tone()` or `attachInterrupt()` — the two newest APIs are the two
       with no example. **A `04.CuriosityNano` sketch covering both is now the highest-value
       code task**: it doubles as the Phase 10 bench checklist (all four outstanding checks
@@ -2601,10 +2608,12 @@ Arduino_dsPIC33CK/
 │   ├── package_microchip_dspic33ck_index.json  <- Phase 14: the Boards Manager
 │   │                                             index; in-repo copy is the
 │   │                                             source of truth
-│   ├── docs/                   <- 5-part guide + how-to-use/ (5 more)
-│   │                              Install/toolchain/DFP instructions were
-│   │                              corrected in Phase 14. Still STALE on the
-│   │                              pre-Phase-10 Serial API, pin maps and MPLAB X
+│   ├── docs/                   <- the 8 pages that ship inside the archive
+│   │                              (setup + parts 1-7). Install/toolchain/DFP
+│   │                              instructions corrected in Phase 14; the Serial
+│   │                              API fixed and gated in v1.0.5. Still thin on
+│   │                              MC005, tone() and attachInterrupt().
+│   │                              how-to-use/ was deleted Sep 24, 2026.
 │   ├── install_arduino_ide.bat  <- DEVELOPER install (uncommitted working tree).
 │   │                              RE-RUN after any platform change. End users
 │   │                              install from the Boards Manager URL instead.

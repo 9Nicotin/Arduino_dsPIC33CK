@@ -55,8 +55,10 @@ REM the xcopy above does not pick it up. From v1.0.5 the release archive carries
 REM docs\ inside it, and a developer install should not be the one flavour that
 REM lacks the guide -- the docs are how the bootloader and the pin maps are
 REM explained, and "it is on GitHub" is a worse answer when the file could just
-REM be here. No /E on purpose: it would recurse into docs\how-to-use, which is
-REM superseded and must not be installed.
+REM be here. No /E on purpose: this copies the eight pages in docs\ and nothing
+REM below it. It was written that way to keep the superseded docs\how-to-use out
+REM (deleted September 24, 2026), and it stays that way so a subdirectory someone
+REM adds later cannot install itself without anyone deciding it should.
 xcopy /I /Q /Y "docs\*.html" "%INSTALL_PATH%\docs\" >nul
 
 echo [3/4] Verifying installation...

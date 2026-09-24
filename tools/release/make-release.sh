@@ -156,11 +156,14 @@ find "$STAGE" -name '*.o' -o -name '*.elf' -o -name '.DS_Store' -o -name 'Thumbs
 # already shipped. The source of truth stays where it is and the archive gets a
 # copy; the byte-identity check after zipdir is what keeps the copy honest.
 #
-# The list is explicit rather than a glob, for two reasons: docs/how-to-use/ is a
-# superseded 124 KB copy of the same guide and docs/how-to-use.zip is a zip inside
-# a zip, neither of which belongs in an install; and a glob would silently ship
-# whatever scratch file someone left in the directory. Adding a page to the
-# package should be a deliberate act, so a new part must be added here too.
+# The list stays explicit rather than a glob even though docs/ now contains exactly
+# these eight files. The superseded docs/how-to-use/ and its zip-inside-a-zip were
+# deleted on September 24, 2026, which removed the original reason -- but not the
+# durable one: a glob would silently ship whatever scratch file someone leaves in
+# the directory, and the per-file tracked-ness assertion below has nothing to
+# check against if the list is derived from the directory it is meant to police.
+# Adding a page to the package should be a deliberate act, so a new part must be
+# added here too.
 DOCS=(
   arduino_ide_setup.html
   part1_introduction_setup.html
