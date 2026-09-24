@@ -81,19 +81,19 @@
 > serial adapter forever after*) and **Part 7**, the bench-verification procedure. See that
 > section; it also records why `package_check.sh`'s hex column was stale since v1.0.4 and what
 > was checked before re-baselining it.
-> **Committed after v1.0.5 and HELD, unreleased (September 24, 2026):** a pin-map audit that
+> **Shipped in v1.0.6 (September 24, 2026):** a pin-map audit that
 > found the picture was right and the prose around it was not. The SVG regenerates
 > byte-identically and matches `variant.c` on all 39 pins — but nothing *checked* that, and
 > the README claimed it "cannot drift". `tools/pinmap/check_pinmap.py` is now that check
 > (seven parts, every mutation caught), and `docs/part2` finally documents the priority
 > device: up to v1.0.5 it covered only the 28-pin MP102, so an MC005 user read a table whose
 > every row named a different port than their board had. **`part2` and `part6` are inside the
-> archive, so this work reaches nobody until a `v1.0.6` is cut** — the release is deliberately
-> held. Nothing else in the archive changed. See the section below for the retracted claim
+> archive, so this work reached nobody until `v1.0.6` was cut**, which it now has. Nothing else
+> in the archive changed. See the section below for the retracted claim
 > that came out of this: the DFP's `<edc:PinList>` is **not** a usable source of physical pin
 > numbers.
-> **The v1.0.6 audit is IN PROGRESS and UNCOMMITTED (September 24, 2026)** — a re-check of
-> everything v1.0.5 published plus the two held commits, so one release can carry all of it.
+> **The v1.0.6 audit is PUBLISHED (September 24, 2026)** — a re-check of
+> everything v1.0.5 published plus the two held commits, so one release carried all of it.
 > The finding is systemic rather than scattered: **five of the eight shipped pages were
 > dsPIC33CK32MP102 documents presented as platform documents**, written when the MP102 was the
 > only device and never retargeted, so an MC005 user read plausible and wrong numbers on each.
@@ -106,9 +106,11 @@
 > comments pointed at — neither of which was in the repository — are now
 > `tools/docs/gen_device_table.py` and `tools/docs/gen_mc005_rows.py`, each with a self-applying
 > `--write`. §5.8 also shipped two device cards under prose promising one per board; it now
-> emits four. **The work is committed and the release is HELD — `main` is unpushed.**
-> See that section for what remains and for the one item that needs a go-ahead: v1.0.5's
-> published release notes still print retracted package pin numbers, with TX/RX swapped.
+> emits four. **Published as v1.0.6 and verified against the live Boards Manager URL.**
+> v1.0.5's published release notes were patched in place at the same time: their §6.9 wiring
+> table printed "pin 32" / "pin 31", which are Arduino `D32` / `D31` and not package pin
+> numbers. The rows themselves were correct — an earlier note here said they were swapped and
+> that was wrong: `TXD → RC11` is the board's `U1RX`, `RXD → RC10` its `U1TX`.
 > **One item remains open:** the fresh-install/resolver-glob test still wants a machine with
 > a different XC-DSC version. See that section.
 > Some later-phase items were delivered ahead of the plan — see "Delivered Ahead
@@ -1849,7 +1851,7 @@ either; the board reports `erase step 0x400` itself.
 
 ---
 
-## Pin-map audit — committed September 24, 2026, release HELD
+## Pin-map audit — committed September 24, 2026, shipped in v1.0.6
 
 Asked whether the pin-map diagram still agreed with v1.0.5, the answer turned out to be yes,
 three independent ways: regenerating `docs/img/pinmap-dspic33ck256mc005.svg` from
@@ -1947,18 +1949,19 @@ this cheap.
 ### Release status
 
 `README.md`, the SVG and the gates are repo-only and need no version bump. **`part2` and
-`part6` ship inside the archive, so those two changes reach users only in a `v1.0.6`, which is
-held at the user's instruction.** When it is cut, `part6`'s §6.9 correction and `part2`'s MC005
-half go out together; nothing else in the archive has changed, so the four boards' 2556 / 3920 /
-2556 / 3188 baselines must come back identical.
+`part6` ship inside the archive, so those two changes reached users only in `v1.0.6`**, which
+carried `part6`'s §6.9 correction and `part2`'s MC005 half together. Nothing else in the archive
+changed, and the four boards' 2556 / 3920 / 2556 / 3188 baselines came back identical off the
+published artefact.
 
 ---
 
-## v1.0.6 audit — committed September 24, 2026, release HELD
+## v1.0.6 audit — published September 24, 2026
 
 Asked to re-check everything published in v1.0.5 plus the two local commits so a single
-v1.0.6 could carry all of it. The docs and gate work is committed; **the release itself is
-held**, and `main` is still unpushed.
+v1.0.6 could carry all of it. It does: the docs and gate work, the two previously-held
+commits, and the version bump all went out as **v1.0.6**, verified against the live
+Boards Manager URL. See "### Release v1.0.6" below for the mechanics.
 
 ### The systemic finding: five of the eight shipped pages were MP102 documents
 
@@ -2079,14 +2082,49 @@ SVG byte-identical), `mutate_part2.py` 7/7, `mutate_part3.py` 8/8, `mutate_part5
 **Left deliberately uncommitted, pending the user's call:** `.gitignore` and the five
 `cmake/SCCP1_dsPIC33CK/default/…` files.
 
-Still to do when the release is cut: bump `platform.txt:33` to `1.0.6`, **push `main` before
-creating the tag** — a tag made by name lands on the *remote* branch head — and confirm
-2556 / 3920 / 2556 / 3188 come back identical, since no firmware changed in this release
-either.
+---
 
-**Needs the user's go-ahead, because it edits published content:** the v1.0.5 GitHub release
-notes still print `| TXD | RC11 | U1RX, pin 32 |` / `| RXD | RC10 | U1TX, pin 31 |` — both the
-retracted package numbers and TX/RX swapped against the label.
+### Release v1.0.6 — September 24, 2026 — PUBLISHED
+
+<https://github.com/9Nicotin/Arduino_dsPIC33CK/releases/tag/v1.0.6>
+
+The documentation release. No firmware change, and that is measured rather than asserted:
+`install_check.sh` off the built archive and `live_check.sh` off the published URL both
+returned **2556 / 3920 / 2556 / 3188**, `package_check.sh` matched the `.hex` files exactly
+(15337 / 19445 / 15405 / 17189), and `Bootloader: Serial` on MC005 came back 4928 B with the
+246784 size bar. The two DFP tool packs are the same bytes as in 1.0.0, so `upgrade_check.sh`
+confirmed an upgrade re-downloads the platform archive only (MP=1 MC=1 GETs).
+
+Mechanics, in the order they have to happen:
+
+1. `_build/bump_version.py 1.0.5 1.0.6` — 12 replacements across the nine version sites,
+   then its own sweep for any live value still on the old version. Clean.
+2. `tools/release/make-release.sh` — three archives, the eight guide pages verified
+   byte-identical inside the core zip, index rewritten with real sizes and SHA-256s. Core
+   `324453` B; the +12516 B over 1.0.5 is documentation and nothing else.
+3. `install_check.sh`, `package_check.sh` — both PASS before anything left the machine.
+4. Commit, then **`git push origin main`**, then publish. `publish_release.py`'s
+   `require_pushed()` is what enforces the ordering; a tag created by name lands on the
+   *remote* branch head, so publishing first would have tagged `781ca90`.
+5. `live_check.sh` PASS, `upgrade_check.sh` PASS, and `/releases/latest` resolves to
+   `v1.0.6` — checked, because the index URL users paste goes through `latest/download`.
+
+Two commits: `7b299cc` (docs, gates, PLAN.md — 10 files, 1562 insertions) and `6158340`
+(version bump and index). The push carried `74cb27c` and `ccab436` up with them.
+
+**v1.0.5's published notes were patched in place at the same time**, via the new
+`_build/patch_body.py` — a body-only PATCH, no tag and no assets touched, for the case where
+shipped notes need correcting and a version bump is not on the table. The §6.9 wiring table
+printed "pin 32" / "pin 31"; those are Arduino `D32` / `D31`, and "pin" in a wiring table
+reads as a package pin, which this project has no verifiable source for. **The rows were
+right** — an earlier note in this file claimed they were swapped and that claim was wrong:
+`TXD → RC11` is the board's `U1RX` (`D32`), `RXD → RC10` its `U1TX` (`D31`), confirmed
+against `variant.c:67-68` and `pins_arduino.h:135-136`.
+
+**Still uncommitted, pending the user's call:** `.gitignore` and the five
+`cmake/SCCP1_dsPIC33CK/default/…` files. `publish_release.py` warned about them
+("tracked files are modified; the tag will not match the tree") — correctly, and harmlessly,
+since none of them is inside `arduino-platform/`.
 
 ---
 
