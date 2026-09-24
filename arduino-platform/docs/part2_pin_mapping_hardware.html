@@ -51,7 +51,307 @@
     <a href="part7_bench_verification.html">Part 7: Bench Verification</a>
 </div>
 
-<h2>2.1 dsPIC33CK32MP102 Pinout Diagram</h2>
+<div class="info-box">
+    <strong>Two devices, two tables.</strong> Sections 2.1&ndash;2.2 cover
+    <strong>dsPIC33CK256MC005</strong> (Curiosity Nano, 48-pin, D0&ndash;D38).
+    Sections 2.3 onward cover <strong>dsPIC33CK32MP102</strong> (28-pin, D0&ndash;D20).
+    The two pin maps are unrelated &mdash; the same Arduino number is a different port on
+    each. Check which board is selected in <em>Tools &gt; Board</em> before reading a row.
+</div>
+
+<h2>2.1 dsPIC33CK256MC005 (Curiosity Nano) Pin Map</h2>
+
+<p>The <strong>dsPIC33CK256MC005</strong> is a 48-pin device with <strong>39 bonded
+I/O pins</strong>, numbered <code>D0</code>&ndash;<code>D38</code>. It is the priority
+device for this platform and the one the bootloader in
+<a href="part6_serial_bootloader.html">Part&nbsp;6</a> is built for.</p>
+
+<div class="info-box">
+    <strong>A drawn pin-map diagram is in the repository:</strong>
+    <a href="https://github.com/9Nicotin/Arduino_dsPIC33CK/blob/main/docs/img/pinmap-dspic33ck256mc005.svg">docs/img/pinmap-dspic33ck256mc005.svg</a>,
+    also shown on the front page of the repository. It is drawn by a generator whose pad
+    tables are checked against <code>variant.c</code> and <code>pins_arduino.h</code> on
+    every pin, so a pad that disagrees with what the core compiles is a build failure
+    rather than a wrong picture. The table below is generated from the same two files.
+</div>
+
+<div class="warning-box">
+    <strong>Physical package pin numbers are deliberately not given for this device.</strong>
+    Identify a pin the two ways that are verifiable from this platform: the <em>port name</em>
+    the Curiosity Nano silkscreens on its edge pads (<code>RC10</code>, <code>RD13</code>,
+    &hellip;), and the <em>Arduino number</em> your sketch passes to
+    <code>digitalWrite()</code>. If you are wiring a bare dsPIC33CK on your own board, take
+    the package pin numbers from the data sheet for <em>your</em> package.
+</div>
+
+<h2>2.2 dsPIC33CK256MC005 Complete Pin Mapping Table</h2>
+
+<p>All 39 pins. The <code>An</code> names are sequential Arduino analog numbers and do
+<strong>not</strong> match the chip's <code>ANx</code> channel numbers &mdash; for example
+<code>A19</code> is <code>D37</code>, which reads ADC channel <code>AN18</code>. Pass the
+<code>An</code> name (or its <code>Dn</code> number) to <code>analogRead()</code>; the
+<code>ANx</code> number in the Functions column is only for cross-referencing the data
+sheet.</p>
+
+<table>
+    <tr>
+        <th>Arduino Pin</th>
+        <th>dsPIC Port.Bit</th>
+        <th>Functions</th>
+        <th>Notes</th>
+    </tr>
+    <tr>
+        <td><strong>D0 / A0</strong></td>
+        <td>RA0</td>
+        <td>Digital I/O, <code>analogRead()</code> AN0</td>
+        <td class="analog-highlight">Analog</td>
+    </tr>
+    <tr>
+        <td><strong>D1 / A1</strong></td>
+        <td>RA1</td>
+        <td>Digital I/O, <code>analogRead()</code> AN16</td>
+        <td class="analog-highlight">Analog</td>
+    </tr>
+    <tr>
+        <td><strong>D2 / A2</strong></td>
+        <td>RA2</td>
+        <td>Digital I/O, <code>analogRead()</code> AN9</td>
+        <td class="analog-highlight">Analog</td>
+    </tr>
+    <tr>
+        <td><strong>D3 / A3</strong></td>
+        <td>RA3</td>
+        <td>Digital I/O, <code>analogRead()</code> AN3</td>
+        <td class="analog-highlight">Analog</td>
+    </tr>
+    <tr>
+        <td><strong>D4 / A4</strong></td>
+        <td>RA4</td>
+        <td>Digital I/O, <code>analogRead()</code> AN4</td>
+        <td class="analog-highlight">Analog</td>
+    </tr>
+    <tr>
+        <td><strong>D5 / A5</strong></td>
+        <td>RB0</td>
+        <td>Digital I/O, <code>analogRead()</code> AN5, <code>analogWrite()</code> PWM (SCCP1)</td>
+        <td class="pwm-highlight">Analog + PWM</td>
+    </tr>
+    <tr>
+        <td><strong>D6 / A6</strong></td>
+        <td>RB1</td>
+        <td>Digital I/O, <code>analogRead()</code> AN6, <code>analogWrite()</code> PWM (SCCP2)</td>
+        <td class="pwm-highlight">Analog + PWM</td>
+    </tr>
+    <tr>
+        <td><strong>D7 / A7</strong></td>
+        <td>RB2</td>
+        <td>Digital I/O, <code>analogRead()</code> AN1, <code>analogWrite()</code> PWM (SCCP3)</td>
+        <td class="pwm-highlight">Analog + PWM</td>
+    </tr>
+    <tr>
+        <td><strong>D8 / A8</strong></td>
+        <td>RB3</td>
+        <td>Digital I/O, <code>analogRead()</code> AN8, <code>analogWrite()</code> PWM (SCCP4), <code>tone()</code> &mdash; shares SCCP4 with <code>analogWrite(8, ...)</code></td>
+        <td class="pwm-highlight">Analog + PWM</td>
+    </tr>
+    <tr>
+        <td><strong>D9 / A9</strong></td>
+        <td>RB4</td>
+        <td>Digital I/O, <code>analogRead()</code> AN17</td>
+        <td class="analog-highlight">Analog</td>
+    </tr>
+    <tr>
+        <td><strong>D10</strong></td>
+        <td>RB5</td>
+        <td>Digital I/O, <strong>PGD3 &mdash; nEDBG debugger line. Do not use.</strong></td>
+        <td class="pin-highlight">Do not use</td>
+    </tr>
+    <tr>
+        <td><strong>D11</strong></td>
+        <td>RB6</td>
+        <td>Digital I/O, <strong>PGC3 &mdash; nEDBG debugger line. Do not use.</strong></td>
+        <td class="pin-highlight">Do not use</td>
+    </tr>
+    <tr>
+        <td><strong>D12 / A10</strong></td>
+        <td>RB7</td>
+        <td>Digital I/O, <code>analogRead()</code> AN2</td>
+        <td class="analog-highlight">Analog</td>
+    </tr>
+    <tr>
+        <td><strong>D13 / A11</strong></td>
+        <td>RB8</td>
+        <td>Digital I/O, <code>analogRead()</code> AN10, I2C <code>SCL</code> (<code>Wire</code>)</td>
+        <td class="analog-highlight">Analog</td>
+    </tr>
+    <tr>
+        <td><strong>D14 / A12</strong></td>
+        <td>RB9</td>
+        <td>Digital I/O, <code>analogRead()</code> AN11, I2C <code>SDA</code> (<code>Wire</code>)</td>
+        <td class="analog-highlight">Analog</td>
+    </tr>
+    <tr>
+        <td><strong>D15</strong></td>
+        <td>RB10</td>
+        <td>Digital I/O, MCPWM PWM3H &mdash; <em>no Arduino API on MC parts</em></td>
+        <td class="pin-highlight">MCPWM</td>
+    </tr>
+    <tr>
+        <td><strong>D16</strong></td>
+        <td>RB11</td>
+        <td>Digital I/O, MCPWM PWM3L &mdash; <em>no Arduino API on MC parts</em></td>
+        <td class="pin-highlight">MCPWM</td>
+    </tr>
+    <tr>
+        <td><strong>D17</strong></td>
+        <td>RB12</td>
+        <td>Digital I/O, MCPWM PWM2H &mdash; <em>no Arduino API on MC parts</em></td>
+        <td class="pin-highlight">MCPWM</td>
+    </tr>
+    <tr>
+        <td><strong>D18</strong></td>
+        <td>RB13</td>
+        <td>Digital I/O, MCPWM PWM2L &mdash; <em>no Arduino API on MC parts</em></td>
+        <td class="pin-highlight">MCPWM</td>
+    </tr>
+    <tr>
+        <td><strong>D19</strong></td>
+        <td>RB14</td>
+        <td>Digital I/O, MCPWM PWM1H &mdash; <em>no Arduino API on MC parts</em></td>
+        <td class="pin-highlight">MCPWM</td>
+    </tr>
+    <tr>
+        <td><strong>D20</strong></td>
+        <td>RB15</td>
+        <td>Digital I/O, MCPWM PWM1L &mdash; <em>no Arduino API on MC parts</em></td>
+        <td class="pin-highlight">MCPWM</td>
+    </tr>
+    <tr>
+        <td><strong>D21 / A13</strong></td>
+        <td>RC0</td>
+        <td>Digital I/O, <code>analogRead()</code> AN12</td>
+        <td class="analog-highlight">Analog</td>
+    </tr>
+    <tr>
+        <td><strong>D22 / A14</strong></td>
+        <td>RC1</td>
+        <td>Digital I/O, <code>analogRead()</code> AN13</td>
+        <td class="analog-highlight">Analog</td>
+    </tr>
+    <tr>
+        <td><strong>D23 / A15</strong></td>
+        <td>RC2</td>
+        <td>Digital I/O, <code>analogRead()</code> AN14</td>
+        <td class="analog-highlight">Analog</td>
+    </tr>
+    <tr>
+        <td><strong>D24 / A16</strong></td>
+        <td>RC3</td>
+        <td>Digital I/O, <code>analogRead()</code> AN15</td>
+        <td class="analog-highlight">Analog</td>
+    </tr>
+    <tr>
+        <td><strong>D25</strong></td>
+        <td>RC4</td>
+        <td>Digital I/O, SPI <code>SCK</code></td>
+        <td class="pin-highlight">Peripheral</td>
+    </tr>
+    <tr>
+        <td><strong>D26</strong></td>
+        <td>RC5</td>
+        <td>Digital I/O, SPI <code>MOSI</code></td>
+        <td class="pin-highlight">Peripheral</td>
+    </tr>
+    <tr>
+        <td><strong>D27 / A17</strong></td>
+        <td>RC6</td>
+        <td>Digital I/O, <code>analogRead()</code> AN19</td>
+        <td class="analog-highlight">Analog</td>
+    </tr>
+    <tr>
+        <td><strong>D28 / A18</strong></td>
+        <td>RC7</td>
+        <td>Digital I/O, <code>analogRead()</code> AN7</td>
+        <td class="analog-highlight">Analog</td>
+    </tr>
+    <tr>
+        <td><strong>D29</strong></td>
+        <td>RC8</td>
+        <td>Digital I/O, ASDA1, SCK2</td>
+        <td class="pin-highlight">Peripheral</td>
+    </tr>
+    <tr>
+        <td><strong>D30</strong></td>
+        <td>RC9</td>
+        <td>Digital I/O, ASCL1, SDI2</td>
+        <td class="pin-highlight">Peripheral</td>
+    </tr>
+    <tr>
+        <td><strong>D31</strong></td>
+        <td>RC10</td>
+        <td>Digital I/O, <strong>Serial TX</strong> (U1TX) &mdash; CDC bridge; also the bootloader's TX</td>
+        <td class="pwm-highlight">Serial</td>
+    </tr>
+    <tr>
+        <td><strong>D32</strong></td>
+        <td>RC11</td>
+        <td>Digital I/O, <strong>Serial RX</strong> (U1RX) &mdash; CDC bridge; also the bootloader's RX</td>
+        <td class="pwm-highlight">Serial</td>
+    </tr>
+    <tr>
+        <td><strong>D33</strong></td>
+        <td>RC12</td>
+        <td>Digital I/O, SPI <code>MISO</code></td>
+        <td class="pin-highlight">Peripheral</td>
+    </tr>
+    <tr>
+        <td><strong>D34</strong></td>
+        <td>RC13</td>
+        <td>Digital I/O, SPI <code>SS</code></td>
+        <td class="pin-highlight">Peripheral</td>
+    </tr>
+    <tr>
+        <td><strong>D35</strong></td>
+        <td>RD1</td>
+        <td>Digital I/O, MCPWM PWM4H &mdash; <em>no Arduino API on MC parts</em></td>
+        <td class="pin-highlight">MCPWM</td>
+    </tr>
+    <tr>
+        <td><strong>D36</strong></td>
+        <td>RD8</td>
+        <td>Digital I/O, SDO2</td>
+        <td class="pin-highlight">Peripheral</td>
+    </tr>
+    <tr>
+        <td><strong>D37 / A19</strong></td>
+        <td>RD10</td>
+        <td>Digital I/O, <code>analogRead()</code> AN18, <strong><code>LED_BUILTIN</code></strong> &mdash; LED0, <em>active low</em></td>
+        <td class="analog-highlight">On-board</td>
+    </tr>
+    <tr>
+        <td><strong>D38</strong></td>
+        <td>RD13</td>
+        <td>Digital I/O, <strong><code>BUTTON_BUILTIN</code></strong> &mdash; SW0, <em>active low</em>; hold at power-up to force the bootloader. Carries ANN0 (ADC <em>negative</em> input), so it has an <code>ANSEL</code> bit but no <code>analogRead()</code> channel</td>
+        <td class="analog-highlight">On-board</td>
+    </tr>
+</table>
+
+<div class="danger-box">
+    <strong>D10 (RB5) and D11 (RB6) are the debugger's programming lines</strong>
+    (<code>PGD3</code>/<code>PGC3</code>) on the Curiosity Nano. Driving them from a sketch
+    fights the on-board nEDBG and can cost you the ability to program the board until you
+    power-cycle it. They are in the pin map for completeness; treat them as unavailable.
+</div>
+
+<div class="info-box">
+    <strong>MCPWM pins have no Arduino API on MC parts.</strong> <code>D15</code>&ndash;
+    <code>D20</code> and <code>D35</code> are wired to the motor-control PWM peripheral.
+    <code>HRPWM.h</code> is a hard error on MC devices, so these are usable as plain digital
+    I/O only. <code>analogWrite()</code> works on <code>D5</code>&ndash;<code>D8</code>,
+    which are the SCCP timers.
+</div>
+
+<h2>2.3 dsPIC33CK32MP102 Pinout Diagram</h2>
 
 <p>The dsPIC33CK32MP102 is a <strong>28-pin</strong> device. Here's how the physical pins map to Arduino pin numbers:</p>
 
@@ -72,12 +372,12 @@
    RB4 -| 11  (D9, A4, RX)       18 |- RB8  (D13, SCK)
    RA4 -| 12  (D4)               17 |- RB7  (D12, MISO)
    VDD -| 13                      16 |- RB6  (D11, MOSI)
-   RB5 -| 14  (D10, A5, TX)      15 |- RB5  (VCAP)
+   RB5 -| 14  (D10, A5, TX)      15 |- VCAP        
         |                            |
         +----------------------------+
 </code></pre>
 
-<h2>2.2 Complete Pin Mapping Table</h2>
+<h2>2.4 dsPIC33CK32MP102 Complete Pin Mapping Table</h2>
 
 <table>
     <tr>
@@ -215,7 +515,7 @@
     </tr>
 </table>
 
-<h2>2.3 Hardware Wiring for Testing</h2>
+<h2>2.5 Hardware Wiring for Testing</h2>
 
 <h3>Blink Test Wiring (Simplest)</h3>
 
@@ -303,7 +603,7 @@
     analogWrite(5, 128);  // 50% brightness
 </code></pre>
 
-<h2>2.4 Power Supply Requirements</h2>
+<h2>2.6 Power Supply Requirements</h2>
 
 <table>
     <tr>
@@ -342,7 +642,7 @@
     <strong>Decoupling Capacitors:</strong> Place 100nF ceramic capacitors as close as possible to each VDD/VSS pair. Place a 10uF capacitor on VCAP (pin 15).
 </div>
 
-<h2>2.5 Minimum Hardware Schematic</h2>
+<h2>2.7 Minimum Hardware Schematic</h2>
 
 <pre><code>
                     3.3V

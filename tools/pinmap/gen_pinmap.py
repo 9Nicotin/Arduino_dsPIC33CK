@@ -136,6 +136,17 @@ SANS = "-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 
 
 def esc(s):
+    """Escape for SVG text content.
+
+    Note what this does NOT do: it leaves non-ASCII alone. The output carries no
+    <?xml encoding?> declaration, so a literal em dash or smart quote in a note
+    string ships as raw UTF-8 and renders at the mercy of whatever the consumer
+    defaults to. Every label and note here is therefore plain ASCII, and the
+    typographic characters in the title block are written as numeric entities
+    (&#183;, &#8212;) *outside* this function on purpose. check_pinmap.py asserts
+    the finished file is ASCII, because "it looked fine in my browser" is exactly
+    how the raw < in the v1.0.5 guide survived review.
+    """
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
@@ -371,7 +382,7 @@ def main():
         "D10 (RB5/PGD3) and D11 (RB6/PGC3) are the nEDBG debugger lines. Driving them kills programming and the "
         "serial bridge until you power-cycle. Treat them as unavailable.",
         "analogWrite() reaches four pins only: D5, D6, D7, D8 (SCCP1-4, ~490 Hz). RB10-RB15 and RD1 are motor-control "
-        "PWM outputs with no Arduino API on this device — HRPWM.h is a hard error on MC parts.",
+        "PWM outputs with no Arduino API on this device - HRPWM.h is a hard error on MC parts.",
         "tone() borrows SCCP4, which is D8's PWM channel. Calling tone() stops PWM on D8, and analogWrite(8, x) stops "
         "the tone. Neither warns. D5-D7 are unaffected.",
         "D31/D32 (RC10/RC11) are wired to the debugger's USB CDC, which is what Serial talks to. The pads are labelled "

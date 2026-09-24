@@ -55,12 +55,24 @@ go from a header pad to the number `digitalWrite()` wants without a datasheet.
 
 `Dn` is the digital pin number, `An` the `analogRead()` name, and `ANn` the chip's
 own ADC channel — printed because the two do **not** line up (`A9` is `AN17`).
-The diagram is generated from
+The diagram is drawn by [tools/pinmap/gen_pinmap.py](tools/pinmap/gen_pinmap.py),
+whose pad tables are checked against
 [variant.c](arduino-platform/microchip/dspic33ck/variants/dspic33ck256mc005/variant.c)
-by [tools/pinmap/gen_pinmap.py](tools/pinmap/gen_pinmap.py), so it cannot drift
-from the pin table the core actually compiles against. Pad order is from Figure
+and `pins_arduino.h` by
+[tools/pinmap/check_pinmap.py](tools/pinmap/check_pinmap.py) — port, bit, ADC
+channel and `An` name on all 39 pins — so a pad that disagrees with what the core
+compiles is a build failure rather than a wrong picture. Pad order is from Figure
 1-1 of the [board user guide](https://www.microchip.com/en-us/development-tool/EV08P02A)
 (DS70005656).
+
+Physical package pin numbers are deliberately **not** on the diagram. Pads are
+identified the two ways this repo can actually verify — the port name the board
+silkscreens, and the Arduino number your sketch uses. A package number printed
+beside `RP58` invites someone to count pins on the chip, and the DFP's own device
+description turns out not to be a trustworthy source for it: two 28-pin parts in
+this family list their pins in the same cyclic order offset by four, so at most
+one of the two starts at pin 1 and nothing in the pack says which. For a bare
+chip on your own board, use the data sheet for your package.
 
 Six things the board will not tell you, all of which will cost you an evening:
 

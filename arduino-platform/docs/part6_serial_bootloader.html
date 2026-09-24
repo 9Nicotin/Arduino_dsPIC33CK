@@ -590,12 +590,13 @@ on-board debugger entirely?</p>
     <tr><th>Adapter</th><th>&nbsp;</th><th>dsPIC33CK256MC005</th><th>Note</th></tr>
     <tr>
         <td>TXD (adapter output)</td><td>&rarr;</td>
-        <td><strong>RC11</strong> &mdash; U1RX, RP59, pin&nbsp;32</td>
-        <td>Crossed: the adapter's transmit goes to the chip's receive.</td>
+        <td><strong>RC11</strong> &mdash; U1RX, RP59, Arduino&nbsp;D32</td>
+        <td>Crossed: the adapter's transmit goes to the chip's receive. On a Curiosity Nano,
+            solder to the edge pad silkscreened <code>RC11</code>.</td>
     </tr>
     <tr>
         <td>RXD (adapter input)</td><td>&larr;</td>
-        <td><strong>RC10</strong> &mdash; U1TX, RP58, pin&nbsp;31</td>
+        <td><strong>RC10</strong> &mdash; U1TX, RP58, Arduino&nbsp;D31</td>
         <td>Remappable output 1 (U1TX) is assigned to RP58 by the bootloader itself.</td>
     </tr>
     <tr>
@@ -610,6 +611,17 @@ on-board debugger entirely?</p>
 
 <p>115200 baud, 8N1. No flow control &mdash; the upload tool explicitly disables CTS/RTS
 handshaking and simply asserts DTR and RTS when it opens the port.</p>
+
+<div class="warning-box">
+    <strong>D31 and D32 are Arduino pin numbers, not package pins.</strong> Earlier versions of
+    this page wrote them as &ldquo;pin&nbsp;31&rdquo; and &ldquo;pin&nbsp;32&rdquo;, which in a row
+    that already says <code>RP59</code> reads as a number to count to on the chip. It is not.
+    Identify the pin by the port name &mdash; the Curiosity Nano silkscreens
+    <code>RC10</code> and <code>RC11</code> on the edge pads &mdash; or by the Arduino number your
+    sketch uses. If you are wiring a bare dsPIC33CK on your own board, take the package pin
+    numbers from the device data sheet for <em>your</em> package; this guide deliberately does not
+    print them.
+</div>
 
 <div class="danger-box">
     <strong>3.3&nbsp;V logic only.</strong> The dsPIC33CK is a 3.3&nbsp;V part and its pins are not
