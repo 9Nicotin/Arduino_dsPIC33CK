@@ -1016,11 +1016,32 @@ Gates for 1.0.4: `bootloader_check.sh` **112 / 0**, `allboards.sh` **4/4**,
 published v1.0.4 — the gate that is only meaningful after publishing, run this time as the
 last step rather than as an afterthought.
 
+**Published and measured, not asserted.** Commit `d8d45e7`, tag `v1.0.4`, core archive
+**256003 B** sha256 `257ab974a5e9d8cccaf1b2c7e3354143692cf807fa98c87f26edd4e3c41629b4`,
+reproducible across two independent `make-release.sh` runs. Both DFP archives went up
+byte-identical to 1.0.0 through 1.0.3, so the upgrade re-downloads only the platform.
+`/releases/latest/download/` resolves to `v1.0.4`. Then, against **what actually installs
+from that URL** rather than against the tree:
+
+| | |
+|---|---|
+| `live_check.sh` | **PASS** — 2556 / 3920 / 2556 / 3188, all four on the new baselines |
+| `bootloader=serial` on MC005 | **4928 B**, `+1740` over its own 3188 baseline |
+| the size bar on that option | `Maximum is 246784 bytes` |
+
+The second row is the one that could not be checked before the tag existed, and it is the
+whole point: the `build.extra_flags` → `-DSERIAL_BOOTLOADER_ENTRY` chain reaches the
+compiler in the **published** artifact, not merely in the working tree that built it.
+
+The v1.0.3 release notes on GitHub now carry a superseded banner, and the two false
+statements in them — the bit-for-bit claim and the cost table's understated per-sketch
+figure — are struck through and corrected in place rather than quietly edited away.
+`_build/fix_1_0_3_notes.py` did it and refuses to stack a second banner on a re-run.
+
 **The lesson, stated plainly so the next release inherits it:** a claim about the shipped
 artifact that no gate can check is not a fact, it is an intention. Three separate places
 (commit `7070e4c`, the v1.0.3 release notes, and this file) asserted a byte-identity that
-nothing had measured, and all three were wrong. The v1.0.3 notes on GitHub have been
-corrected in place rather than left to stand.
+nothing had measured, and all three were wrong.
 
 
 ---
@@ -2403,7 +2424,7 @@ clone — recreate or copy them before trusting a "builds clean" claim:
 | `examples_all.sh` | `01.Basics` on all 4 devices, `02.CppFeatures` + `03.PWM` on MP508 only (they use `LED1`/`LED2`/`A22`, which only that variant defines) |
 | `package_check.sh` | **Phase 14.** `arduino-cli` compiles one sketch per board against the *installed* platform — the only gate that exercises `platform.txt`, `boards.txt`, the recipes and the wrappers at all. Baselines: **2556 / 3920 / 2556 / 3188 bytes** (2564 / 3928 / 2564 / 3196 from 1.0.1 through 1.0.3; 8 bytes lower in 1.0.4, when the RX interrupt stopped reading `U1RXREG` once per branch — see Release v1.0.4. Was 11904 / 13992 / 11916 / 12876 before `--gc-sections` landed in 1.0.1) |
 | `install_check.sh` | **Phase 14, the acceptance gate.** Serves the real release archives over local HTTP and runs `arduino-cli core install microchip:dspic33ck`, so checksums, archive roots, tool placement and `toolsDependencies` are all really exercised. Asserts **no `platform.local.txt` anywhere** and the same four sizes (the default menu option only — `menu_size_check.sh` covers the other one). Takes its expected version from `platform.txt` rather than a pinned constant -- the pinned `1.0.0` made it report a phantom `FAIL no platform.txt` the moment 1.0.1 was cut. Also asserts that **`File > Examples` offers every shipped `.ino`** (`lib examples --format json`, filtered to this platform's `container_platform`) — the gap that let eleven invisible examples ship twice, since compiling by absolute path works whether or not the IDE can find them |
-| `menu_size_check.sh` | **Phase 15, added in 1.0.4 as the gate that would have caught its predecessor's defect.** Stages the **working tree** as a `<version>-dev` install and compiles through `arduino-cli` at **both** ends of the `Tools > Bootloader` menu — the only gate that compiles a *menu option* at all. Asserts `Bootloader: none` sits exactly on the four baselines (so nothing reaches the core that the user did not opt into) **and** that `Bootloader: Serial` on MC005 is *larger* than its own baseline (so the `build.extra_flags` — `-DSERIAL_BOOTLOADER_ENTRY` chain really reaches the compiler; a sniffer that is opt-in and never opted in fails on hardware with no diagnosis). Measured `+1740` = 1608 trampoline + 132 sniffer. Sizes asserted as a relation, not a constant |
+| `menu_size_check.sh` | **Phase 15, added in 1.0.4 as the gate that would have caught its predecessor's defect.** Stages the **working tree** as a `<version>-dev` install and compiles through `arduino-cli` at **both** ends of the `Tools > Bootloader` menu — the only gate that compiles a *menu option* at all. Asserts `Bootloader: none` sits exactly on the four baselines (so nothing reaches the core that the user did not opt into) **and** that `Bootloader: Serial` on MC005 is *larger* than its own baseline (so the `build.extra_flags` → `-DSERIAL_BOOTLOADER_ENTRY` chain really reaches the compiler; a sniffer that is opt-in and never opted in fails on hardware with no diagnosis). Measured `+1740` = 1608 trampoline + 132 sniffer. Sizes asserted as a relation, not a constant |
 | `upgrade_check.sh` | **Phase 14.** Installs 1.0.0 then upgrades to a synthesised 1.0.1 off a two-version index: asserts the DFP packs are reused with no second HTTP GET *and* are still on disk afterwards, the old version's directory is gone, and no `platform.local.txt` appears at either version. Re-run for real against the two **live** releases on Sep 22 2026, not a synthesised index: DFP packs reused with no second download, only the 93 KB core archive fetched |
 | `parallel_check.sh` | **Phase 14.** Five cold-cache `-j16` builds — the only gate that exercises the resolver's cache race, which a serial build cannot reach. Fails on output drift, any warning, or an orphan `.tmp` left by a lost race |
 | `live_check.sh` | **Phase 14, post-publication.** Installs from the **real published GitHub URL** into a fresh data directory and compiles all four boards at the baselines. The only gate that covers GitHub itself — a wrong tag in the index's asset URLs, a pre-release flag hiding the release from `/latest`, an asset that failed to upload, or a CDN redirect problem all fail here and nowhere else. Run it after any release |
